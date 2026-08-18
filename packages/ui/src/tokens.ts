@@ -142,26 +142,32 @@ export const spacing = {
  * Tipografia.
  *
  * `ui` es una grotesca; `mono` es monoespaciada y se usa en **toda** cifra de
- * dinero, sin excepcion. Las cifras tabulares hacen que las columnas de montos
- * queden alineadas digito a digito: es el detalle chico que separa una app
- * financiera seria de una plantilla.
+ * dinero, sin excepcion. Al ser monoespaciada los digitos ocupan lo mismo y las
+ * columnas de montos quedan alineadas cifra a cifra: es el detalle chico que
+ * separa una app financiera seria de una plantilla.
+ *
+ * Cada peso es una familia propia, no un `fontWeight`. En React Native, poner
+ * `fontFamily` y `fontWeight` juntos hace que Android sintetice la negrita
+ * deformando la regular en vez de usar el archivo correcto. Por eso aca no hay
+ * escala de pesos: se elige la familia y listo.
  *
  * Se eligio Hanken Grotesk por sobre Satoshi porque viene como paquete de
  * `@expo-google-fonts`, o sea sin archivos que versionar ni licencia que
  * revisar, y funciona igual en web y en Android. Cambiar de familia es cambiar
- * estas dos constantes.
+ * este objeto y el `useFonts` que las carga.
  */
 export const fonts = {
-  ui: 'HankenGrotesk',
-  mono: 'IBMPlexMono',
-} as const;
-
-/** Pesos disponibles de cada familia. */
-export const fontWeights = {
-  regular: '400',
-  medium: '500',
-  semibold: '600',
-  bold: '700',
+  ui: {
+    regular: 'HankenGrotesk_400Regular',
+    medium: 'HankenGrotesk_500Medium',
+    semibold: 'HankenGrotesk_600SemiBold',
+    bold: 'HankenGrotesk_700Bold',
+  },
+  mono: {
+    regular: 'IBMPlexMono_400Regular',
+    medium: 'IBMPlexMono_500Medium',
+    semibold: 'IBMPlexMono_600SemiBold',
+  },
 } as const;
 
 export const fontSizes = {

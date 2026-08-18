@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  charts, dark, durations, elevation, fontSizes, fonts, fontWeights, light, radii, spacing, themes,
+  charts, dark, durations, elevation, fontSizes, fonts, light, radii, spacing, themes,
   type Theme,
 } from './tokens';
 
@@ -161,12 +161,14 @@ describe('escalas', () => {
     expect([...valores].sort((a, b) => a - b)).toEqual(valores);
   });
 
-  it('hay una familia monoespaciada distinta de la de UI para las cifras', () => {
-    expect(fonts.mono).not.toBe(fonts.ui);
+  it('la familia de cifras es distinta de la de UI', () => {
+    expect(fonts.mono.regular).not.toBe(fonts.ui.regular);
   });
 
-  it('los pesos son strings numericos que React Native acepta', () => {
-    for (const peso of Object.values(fontWeights)) expect(peso).toMatch(/^[1-9]00$/);
+  it('cada peso es una familia propia, no un fontWeight', () => {
+    const familias = [...Object.values(fonts.ui), ...Object.values(fonts.mono)];
+    for (const familia of familias) expect(familia).toMatch(/^[A-Za-z]+_[1-9]00[A-Za-z]+$/);
+    expect(new Set(familias).size).toBe(familias.length);
   });
 
   it('elevation y durations tienen valores utiles', () => {
