@@ -15,6 +15,16 @@ CLAUDE.local.md
 .windsurfrules
 .github/copilot-instructions.md
 
+# ---------- Datos personales (NUNCA versionar) ----------
+# Cartolas bancarias reales y cualquier extracto con RUT, cuenta o movimientos.
+# Se usan localmente para construir el importador; lo que se versiona son
+# fixtures anonimizados en packages/core/src/csv/__fixtures__/.
+datos-privados/
+*.cartola.xls
+cartola_*.xls
+cartola_*.xlsx
+cartola_*.csv
+
 # ---------- Secretos / entorno ----------
 .env
 .env.*
