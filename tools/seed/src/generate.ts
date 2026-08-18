@@ -9,8 +9,8 @@
  */
 
 import { dates, money } from '@iceberg/core';
-import { RECURRENTES, VARIABLES, seasonalFactor, type Movement } from './catalog.js';
-import { Random } from './random.js';
+import { RECURRENTES, VARIABLES, seasonalFactor, type Movement } from './catalog';
+import { Random } from './random';
 
 type PlainDate = dates.PlainDate;
 

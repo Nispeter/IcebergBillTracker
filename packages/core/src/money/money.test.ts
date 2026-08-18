@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   abs, add, compare, divide, equals, exponentOf, isNegative, isPositive, isZero,
   max, min, money, MoneyError, multiply, negate, ratio, subtract, sum, zero,
-} from './money.js';
+} from './money';
 
 const clp = (n: number) => money(n, 'CLP');
 

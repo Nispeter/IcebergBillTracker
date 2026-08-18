@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dates } from '@iceberg/core';
-import { RECURRENTES } from './catalog.js';
-import { generateSeed, totalOf } from './generate.js';
+import { RECURRENTES } from './catalog';
+import { generateSeed, totalOf } from './generate';
 
 const FIN = dates.requirePlainDate('2026-08-18');
 const dataset = generateSeed({ endDate: FIN });

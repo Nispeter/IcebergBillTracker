@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DateError, requirePlainDate } from './plainDate.js';
+import { DateError, requirePlainDate } from './plainDate';
 import {
   containsDate, currentMonth, dateRange, eachDate, lastNDays, lengthInDays, monthRange,
   overlaps, previousPeriod, quarterRange, sameRangeLastYear, yearRange, yearToDate,
-} from './range.js';
+} from './range';
 
 const d = requirePlainDate;
 const ends = (r: { start: string; end: string }) => [r.start, r.end];

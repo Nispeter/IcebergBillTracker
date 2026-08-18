@@ -3,7 +3,7 @@ import {
   addDays, addMonths, addYears, compareDates, DateError, day, daysBetween, daysInMonth,
   endOfMonth, formatDate, formatDateLong, isAfter, isBefore, isPlainDate, maxDate, minDate,
   month, parsePlainDate, plainDate, requirePlainDate, startOfMonth, today, weekday, year,
-} from './plainDate.js';
+} from './plainDate';
 
 const d = requirePlainDate;
 

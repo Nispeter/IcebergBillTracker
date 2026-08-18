@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { format, formatNumber, formatSigned, parseMoney } from './format.js';
-import { money } from './money.js';
+import { format, formatNumber, formatSigned, parseMoney } from './format';
+import { money } from './money';
 
 const clp = (n: number) => money(n, 'CLP');
 

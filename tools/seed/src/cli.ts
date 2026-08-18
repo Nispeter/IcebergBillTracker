@@ -6,7 +6,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { dates, money } from '@iceberg/core';
-import { generateSeed, totalOf } from './generate.js';
+import { generateSeed, totalOf } from './generate';
 
 const target = process.argv[2];
 const dataset = generateSeed();

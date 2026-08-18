@@ -1,2 +1,2 @@
-export * as dates from './dates/index.js';
-export * as money from './money/index.js';
+export * as dates from './dates/index';
+export * as money from './money/index';

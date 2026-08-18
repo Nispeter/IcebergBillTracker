@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   charts, dark, durations, elevation, fontSizes, fonts, fontWeights, light, radii, spacing, themes,
   type Theme,
-} from './tokens.js';
+} from './tokens';
 
 const HEX = /^#[0-9A-F]{6}$/;
 

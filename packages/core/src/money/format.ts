@@ -6,7 +6,7 @@
  * el signo en el lugar equivocado.
  */
 
-import { money, type CurrencyCode, type Money } from './money.js';
+import { money, type CurrencyCode, type Money } from './money';
 
 /**
  * Intl con es-CL pone el signo despues del simbolo (`$-45.000`), que se lee mal

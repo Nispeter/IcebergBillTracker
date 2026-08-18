@@ -11,7 +11,7 @@ import {
   addDays, addMonths, addYears, compareDates, daysBetween, daysInMonth,
   DateError, endOfMonth, month, plainDate, startOfMonth, today, year,
   type PlainDate,
-} from './plainDate.js';
+} from './plainDate';
 
 export type RangeKind = 'month' | 'quarter' | 'year' | 'days' | 'ytd' | 'custom';
 

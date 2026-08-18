@@ -1,3 +1,3 @@
-export * from './catalog.js';
-export * from './generate.js';
-export { Random } from './random.js';
+export * from './catalog';
+export * from './generate';
+export { Random } from './random';

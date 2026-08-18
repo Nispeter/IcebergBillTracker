@@ -1,2 +1,2 @@
-export * from './money.js';
-export * from './format.js';
+export * from './money';
+export * from './format';

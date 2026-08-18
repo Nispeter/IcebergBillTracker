@@ -1,2 +1,2 @@
-export * from './plainDate.js';
-export * from './range.js';
+export * from './plainDate';
+export * from './range';
