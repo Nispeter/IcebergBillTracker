@@ -118,3 +118,6 @@ temp/
 ~$*.xls
 ~$*.xlsx
 ~$*.doc*
+
+# ---------- Salida del generador de semilla ----------
+seed-*.json
