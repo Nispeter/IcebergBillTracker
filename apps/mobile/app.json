@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Iceberg",
+    "slug": "iceberg",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "scheme": "iceberg",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.nispeter.iceberg",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

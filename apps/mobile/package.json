@@ -1,0 +1,32 @@
+{
+  "name": "@iceberg/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "web": "expo start --web",
+    "android": "expo start --android",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo-google-fonts/hanken-grotesk": "^0.4.3",
+    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo/metro-runtime": "~57.0.11",
+    "@iceberg/core": "*",
+    "@iceberg/seed": "*",
+    "@iceberg/ui": "*",
+    "expo": "~57.0.14",
+    "expo-constants": "~57.0.12",
+    "expo-font": "~57.0.1",
+    "expo-linking": "~57.0.6",
+    "expo-router": "~57.0.14",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "^0.21.2"
+  }
+}

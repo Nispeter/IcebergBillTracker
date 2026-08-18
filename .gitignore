@@ -83,6 +83,13 @@ coverage/
 *.tsbuildinfo
 .eslintcache
 
+# ---------- Expo / React Native ----------
+.expo/
+android/
+ios/
+*.keystore
+!debug.keystore
+
 # ---------- Python ----------
 __pycache__/
 *.py[cod]
