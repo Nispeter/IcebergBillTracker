@@ -1,13 +1,19 @@
 # ---------- Claude / AI tooling ----------
-.claude/
+# La configuracion del proyecto SI se versiona: .mcp.json, skills y hooks son
+# infraestructura del repo y deben viajar con cada clon.
+# CLAUDE.md y lo personal de cada maquina quedan fuera.
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+!.claude/agents/
+!.claude/hooks/
+!.claude/commands/
+.claude/settings.local.json
+CLAUDE.md
+CLAUDE.local.md
 .claude.json
 .claude.json.backup
-CLAUDE.local.md
-.mcp.json
 .anthropic/
-# CLAUDE.md se versiona a propósito (instrucciones del proyecto).
-# Descomenta si prefieres mantenerlo local:
-# CLAUDE.md
 
 # Otras herramientas de IA
 .cursor/
