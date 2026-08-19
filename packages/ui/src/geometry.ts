@@ -110,3 +110,86 @@ export function toPathData(points: readonly Point[]): string {
   const cola = resto.map((punto) => `L ${punto[0].toFixed(2)} ${punto[1].toFixed(2)}`);
   return `${cabeza} ${cola.join(' ')} Z`;
 }
+
+/**
+ * Un sector de dona como path de SVG.
+ *
+ * Se usa para la torta de categorias. Va aca y no en el componente porque el
+ * calculo tiene dos trampas que solo se ven cuando fallan: el flag de "arco
+ * grande" —que hay que prender pasados los 180 grados o el arco se dibuja por
+ * el lado corto— y el sentido de barrido, que va al reves en el borde interior
+ * que en el exterior. Las dos tienen test.
+ *
+ * Los angulos van en grados, empezando **arriba** (las 12) y creciendo en el
+ * sentido del reloj, que es como la gente lee una torta.
+ */
+export function donutArcPath(
+  cx: number,
+  cy: number,
+  radioInterior: number,
+  radioExterior: number,
+  desdeGrados: number,
+  hastaGrados: number,
+): string {
+  const barrido = hastaGrados - desdeGrados;
+  if (barrido <= 0) return '';
+
+  // Un sector de 360 grados no se puede dibujar con un solo arco: el punto de
+  // inicio y el de fin coinciden y el navegador no dibuja nada. Se parte en dos.
+  if (barrido >= 360) {
+    return `${donutArcPath(cx, cy, radioInterior, radioExterior, 0, 180)} `
+      + donutArcPath(cx, cy, radioInterior, radioExterior, 180, 360);
+  }
+
+  const punto = (grados: number, radio: number): Point => {
+    const radianes = ((grados - 90) * Math.PI) / 180;
+    return [cx + (radio * Math.cos(radianes)), cy + (radio * Math.sin(radianes))];
+  };
+
+  const [x1, y1] = punto(desdeGrados, radioExterior);
+  const [x2, y2] = punto(hastaGrados, radioExterior);
+  const [x3, y3] = punto(hastaGrados, radioInterior);
+  const [x4, y4] = punto(desdeGrados, radioInterior);
+  const arcoGrande = barrido > 180 ? 1 : 0;
+  const n = (valor: number) => valor.toFixed(2);
+
+  return [
+    `M ${n(x1)} ${n(y1)}`,
+    `A ${n(radioExterior)} ${n(radioExterior)} 0 ${arcoGrande} 1 ${n(x2)} ${n(y2)}`,
+    `L ${n(x3)} ${n(y3)}`,
+    // El borde interior se recorre al reves: barrido 0 en vez de 1.
+    `A ${n(radioInterior)} ${n(radioInterior)} 0 ${arcoGrande} 0 ${n(x4)} ${n(y4)}`,
+    'Z',
+  ].join(' ');
+}
+
+/**
+ * Reparte proporciones en angulos consecutivos.
+ *
+ * Las porciones muy chicas se quedan en cero grados si uno redondea: con doce
+ * categorias, varias quedarian invisibles. Por eso se les da un minimo, y ese
+ * minimo se descuenta proporcionalmente de las grandes para que el total siga
+ * sumando 360.
+ */
+export function sectoresDeTorta(
+  valores: readonly number[],
+  gradosMinimos = 2,
+): { desde: number; hasta: number }[] {
+  const total = valores.reduce((suma, valor) => suma + Math.max(valor, 0), 0);
+  if (total <= 0) return valores.map(() => ({ desde: 0, hasta: 0 }));
+
+  const crudos = valores.map((valor) => (Math.max(valor, 0) / total) * 360);
+  const chicos = crudos.filter((grados) => grados > 0 && grados < gradosMinimos);
+  const faltante = chicos.reduce((suma, grados) => suma + (gradosMinimos - grados), 0);
+  const grandes = crudos.reduce((suma, grados) => suma + (grados >= gradosMinimos ? grados : 0), 0);
+
+  let cursor = 0;
+  return crudos.map((grados) => {
+    let ajustado = grados;
+    if (grados > 0 && grados < gradosMinimos) ajustado = gradosMinimos;
+    else if (grados >= gradosMinimos && grandes > 0) ajustado = grados - ((grados / grandes) * faltante);
+    const desde = cursor;
+    cursor += ajustado;
+    return { desde, hasta: cursor };
+  });
+}

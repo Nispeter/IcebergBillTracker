@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clipPolygonAtY, polygonArea, toPathData, waterlineForShare, type Point,
+  clipPolygonAtY, donutArcPath, polygonArea, sectoresDeTorta, toPathData, waterlineForShare,
+  type Point,
 } from './geometry';
 
 /** Cuadrado de 10x10 con la esquina en el origen. */
@@ -100,5 +101,77 @@ describe('toPathData', () => {
 
   it('sin puntos devuelve vacio', () => {
     expect(toPathData([])).toBe('');
+  });
+});
+
+describe('donutArcPath', () => {
+  /** Extrae el flag de "arco grande" del primer arco del path. */
+  const arcoGrande = (d: string) => Number(/A [\d.]+ [\d.]+ 0 (\d) 1/.exec(d)?.[1]);
+
+  it('un cuarto de vuelta arranca arriba y termina a la derecha', () => {
+    const d = donutArcPath(50, 50, 20, 40, 0, 90);
+    expect(d.startsWith('M 50.00 10.00')).toBe(true);
+    expect(d).toContain('A 40.00 40.00 0 0 1 90.00 50.00');
+  });
+
+  it('el flag de arco grande se prende recien pasados los 180 grados', () => {
+    // Sin esto, un sector de 200 grados se dibuja por el lado corto y la torta
+    // queda al reves.
+    expect(arcoGrande(donutArcPath(50, 50, 20, 40, 0, 179))).toBe(0);
+    expect(arcoGrande(donutArcPath(50, 50, 20, 40, 0, 181))).toBe(1);
+  });
+
+  it('el borde interior se recorre en sentido contrario', () => {
+    // Si los dos arcos fueran en el mismo sentido, el sector se cerraria sobre
+    // si mismo en vez de dejar el hueco de la dona.
+    const d = donutArcPath(50, 50, 20, 40, 0, 90);
+    expect(d).toContain('A 20.00 20.00 0 0 0');
+  });
+
+  it('una vuelta completa se parte en dos arcos', () => {
+    // Con un solo arco de 360 el inicio y el fin coinciden y no se dibuja nada.
+    const d = donutArcPath(50, 50, 20, 40, 0, 360);
+    expect((d.match(/M /g) ?? []).length).toBe(2);
+  });
+
+  it('un sector vacio no dibuja nada', () => {
+    expect(donutArcPath(50, 50, 20, 40, 90, 90)).toBe('');
+    expect(donutArcPath(50, 50, 20, 40, 90, 30)).toBe('');
+  });
+});
+
+describe('sectoresDeTorta', () => {
+  it('reparte los 360 grados', () => {
+    const sectores = sectoresDeTorta([50, 50]);
+    expect(sectores[0]).toEqual({ desde: 0, hasta: 180 });
+    expect(sectores[1]!.hasta).toBeCloseTo(360, 6);
+  });
+
+  it('los sectores van pegados, sin huecos', () => {
+    const sectores = sectoresDeTorta([30, 20, 40, 10]);
+    for (let i = 1; i < sectores.length; i++) {
+      expect(sectores[i]!.desde).toBeCloseTo(sectores[i - 1]!.hasta, 6);
+    }
+  });
+
+  it('una porcion diminuta igual se ve', () => {
+    // Con doce categorias, varias quedarian en cero grados y desaparecerian.
+    const sectores = sectoresDeTorta([10_000, 1], 2);
+    expect(sectores[1]!.hasta - sectores[1]!.desde).toBeCloseTo(2, 6);
+  });
+
+  it('el minimo se descuenta de las grandes: el total sigue siendo 360', () => {
+    const sectores = sectoresDeTorta([10_000, 1, 1, 1], 2);
+    expect(sectores[sectores.length - 1]!.hasta).toBeCloseTo(360, 6);
+  });
+
+  it('sin valores no revienta', () => {
+    expect(sectoresDeTorta([])).toEqual([]);
+    expect(sectoresDeTorta([0, 0])).toEqual([{ desde: 0, hasta: 0 }, { desde: 0, hasta: 0 }]);
+  });
+
+  it('ignora valores negativos en vez de invertir el sector', () => {
+    const sectores = sectoresDeTorta([100, -50]);
+    expect(sectores[1]!.hasta - sectores[1]!.desde).toBe(0);
   });
 });
