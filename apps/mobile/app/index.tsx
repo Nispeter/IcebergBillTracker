@@ -14,12 +14,13 @@
 import { categories, dates, money } from '@iceberg/core';
 import { gastoPorCategoria, generateSeed, saldoActual, type SeedTransaction } from '@iceberg/seed';
 import {
-  charts, elevation, fontSizes, fonts, radii, spacing, themes,
+  charts, elevation, fontSizes, fonts, niceUnit, notchesFor, radii, spacing, themes,
   type Theme, type ThemeName,
 } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { BarraSegmentada } from '../components/BarraSegmentada';
 import { Iceberg } from '../components/Iceberg';
 import { iconoDeCategoria } from '../components/iconos';
 
@@ -93,7 +94,7 @@ export default function Home() {
 
         <Regla styles={styles} titulo="Gasto por categoría" />
         <View>
-          {r.porCategoria.map(({ categoria, total, parte }) => {
+          {r.porCategoria.map(({ categoria, total }) => {
             const Icono = iconoDeCategoria(categoria);
             return (
               <View key={categoria} style={styles.filaCategoria}>
@@ -101,19 +102,21 @@ export default function Home() {
                 <Text style={styles.nombreCategoria} numberOfLines={1}>
                   {categories.categoryShortName(categoria)}
                 </Text>
-                {/* Las barras quedan alineadas en columna a proposito: puestas
-                    una bajo otra se comparan sin leer un solo numero. El riel
-                    de atras muestra hasta donde llegarian, que es lo que da la
-                    escala; sin el, las barras chicas flotan sin referencia. */}
-                <View style={styles.pista}>
-                  <View style={[styles.relleno, { flex: Math.max(parte, 0.001) }]} />
-                  <View style={{ flex: Math.max(1 - parte, 0.001) }} />
-                </View>
+                {/* Alineadas en columna a proposito: puestas una bajo otra se
+                    comparan sin leer un solo numero. */}
+                <BarraSegmentada
+                  valor={total.amountMinor}
+                  unidad={r.unidad}
+                  total={r.muescas}
+                  theme={theme}
+                />
                 <Text style={styles.montoCategoria}>{money.formatNumber(total)}</Text>
               </View>
             );
           })}
         </View>
+
+        <Text style={styles.notaEscala}>Cada muesca equivale a {money.format(money.money(r.unidad))}</Text>
 
         <Regla styles={styles} titulo="Movimientos recientes" />
         <View>
@@ -208,7 +211,11 @@ function calcularResumen() {
   const gasto = total((tx) => tx.type === 'gasto');
   const ingreso = total((tx) => tx.type === 'ingreso');
   const fijo = total((tx) => tx.type === 'gasto' && tx.recurring);
-  const mayor = gastoPorCategoria(delMes)[0]?.total.amountMinor ?? 1;
+  const porCategoria = gastoPorCategoria(delMes);
+  // La escala se calcula contra la categoria mas grande, no contra el total: si
+  // se midiera contra el total, diez de las doce filas quedarian invisibles.
+  const mayor = porCategoria[0]?.total.amountMinor ?? 1;
+  const unidad = niceUnit(mayor);
 
   return {
     periodo: capitalizar(dates.formatDateLong(mes.start).replace(/^\d+ de /, '')),
@@ -222,12 +229,9 @@ function calcularResumen() {
     fijo,
     variable: total((tx) => tx.type === 'gasto' && !tx.recurring),
     shareComprometido: money.ratio(fijo, gasto) ?? 0,
-    // La barra se mide contra la categoria mas grande, no contra el total: si
-    // se midiera contra el total, diez de las doce quedarian invisibles.
-    porCategoria: gastoPorCategoria(delMes).map((fila) => ({
-      ...fila,
-      parte: fila.total.amountMinor / mayor,
-    })),
+    porCategoria,
+    unidad,
+    muescas: notchesFor(mayor, unidad),
     recientes: [...delMes].reverse().slice(0, 8),
     total: dataset.transactions.length,
   };
@@ -318,15 +322,12 @@ function crearEstilos(theme: Theme) {
       paddingVertical: spacing.sm,
     },
     nombreCategoria: { width: 88, fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    pista: {
-      flex: 1,
-      flexDirection: 'row',
-      height: 8,
-      backgroundColor: theme.hairline,
-      borderRadius: radii.sm,
-      overflow: 'hidden',
+    notaEscala: {
+      fontFamily: fonts.ui.regular,
+      fontSize: fontSizes.xs,
+      color: theme.silencio,
+      marginTop: spacing.sm,
     },
-    relleno: { backgroundColor: charts[0] },
     montoCategoria: {
       width: 76,
       textAlign: 'right',
