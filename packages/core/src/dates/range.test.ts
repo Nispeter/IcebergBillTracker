@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DateError, requirePlainDate } from './plainDate';
 import {
-  containsDate, currentMonth, dateRange, eachDate, lastNDays, lengthInDays, monthRange,
-  overlaps, previousPeriod, quarterRange, sameRangeLastYear, yearRange, yearToDate,
+  containsDate, currentMonth, dateRange, dayRange, eachDate, lastNDays, lengthInDays, monthRange,
+  overlaps, previousPeriod, quarterRange, sameRangeLastYear, weekRange, yearRange, yearToDate,
 } from './range';
 
 const d = requirePlainDate;
@@ -15,6 +15,31 @@ describe('construccion', () => {
 
   it('acepta un rango de un solo dia', () => {
     expect(lengthInDays(dateRange(d('2026-04-13'), d('2026-04-13')))).toBe(1);
+  });
+
+  it('dayRange es un solo dia', () => {
+    expect(ends(dayRange(d('2026-08-19')))).toEqual(['2026-08-19', '2026-08-19']);
+    expect(lengthInDays(dayRange(d('2026-08-19')))).toBe(1);
+  });
+
+  it('weekRange va de lunes a domingo', () => {
+    // 2026-08-19 es miercoles.
+    expect(ends(weekRange(d('2026-08-19')))).toEqual(['2026-08-17', '2026-08-23']);
+    expect(lengthInDays(weekRange(d('2026-08-19')))).toBe(7);
+  });
+
+  it('estando en lunes, la semana arranca ese mismo dia', () => {
+    expect(ends(weekRange(d('2026-08-17')))).toEqual(['2026-08-17', '2026-08-23']);
+  });
+
+  it('estando en domingo, la semana es la que ya termina', () => {
+    // Es lo que distingue lunes de domingo como primer dia: con semanas que
+    // arrancan el domingo, sabado y domingo caen en semanas distintas.
+    expect(ends(weekRange(d('2026-08-23')))).toEqual(['2026-08-17', '2026-08-23']);
+  });
+
+  it('weekRange cruza el fin de mes sin problema', () => {
+    expect(ends(weekRange(d('2026-09-01')))).toEqual(['2026-08-31', '2026-09-06']);
   });
 
   it('monthRange cubre el mes completo, incluido febrero', () => {
@@ -81,6 +106,14 @@ describe('consultas', () => {
 });
 
 describe('previousPeriod', () => {
+  it('de un dia da el dia anterior', () => {
+    expect(ends(previousPeriod(dayRange(d('2026-08-01'))))).toEqual(['2026-07-31', '2026-07-31']);
+  });
+
+  it('de una semana da la semana anterior completa', () => {
+    expect(ends(previousPeriod(weekRange(d('2026-08-19'))))).toEqual(['2026-08-10', '2026-08-16']);
+  });
+
   it('de un mes da el mes anterior completo, no 31 dias atras', () => {
     expect(ends(previousPeriod(monthRange(2026, 3)))).toEqual(['2026-02-01', '2026-02-28']);
     expect(ends(previousPeriod(monthRange(2026, 1)))).toEqual(['2025-12-01', '2025-12-31']);
@@ -113,12 +146,23 @@ describe('previousPeriod', () => {
   });
 
   it('conserva el tipo de rango', () => {
+    expect(previousPeriod(dayRange(d('2026-08-19'))).kind).toBe('day');
+    expect(previousPeriod(weekRange(d('2026-08-19'))).kind).toBe('week');
     expect(previousPeriod(monthRange(2026, 3)).kind).toBe('month');
     expect(previousPeriod(lastNDays(30, d('2026-04-13'))).kind).toBe('days');
   });
 });
 
 describe('sameRangeLastYear', () => {
+  it('de un dia da el mismo dia del ano pasado', () => {
+    expect(ends(sameRangeLastYear(dayRange(d('2026-08-19'))))).toEqual(['2025-08-19', '2025-08-19']);
+  });
+
+  it('de una semana da una semana completa, no siete dias corridos', () => {
+    // 2025-08-19 es martes, asi que su semana va del lunes 18 al domingo 24.
+    expect(ends(sameRangeLastYear(weekRange(d('2026-08-19'))))).toEqual(['2025-08-18', '2025-08-24']);
+  });
+
   it('de un mes da el mismo mes completo del ano anterior', () => {
     expect(ends(sameRangeLastYear(monthRange(2026, 3)))).toEqual(['2025-03-01', '2025-03-31']);
   });

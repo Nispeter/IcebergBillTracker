@@ -9,11 +9,11 @@
 
 import {
   addDays, addMonths, addYears, compareDates, daysBetween, daysInMonth,
-  DateError, endOfMonth, month, plainDate, startOfMonth, today, year,
+  DateError, endOfMonth, month, plainDate, startOfMonth, today, weekday, year,
   type PlainDate,
 } from './plainDate';
 
-export type RangeKind = 'month' | 'quarter' | 'year' | 'days' | 'ytd' | 'custom';
+export type RangeKind = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'days' | 'ytd' | 'custom';
 
 export interface DateRange {
   readonly start: PlainDate;
@@ -26,6 +26,24 @@ export function dateRange(start: PlainDate, end: PlainDate, kind: RangeKind = 'c
     throw new DateError(`el rango termina antes de empezar: ${start} a ${end}`);
   }
   return { start, end, kind };
+}
+
+/** Un solo dia. */
+export function dayRange(fecha: PlainDate): DateRange {
+  return dateRange(fecha, fecha, 'day');
+}
+
+/**
+ * La semana que contiene la fecha, de **lunes a domingo**.
+ *
+ * Lunes y no domingo porque es la convencion ISO y la que se usa en Chile. La
+ * diferencia importa: con semanas que arrancan el domingo, el fin de semana
+ * queda partido entre dos semanas y el gasto de sabado y domingo —que suele ir
+ * junto— se reparte en dos filas distintas.
+ */
+export function weekRange(fecha: PlainDate): DateRange {
+  const lunes = addDays(fecha, -(weekday(fecha) - 1));
+  return dateRange(lunes, addDays(lunes, 6), 'week');
 }
 
 /** Mes calendario completo. `month` va de 1 a 12. */
@@ -103,6 +121,10 @@ export function eachDate(range: DateRange): PlainDate[] {
  */
 export function previousPeriod(range: DateRange): DateRange {
   switch (range.kind) {
+    case 'day':
+      return dayRange(addDays(range.start, -1));
+    case 'week':
+      return weekRange(addDays(range.start, -7));
     case 'month': {
       const previous = addMonths(range.start, -1);
       return dateRange(startOfMonth(previous), endOfMonth(previous), 'month');
@@ -136,6 +158,15 @@ export function previousPeriod(range: DateRange): DateRange {
  */
 export function sameRangeLastYear(range: DateRange): DateRange {
   switch (range.kind) {
+    case 'day':
+      return dayRange(addYears(range.start, -1));
+    case 'week':
+      // 52 semanas atras, no `addYears`. Restar un ano al lunes cae en otro dia
+      // de la semana —2026-08-17 es lunes, 2025-08-17 es domingo— y devolveria
+      // la semana anterior a la que uno quiere. 364 dias son exactamente 52
+      // semanas, asi que siempre aterriza en lunes y la comparacion es de
+      // semana completa contra semana completa, a un dia del calendario.
+      return weekRange(addDays(range.start, -364));
     case 'month': {
       const previous = addYears(range.start, -1);
       return monthRange(year(previous), month(previous));
