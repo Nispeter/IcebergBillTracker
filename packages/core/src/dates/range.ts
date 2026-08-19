@@ -150,6 +150,42 @@ export function previousPeriod(range: DateRange): DateRange {
 }
 
 /**
+ * El periodo siguiente del mismo tipo.
+ *
+ * Es el espejo de `previousPeriod` y existe por la navegacion: la barra de
+ * periodo mueve el rango hacia atras y hacia adelante, y las dos direcciones
+ * tienen que respetar el tipo. El siguiente de febrero es marzo, con sus 31
+ * dias, no "28 dias despues".
+ */
+export function nextPeriod(range: DateRange): DateRange {
+  switch (range.kind) {
+    case 'day':
+      return dayRange(addDays(range.end, 1));
+    case 'week':
+      return weekRange(addDays(range.start, 7));
+    case 'month': {
+      const siguiente = addMonths(startOfMonth(range.start), 1);
+      return dateRange(startOfMonth(siguiente), endOfMonth(siguiente), 'month');
+    }
+    case 'quarter': {
+      const siguiente = addMonths(range.start, 3);
+      return quarterRange(year(siguiente), Math.floor((month(siguiente) - 1) / 3) + 1);
+    }
+    case 'year':
+      return yearRange(year(range.start) + 1);
+    case 'ytd': {
+      const siguiente = addYears(range.start, 1);
+      return dateRange(plainDate(year(siguiente), 1, 1), addYears(range.end, 1), 'ytd');
+    }
+    case 'days':
+    case 'custom': {
+      const largo = lengthInDays(range);
+      return dateRange(addDays(range.start, largo), addDays(range.end, largo), range.kind);
+    }
+  }
+}
+
+/**
  * El mismo rango un ano antes. Para la comparacion interanual, que es la que
  * saca del medio la estacionalidad (marzo siempre trae gastos de colegio).
  *

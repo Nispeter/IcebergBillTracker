@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DateError, requirePlainDate } from './plainDate';
 import {
   containsDate, currentMonth, dateRange, dayRange, eachDate, lastNDays, lengthInDays, monthRange,
-  overlaps, previousPeriod, quarterRange, sameRangeLastYear, weekRange, yearRange, yearToDate,
+  nextPeriod, overlaps, previousPeriod, quarterRange, sameRangeLastYear, weekRange, yearRange,
+  yearToDate,
 } from './range';
 
 const d = requirePlainDate;
@@ -178,5 +179,44 @@ describe('sameRangeLastYear', () => {
 
   it('de N dias mantiene el mismo dia y mes un ano antes', () => {
     expect(ends(sameRangeLastYear(lastNDays(30, d('2026-04-13'))))).toEqual(['2025-03-15', '2025-04-13']);
+  });
+});
+
+describe('nextPeriod', () => {
+  it('es el inverso de previousPeriod', () => {
+    for (const rango of [
+      dayRange(d('2026-08-19')),
+      weekRange(d('2026-08-19')),
+      monthRange(2026, 8),
+      quarterRange(2026, 2),
+      yearRange(2026),
+    ]) {
+      expect(nextPeriod(previousPeriod(rango))).toEqual(rango);
+      expect(previousPeriod(nextPeriod(rango))).toEqual(rango);
+    }
+  });
+
+  it('de febrero da marzo completo, no 28 dias despues', () => {
+    expect(ends(nextPeriod(monthRange(2026, 2)))).toEqual(['2026-03-01', '2026-03-31']);
+  });
+
+  it('de diciembre da enero del ano siguiente', () => {
+    expect(ends(nextPeriod(monthRange(2026, 12)))).toEqual(['2027-01-01', '2027-01-31']);
+  });
+
+  it('de una semana da la semana siguiente completa', () => {
+    expect(ends(nextPeriod(weekRange(d('2026-08-19'))))).toEqual(['2026-08-24', '2026-08-30']);
+  });
+
+  it('de un rango libre avanza su propio largo sin solaparse', () => {
+    const rango = dateRange(d('2026-04-10'), d('2026-04-19'));
+    const siguiente = nextPeriod(rango);
+    expect(ends(siguiente)).toEqual(['2026-04-20', '2026-04-29']);
+    expect(overlaps(rango, siguiente)).toBe(false);
+  });
+
+  it('conserva el tipo', () => {
+    expect(nextPeriod(weekRange(d('2026-08-19'))).kind).toBe('week');
+    expect(nextPeriod(monthRange(2026, 3)).kind).toBe('month');
   });
 });
