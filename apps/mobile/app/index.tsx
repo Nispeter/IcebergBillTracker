@@ -22,7 +22,9 @@ import { Link } from 'expo-router';
 import { useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
-import { useFechaDeCorte, useMovimientos, useResumenDelMes, useSaldo, useSaldoInicial } from '../datos/consultas';
+import {
+  useAnalisisDelMes, useFechaDeCorte, useMovimientos, useResumenDelMes, useSaldo, useSaldoInicial,
+} from '../datos/consultas';
 import { useTema } from '../datos/tema';
 import { BarraSegmentada } from '../components/BarraSegmentada';
 import { Iceberg } from '../components/Iceberg';
@@ -39,6 +41,7 @@ export default function Home() {
   const saldoInicial = useSaldoInicial();
   const saldo = useSaldo(saldoInicial);
   const mes = useResumenDelMes(corte);
+  const analisis = useAnalisisDelMes(corte);
   const recientes = useMovimientos(8);
   const totalMovimientos = useMovimientos().length;
 
@@ -120,10 +123,43 @@ export default function Home() {
 
         <Regla styles={styles} titulo={r.periodo} />
         <View>
-          <FilaCifra styles={styles} etiqueta="Ingreso" valor={money.format(r.ingreso)} />
-          <FilaCifra styles={styles} etiqueta="Gasto" valor={money.format(r.gasto)} />
+          <FilaCifra
+            styles={styles}
+            etiqueta="Ingreso"
+            valor={money.format(r.ingreso)}
+            nota={<Delta styles={styles} theme={theme} variacion={analisis.comparacion.ingreso.variacion} mejorSiSube />}
+          />
+          <FilaCifra
+            styles={styles}
+            etiqueta="Gasto"
+            valor={money.format(r.gasto)}
+            nota={<Delta styles={styles} theme={theme} variacion={analisis.comparacion.gasto.variacion} />}
+          />
           <FilaCifra styles={styles} etiqueta="Neto" valor={money.formatSigned(r.neto)} destacado />
         </View>
+
+        {/* La proyeccion solo aparece con el mes en curso: cerrado ya no
+            proyecta nada, muestra lo que fue. */}
+        {analisis.ritmo.diasRestantes > 0 ? (
+          <View style={styles.proyeccion}>
+            <Text style={styles.proyeccionEtiqueta}>
+              Si sigue este ritmo, el mes cierra en
+            </Text>
+            <Text style={styles.proyeccionCifra}>
+              {money.format(analisis.ritmo.proyeccionPorPerfil ?? analisis.ritmo.proyeccionLineal)}
+            </Text>
+            {/* Se dice de que numero sale la proyeccion. Sin esto la cifra
+                queda flotando al lado del gasto del mes y las dos parecen
+                contradecirse: el gasto es del mes calendario completo y la
+                proyeccion parte de lo que va hasta hoy. */}
+            <Text style={styles.proyeccionNota}>
+              Llevas {money.format(analisis.ritmo.gastadoHastaAhora)} en {analisis.ritmo.diasTranscurridos}
+              {analisis.ritmo.diasTranscurridos === 1 ? ' día' : ' días'} ·
+              {' '}{money.format(analisis.ritmo.promedioDiario)} diarios · quedan {analisis.ritmo.diasRestantes}
+              {analisis.ritmo.proyeccionPorPerfil === null ? '' : ' · según cómo suele repartirse el mes'}
+            </Text>
+          </View>
+        ) : null}
 
         <Regla styles={styles} titulo="Gasto por categoría" />
         <View>
@@ -194,14 +230,41 @@ function Regla(
 }
 
 function FilaCifra(
-  { styles, etiqueta, valor, destacado }:
-  { styles: Estilos; etiqueta: string; valor: string; destacado?: boolean },
+  { styles, etiqueta, valor, destacado, nota }:
+  { styles: Estilos; etiqueta: string; valor: string; destacado?: boolean; nota?: ReactNode },
 ) {
   return (
     <View style={styles.filaCifra}>
       <Text style={styles.etiquetaCifra}>{etiqueta}</Text>
+      {nota}
       <Text style={destacado ? styles.valorDestacado : styles.valorCifra}>{valor}</Text>
     </View>
+  );
+}
+
+/**
+ * La variacion contra el mes anterior.
+ *
+ * `null` cuando el mes anterior fue cero: no existe el porcentaje de cambio
+ * respecto de nada, y mostrar "+100%" seria inventar.
+ *
+ * El color no sale del signo sino de si **conviene** o no: que el gasto suba es
+ * malo y que el ingreso suba es bueno, aunque los dos sean "+".
+ */
+function Delta(
+  { styles, theme, variacion, mejorSiSube }:
+  { styles: Estilos; theme: Theme; variacion: number | null; mejorSiSube?: boolean },
+) {
+  if (variacion === null) return null;
+  const subio = variacion > 0;
+  const conviene = mejorSiSube ? subio : !subio;
+  const color = Math.abs(variacion) < 0.005
+    ? theme.silencio
+    : conviene ? theme.ingresoTexto : theme.vencidoTexto;
+  return (
+    <Text style={[styles.delta, { color }]}>
+      {subio ? '+' : '−'}{Math.abs(variacion * 100).toFixed(0)}%
+    </Text>
   );
 }
 
@@ -302,10 +365,22 @@ function crearEstilos(theme: Theme) {
     filaCifra: {
       flexDirection: 'row',
       alignItems: 'baseline',
-      justifyContent: 'space-between',
       paddingVertical: spacing.sm,
     },
-    etiquetaCifra: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.silencio },
+    etiquetaCifra: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.silencio },
+    delta: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, marginRight: spacing.md },
+
+    proyeccion: { marginTop: spacing.lg, gap: 2 },
+    proyeccionEtiqueta: {
+      fontFamily: fonts.ui,
+      fontWeight: pesos.regular,
+      fontSize: fontSizes.xs,
+      color: theme.silencio,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    proyeccionCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.lg, color: theme.tinta },
+    proyeccionNota: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
     valorCifra: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.tinta },
     valorDestacado: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.lg, color: theme.tinta },
 

@@ -16,7 +16,7 @@
  * proyecto descarta: dos fuentes de verdad que se desincronizan.
  */
 
-import { dates, money } from '@iceberg/core';
+import { analytics, dates, money } from '@iceberg/core';
 import {
   consultaDeCuentas, consultaDeMovimientos, type Cuenta, type FiltroDeMovimientos, type Movimiento,
 } from '@iceberg/db';
@@ -141,6 +141,35 @@ export function useMovimientosFiltrados(filtro: FiltroDeMovimientos): Movimiento
   // el resultado de la primera consulta.
   const { data } = useLiveQuery(consulta, [clave]);
   return (data ?? []) as Movimiento[];
+}
+
+/**
+ * El analisis del mes: resumen, comparacion contra el mes anterior y ritmo.
+ *
+ * Todo sale del motor de `core/analytics`, que no sabe de SQLite: se le pasan
+ * los movimientos traducidos a su forma minima. Lo mismo que corre aca corre en
+ * los tests contra la semilla.
+ */
+export function useAnalisisDelMes(referencia: dates.PlainDate) {
+  const movimientos = useMovimientos();
+
+  return useMemo(() => {
+    const analizables: analytics.MovimientoAnalizable[] = movimientos.map((m) => ({
+      tipo: m.tipo,
+      montoMinor: m.montoMinor,
+      ocurridoEn: m.ocurridoEn as dates.PlainDate,
+      categoriaId: m.categoriaId,
+      nombre: m.nombre,
+    }));
+
+    const rango = dates.currentMonth(referencia);
+    return {
+      resumen: analytics.resumirRango(analizables, rango),
+      comparacion: analytics.compararConAnterior(analizables, rango),
+      ritmo: analytics.calcularRitmo(analizables, rango, referencia),
+      deriva: analytics.derivaPorCategoria(analizables, rango, dates.previousPeriod(rango)),
+    };
+  }, [movimientos, referencia]);
 }
 
 /** Las cuentas vivas del hogar. */
