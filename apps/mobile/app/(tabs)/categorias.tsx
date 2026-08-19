@@ -1,0 +1,109 @@
+/**
+ * Categorias: en que se me va la plata en este periodo.
+ *
+ * La torta arriba para la proporcion, las barras abajo para comparar montos.
+ * Las dos cosas responden preguntas distintas: la torta dice "que parte del
+ * total", las barras dicen "cuanto mas que la siguiente".
+ */
+
+import { categories, money } from '@iceberg/core';
+import {
+  elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
+} from '@iceberg/ui';
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BarraSegmentada } from '../../components/BarraSegmentada';
+import { Pantalla } from '../../components/Pantalla';
+import { TortaDeCategorias } from '../../components/TortaDeCategorias';
+import { iconoDeCategoria } from '../../components/iconos';
+import { useAnalisisDeRango } from '../../datos/consultas';
+import { usePeriodo } from '../../datos/periodo';
+import { useTema } from '../../datos/tema';
+
+export default function Categorias() {
+  const { theme } = useTema();
+  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const { rango, corte } = usePeriodo();
+  const router = useRouter();
+
+  const a = useAnalisisDeRango(rango, corte);
+  const unidad = niceUnit(a.mayorCategoria);
+  const muescas = notchesFor(a.mayorCategoria, unidad);
+
+  return (
+    <Pantalla>
+      <ScrollView contentContainerStyle={styles.contenido}>
+        <TortaDeCategorias
+          porciones={a.porCategoria}
+          theme={theme}
+          onElegir={(categoriaId) => router.push({
+            pathname: '/movimientos',
+            params: { categoria: categoriaId },
+          })}
+        />
+
+        {a.porCategoria.length > 0 ? (
+          <>
+            <View style={styles.regla}>
+              <Text style={styles.reglaTitulo}>Todas</Text>
+              <View style={styles.reglaLinea} />
+            </View>
+
+            {a.porCategoria.map(({ categoriaId, total }) => {
+              const Icono = iconoDeCategoria(categoriaId);
+              return (
+                <Pressable
+                  key={categoriaId}
+                  onPress={() => router.push({
+                    pathname: '/movimientos',
+                    params: { categoria: categoriaId },
+                  })}
+                  style={styles.fila}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver movimientos de ${categories.categoryName(categoriaId)}`}
+                >
+                  {Icono ? <Icono size={15} weight="regular" color={theme.silencio} /> : null}
+                  <Text style={styles.nombre} numberOfLines={1}>
+                    {categories.categoryShortName(categoriaId)}
+                  </Text>
+                  <BarraSegmentada valor={total.amountMinor} unidad={unidad} total={muescas} theme={theme} />
+                  <Text style={styles.monto}>{money.formatNumber(total)}</Text>
+                </Pressable>
+              );
+            })}
+          </>
+        ) : null}
+      </ScrollView>
+    </Pantalla>
+  );
+}
+
+function crearEstilos(theme: Theme) {
+  return StyleSheet.create({
+    contenido: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.xxl,
+      maxWidth: 480,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs },
+    reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
+
+    // Cada fila lleva al listado filtrado, asi que se separa con hairline como
+    // el resto de las cosas tocables.
+    fila: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.sm,
+      borderBottomWidth: elevation.hairlineWidth,
+      borderBottomColor: theme.hairline,
+    },
+    nombre: { width: 78, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    monto: { width: 66, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+  });
+}

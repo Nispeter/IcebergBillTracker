@@ -17,17 +17,16 @@ import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg
 import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { FilaMovimiento } from '../components/FilaMovimiento';
-import { ChipDisparador, ListaDeOpciones } from '../components/SelectorDesplegable';
-import { iconoDeCategoria } from '../components/iconos';
-import { useMovimientosFiltrados, useResumenDeFiltro } from '../datos/consultas';
-import { volver } from '../datos/navegacion';
-import { useTema } from '../datos/tema';
+import { FilaMovimiento } from '../../components/FilaMovimiento';
+import { Pantalla } from '../../components/Pantalla';
+import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesplegable';
+import { iconoDeCategoria } from '../../components/iconos';
+import { useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
+import { usePeriodo } from '../../datos/periodo';
+import { useTema } from '../../datos/tema';
 
 /** Cuantos se traen de la base por tanda. */
 const POR_PAGINA = 40;
@@ -35,21 +34,29 @@ const POR_PAGINA = 40;
 type Desplegable = 'tipo' | 'categoria' | null;
 
 export default function Movimientos() {
-  const { nombre: tema, theme, alternar } = useTema();
+  const { theme } = useTema();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
-  const router = useRouter();
+  const { rango } = usePeriodo();
+  // Se puede llegar aca desde una categoria de la torta o desde un dia del
+  // calendario. El parametro precarga el filtro.
+  const params = useLocalSearchParams<{ categoria?: string; dia?: string }>();
 
   const [tipo, setTipo] = useState<TipoDeMovimiento | null>(null);
-  const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(null);
+  const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(
+    (params.categoria as categories.CategoryId | undefined) ?? null,
+  );
   const [abierto, setAbierto] = useState<Desplegable>(null);
   const [pagina, setPagina] = useState(1);
 
   const filtro = useMemo<FiltroDeMovimientos>(
     () => ({
+      // El listado vive dentro del periodo global, como el resto de las vistas.
+      desde: params.dia ? (params.dia as never) : rango.start,
+      hasta: params.dia ? (params.dia as never) : rango.end,
       ...(tipo === null ? {} : { tipo }),
       ...(categoriaId === null ? {} : { categoriaId }),
     }),
-    [tipo, categoriaId],
+    [tipo, categoriaId, rango.start, rango.end, params.dia],
   );
 
   const movimientos = useMovimientosFiltrados({ ...filtro, limite: pagina * POR_PAGINA });
@@ -80,26 +87,6 @@ export default function Movimientos() {
 
   const encabezado = (
     <View>
-      <View style={styles.barra}>
-        <Pressable
-          onPress={() => volver(router)}
-          style={styles.volver}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-        >
-          <CaretLeft size={16} weight="bold" color={theme.silencio} />
-          <Text style={styles.volverTexto}>Home</Text>
-        </Pressable>
-        <Pressable
-          onPress={alternar}
-          accessibilityRole="button"
-          accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
-        >
-          <Text style={styles.cambioTema}>{tema === 'dark' ? 'Deshielo' : 'Noche polar'}</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.titulo}>Movimientos</Text>
       <Text style={styles.resumen}>
         {resumen.cantidad} {resumen.cantidad === 1 ? 'movimiento' : 'movimientos'}
         {' · '}{money.formatSigned(resumen.neto)}
@@ -148,8 +135,7 @@ export default function Movimientos() {
   );
 
   return (
-    <View style={styles.raiz}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <Pantalla>
       <FlatList
         data={movimientos}
         keyExtractor={(tx) => tx.id}
@@ -183,33 +169,21 @@ export default function Movimientos() {
         contentContainerStyle={styles.contenido}
         keyboardShouldPersistTaps="handled"
       />
-    </View>
+    </Pantalla>
   );
 }
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    raiz: { flex: 1, backgroundColor: theme.fondo },
     contenido: {
-      paddingHorizontal: spacing.xl,
-      paddingBottom: spacing.xxxl,
-      maxWidth: 520,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xxl,
+      maxWidth: 480,
       width: '100%',
       alignSelf: 'center',
     },
 
-    barra: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingTop: spacing.xxl,
-      paddingBottom: spacing.xl,
-    },
-    volver: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    volverTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    cambioTema: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
-    titulo: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
     resumen: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
