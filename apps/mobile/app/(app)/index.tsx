@@ -11,6 +11,7 @@ import { Link } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FilaMovimiento } from '../../components/FilaMovimiento';
+import { Ayuda } from '../../components/Ayuda';
 import { Iceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
 import {
@@ -55,18 +56,21 @@ export default function Resumen() {
         </View>
 
         <View style={styles.bloqueIceberg}>
-          <Iceberg shareComprometido={share} theme={theme} agua={charts[0]} profundidad={charts[1]} alto={160} />
+          <Iceberg shareComprometido={share} theme={theme} agua={charts[0]} profundidad={charts[1]} alto={190} />
           <View style={styles.leyendas}>
+            {/* El `?` va con las leyendas porque es a ellas a las que explica. */}
+            <View style={styles.leyendasCabecera}>
+              <Text style={styles.leyendasTitulo}>Gasto del período</Text>
+              <Ayuda
+                theme={theme}
+                texto={'Comprometido llega igual: arriendo, cuentas, cuotas, impuestos. '
+                  + 'Variable es lo que decides tú, y es sobre lo único que puedes actuar.'}
+              />
+            </View>
             <Leyenda styles={styles} color={theme.gasto} titulo="Comprometido" monto={money.format(a.fijo)} />
             <Leyenda styles={styles} color={charts[0]} titulo="Variable" monto={money.format(variable)} />
           </View>
         </View>
-        {/* Dos montos sin una palabra que los separe no dicen nada. Es la unica
-            frase de la pantalla y se gana el lugar: sobre el variable es lo
-            unico que uno puede decidir, y eso es el margen real. */}
-        <Text style={styles.glosa}>
-          Comprometido llega igual —arriendo, cuentas, cuotas—. Variable es lo que decides tú.
-        </Text>
 
         <View style={styles.regla}>
           <Text style={styles.reglaTitulo}>Últimos movimientos</Text>
@@ -123,10 +127,8 @@ function Leyenda(
   return (
     <View style={styles.leyenda}>
       <View style={[styles.leyendaBarra, { backgroundColor: color }]} />
-      <View style={{ flex: 1 }}>
-        <Text style={styles.leyendaTitulo}>{titulo}</Text>
-        <Text style={styles.leyendaMonto}>{monto}</Text>
-      </View>
+      <Text style={styles.leyendaTitulo}>{titulo}</Text>
+      <Text style={styles.leyendaMonto}>{monto}</Text>
     </View>
   );
 }
@@ -153,11 +155,16 @@ function crearEstilos(theme: Theme) {
     delta: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10 },
     deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
 
-    bloqueIceberg: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, paddingVertical: spacing.lg },
-    leyendas: { flex: 1, gap: spacing.lg },
-    leyenda: { flexDirection: 'row', gap: spacing.sm },
-    leyendaBarra: { width: 3, borderRadius: radii.full },
-    leyendaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
+    bloqueIceberg: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
+    leyendas: { flex: 1, gap: spacing.sm },
+    // Elevada para que la burbuja de la ayuda tape las leyendas de abajo.
+    leyendasCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: spacing.xs, zIndex: 20 },
+    leyendasTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    // En una linea y con el monto a la derecha: el bloque ocupa el ancho que
+    // tiene en vez de dejar un hueco muerto al costado del iceberg.
+    leyenda: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    leyendaBarra: { width: 3, height: 15, borderRadius: radii.full },
+    leyendaTitulo: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
     leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.tinta },
 
     regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.xs },
@@ -167,7 +174,6 @@ function crearEstilos(theme: Theme) {
     // Discreto a proposito: no compite con los movimientos que tiene encima.
     verTodos: { marginTop: spacing.md, alignItems: 'flex-end' },
     verTodosTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
-    glosa: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, lineHeight: 15, color: theme.silencio },
     sinMovimientos: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }
