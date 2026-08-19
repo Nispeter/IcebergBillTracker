@@ -25,23 +25,6 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
 import { useDatos } from './BaseDeDatos';
 
-export interface TotalPorCategoria {
-  readonly categoria: string;
-  readonly total: money.Money;
-}
-
-export interface ResumenDelMes {
-  readonly rango: dates.DateRange;
-  readonly gasto: money.Money;
-  readonly ingreso: money.Money;
-  readonly neto: money.Money;
-  readonly fijo: money.Money;
-  readonly variable: money.Money;
-  readonly shareComprometido: number;
-  readonly porCategoria: readonly TotalPorCategoria[];
-  readonly mayorCategoria: number;
-}
-
 /** Todos los movimientos vivos del hogar, del mas nuevo al mas viejo. */
 export function useMovimientos(limite?: number): Movimiento[] {
   const { db, contexto } = useDatos();
@@ -75,53 +58,56 @@ export function useSaldo(saldoInicialMinor: number): money.Money {
   }, [movimientos, saldoInicialMinor]);
 }
 
-/** El resumen del mes que contiene la fecha dada. */
-export function useResumenDelMes(referencia: dates.PlainDate): ResumenDelMes {
+/**
+ * El analisis de **cualquier** rango: resumen, comparacion y ritmo.
+ *
+ * Toma un `DateRange` y no un mes porque el rango ya sabe de que tipo es: el
+ * anterior de una semana es la semana pasada completa, y el de marzo es febrero.
+ * Toda la logica de "contra que se compara" vive en `core/dates`, no aca.
+ */
+export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate) {
   const movimientos = useMovimientos();
+  const claveRango = `${rango.kind}:${rango.start}:${rango.end}`;
 
   return useMemo(() => {
-    const rango = dates.currentMonth(referencia);
-    const delMes = movimientos.filter(
-      (m) => dates.containsDate(rango, m.ocurridoEn as dates.PlainDate),
-    );
+    const analizables: analytics.MovimientoAnalizable[] = movimientos.map((m) => ({
+      tipo: m.tipo,
+      montoMinor: m.montoMinor,
+      ocurridoEn: m.ocurridoEn as dates.PlainDate,
+      categoriaId: m.categoriaId,
+      nombre: m.nombre,
+    }));
 
-    const sumar = (filtro: (m: Movimiento) => boolean) =>
-      money.money(delMes.filter(filtro).reduce((s, m) => s + m.montoMinor, 0), 'CLP');
-
-    // `transferencia` queda fuera de los dos a proposito, igual que en `useSaldo`:
-    // no es plata que entra ni que sale del hogar.
-    const gasto = sumar((m) => m.tipo === 'gasto');
-    const ingreso = sumar((m) => m.tipo === 'ingreso');
-
-    // Recurrente todavia no existe como campo —es F3—, asi que "comprometido"
-    // se aproxima por las categorias que son compromisos fijos por naturaleza.
-    // Cuando F3 traiga las reglas, esto pasa a leer la marca de verdad.
-    const comprometidas = new Set(['vivienda', 'servicios', 'deudas', 'ahorros', 'impuestos']);
-    const fijo = sumar((m) => m.tipo === 'gasto' && m.categoriaId !== null && comprometidas.has(m.categoriaId));
-    const variable = money.subtract(gasto, fijo);
-
-    const acumulado = new Map<string, number>();
-    for (const m of delMes) {
-      if (m.tipo !== 'gasto' || m.categoriaId === null) continue;
-      acumulado.set(m.categoriaId, (acumulado.get(m.categoriaId) ?? 0) + m.montoMinor);
-    }
-    const porCategoria = [...acumulado.entries()]
-      .map(([categoria, total]) => ({ categoria, total: money.money(total, 'CLP') }))
-      .sort((a, b) => money.compare(b.total, a.total));
-
+    const porCategoria = analytics.gastoPorCategoria(analizables, rango);
     return {
-      rango,
-      gasto,
-      ingreso,
-      neto: money.subtract(ingreso, gasto),
-      fijo,
-      variable,
-      shareComprometido: money.ratio(fijo, gasto) ?? 0,
+      resumen: analytics.resumirRango(analizables, rango),
+      comparacion: analytics.compararConAnterior(analizables, rango),
+      ritmo: analytics.calcularRitmo(analizables, rango, hoy),
       porCategoria,
       mayorCategoria: porCategoria[0]?.total.amountMinor ?? 1,
+      // El comprometido se aproxima por categorias hasta que F3 traiga las
+      // reglas de recurrencia.
+      fijo: money.money(
+        analizables
+          .filter((m) => m.tipo === 'gasto'
+            && dates.containsDate(rango, m.ocurridoEn)
+            && m.categoriaId != null
+            && COMPROMETIDAS.has(m.categoriaId))
+          .reduce((s, m) => s + m.montoMinor, 0),
+        'CLP',
+      ),
     };
-  }, [movimientos, referencia]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movimientos, claveRango, hoy]);
 }
+
+/**
+ * Categorias que son compromiso fijo por naturaleza.
+ *
+ * Es una aproximacion hasta F3: cuando existan las reglas de recurrencia, el
+ * "comprometido" se leera de la marca de cada movimiento y no de su categoria.
+ */
+const COMPROMETIDAS = new Set(['vivienda', 'servicios', 'deudas', 'ahorros', 'impuestos']);
 
 /**
  * Movimientos filtrados, reactivos.
@@ -142,35 +128,6 @@ export function useMovimientosFiltrados(filtro: FiltroDeMovimientos): Movimiento
   // el resultado de la primera consulta.
   const { data } = useLiveQuery(consulta, [clave]);
   return (data ?? []) as Movimiento[];
-}
-
-/**
- * El analisis del mes: resumen, comparacion contra el mes anterior y ritmo.
- *
- * Todo sale del motor de `core/analytics`, que no sabe de SQLite: se le pasan
- * los movimientos traducidos a su forma minima. Lo mismo que corre aca corre en
- * los tests contra la semilla.
- */
-export function useAnalisisDelMes(referencia: dates.PlainDate) {
-  const movimientos = useMovimientos();
-
-  return useMemo(() => {
-    const analizables: analytics.MovimientoAnalizable[] = movimientos.map((m) => ({
-      tipo: m.tipo,
-      montoMinor: m.montoMinor,
-      ocurridoEn: m.ocurridoEn as dates.PlainDate,
-      categoriaId: m.categoriaId,
-      nombre: m.nombre,
-    }));
-
-    const rango = dates.currentMonth(referencia);
-    return {
-      resumen: analytics.resumirRango(analizables, rango),
-      comparacion: analytics.compararConAnterior(analizables, rango),
-      ritmo: analytics.calcularRitmo(analizables, rango, referencia),
-      deriva: analytics.derivaPorCategoria(analizables, rango, dates.previousPeriod(rango)),
-    };
-  }, [movimientos, referencia]);
 }
 
 /**
