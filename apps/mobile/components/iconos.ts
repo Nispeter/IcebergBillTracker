@@ -43,6 +43,11 @@ const POR_CATEGORIA: Record<categories.CategoryId, IconoCategoria> = {
   trabajo: Briefcase,
 };
 
-export function iconoDeCategoria(id: categories.CategoryId): IconoCategoria {
-  return POR_CATEGORIA[id];
+/**
+ * Devuelve `null` si el id no esta en el catalogo. Puede pasar: en modo hogar
+ * llega una categoria escrita por una version mas nueva de la app en otro
+ * dispositivo, y la fila tiene que mostrarse igual, sin icono.
+ */
+export function iconoDeCategoria(id: string): IconoCategoria | null {
+  return POR_CATEGORIA[id as categories.CategoryId] ?? null;
 }

@@ -12,14 +12,17 @@
  */
 
 import { categories, dates, money } from '@iceberg/core';
-import { gastoPorCategoria, generateSeed, saldoActual, type SeedTransaction } from '@iceberg/seed';
+import type { Movimiento } from '@iceberg/db';
 import {
   charts, elevation, fontSizes, fonts, niceUnit, notchesFor, radii, spacing, themes,
   type Theme, type ThemeName,
 } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
+import { Link } from 'expo-router';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Plus } from 'phosphor-react-native/src/icons/Plus';
+import { useFechaDeCorte, useMovimientos, useResumenDelMes, useSaldo, useSaldoInicial } from '../datos/consultas';
 import { BarraSegmentada } from '../components/BarraSegmentada';
 import { Iceberg } from '../components/Iceberg';
 import { iconoDeCategoria } from '../components/iconos';
@@ -29,7 +32,26 @@ export default function Home() {
   const [tema, setTema] = useState<ThemeName>(sistema === 'dark' ? 'dark' : 'light');
   const theme = themes[tema];
   const styles = useMemo(() => crearEstilos(theme), [theme]);
-  const r = useMemo(() => calcularResumen(), []);
+
+  // Todo sale de la base y es reactivo: al agregar un movimiento, el saldo, el
+  // iceberg, las categorias y el listado se actualizan solos.
+  const corte = useFechaDeCorte();
+  const saldoInicial = useSaldoInicial();
+  const saldo = useSaldo(saldoInicial);
+  const mes = useResumenDelMes(corte);
+  const recientes = useMovimientos(8);
+  const totalMovimientos = useMovimientos().length;
+
+  const r = {
+    periodo: capitalizar(dates.formatDateLong(mes.rango.start).replace(/^\d+ de /, '')),
+    corte,
+    saldo,
+    ...mes,
+    recientes,
+    total: totalMovimientos,
+    unidad: niceUnit(mes.mayorCategoria),
+    muescas: notchesFor(mes.mayorCategoria, niceUnit(mes.mayorCategoria)),
+  };
 
   return (
     <View style={styles.raiz}>
@@ -38,13 +60,24 @@ export default function Home() {
 
         <View style={styles.encabezado}>
           <Text style={styles.marca}>ICEBERG</Text>
-          <Pressable
-            onPress={() => setTema(tema === 'dark' ? 'light' : 'dark')}
-            accessibilityRole="button"
-            accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
-          >
-            <Text style={styles.cambioTema}>{tema === 'dark' ? 'Deshielo' : 'Noche polar'}</Text>
-          </Pressable>
+          <View style={styles.accionesEncabezado}>
+            <Pressable
+              onPress={() => setTema(tema === 'dark' ? 'light' : 'dark')}
+              accessibilityRole="button"
+              accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
+            >
+              <Text style={styles.cambioTema}>{tema === 'dark' ? 'Deshielo' : 'Noche polar'}</Text>
+            </Pressable>
+            <Link href="/nuevo" asChild>
+              <Pressable
+                style={styles.botonAgregar}
+                accessibilityRole="button"
+                accessibilityLabel="Agregar movimiento"
+              >
+                <Plus size={18} weight="bold" color={theme.fondo} />
+              </Pressable>
+            </Link>
+          </View>
         </View>
 
         {/* La cifra que la gente abre la app para ver. Sin caja, sin borde: el
@@ -98,7 +131,7 @@ export default function Home() {
             const Icono = iconoDeCategoria(categoria);
             return (
               <View key={categoria} style={styles.filaCategoria}>
-                <Icono size={18} weight="regular" color={theme.silencio} />
+                {Icono ? <Icono size={18} weight="regular" color={theme.silencio} /> : null}
                 <Text style={styles.nombreCategoria} numberOfLines={1}>
                   {categories.categoryShortName(categoria)}
                 </Text>
@@ -118,34 +151,34 @@ export default function Home() {
 
         <Regla styles={styles} titulo="Movimientos recientes" />
         <View>
-          {r.recientes.map((tx) => {
-            const Icono = tx.category ? iconoDeCategoria(tx.category) : null;
+          {r.recientes.map((tx: Movimiento) => {
+            const fecha = tx.ocurridoEn as dates.PlainDate;
+            const Icono = tx.categoriaId ? iconoDeCategoria(tx.categoriaId) : null;
             return (
               <View key={tx.id} style={styles.filaMovimiento}>
                 <View style={styles.marcaFecha}>
-                  <Text style={styles.dia}>{dates.day(tx.occurredAt)}</Text>
-                  <Text style={styles.mes}>{MESES[dates.month(tx.occurredAt) - 1]}</Text>
+                  <Text style={styles.dia}>{dates.day(fecha)}</Text>
+                  <Text style={styles.mes}>{MESES[dates.month(fecha) - 1]}</Text>
                 </View>
                 <View style={styles.textoMovimiento}>
-                  <Text style={styles.nombreMovimiento} numberOfLines={1}>{tx.name}</Text>
+                  <Text style={styles.nombreMovimiento} numberOfLines={1}>{tx.nombre}</Text>
                   <View style={styles.metaMovimiento}>
                     {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
                     <Text style={styles.categoriaMovimiento}>
-                      {tx.category ? categories.categoryName(tx.category) : 'Ingreso'}
-                      {tx.recurring ? ' · Recurrente' : ''}
+                      {tx.categoriaId ? categories.categoryName(tx.categoriaId) : 'Ingreso'}
                     </Text>
                   </View>
                 </View>
-                <Text style={tx.type === 'ingreso' ? styles.montoIngreso : styles.montoGasto}>
-                  {tx.type === 'ingreso' ? '+' : '−'}
-                  {money.formatNumber(money.money(tx.amountMinor))}
+                <Text style={tx.tipo === 'ingreso' ? styles.montoIngreso : styles.montoGasto}>
+                  {tx.tipo === 'ingreso' ? '+' : '−'}
+                  {money.formatNumber(money.money(tx.montoMinor))}
                 </Text>
               </View>
             );
           })}
         </View>
 
-        <Text style={styles.pie}>Datos de prueba · {r.total} movimientos</Text>
+        <Text style={styles.pie}>{r.total} movimientos guardados</Text>
       </ScrollView>
     </View>
   );
@@ -198,43 +231,6 @@ function Leyenda(
   );
 }
 
-function calcularResumen() {
-  const dataset = generateSeed();
-  const mes = dates.currentMonth(dataset.range.end);
-  const delMes = dataset.transactions.filter((tx) => dates.containsDate(mes, tx.occurredAt));
-
-  const total = (filtro: (tx: SeedTransaction) => boolean) =>
-    money.sum(delMes.filter(filtro).map((tx) => money.money(tx.amountMinor)));
-
-  const gasto = total((tx) => tx.type === 'gasto');
-  const ingreso = total((tx) => tx.type === 'ingreso');
-  const fijo = total((tx) => tx.type === 'gasto' && tx.recurring);
-  const porCategoria = gastoPorCategoria(delMes);
-  // La escala se calcula contra la categoria mas grande, no contra el total: si
-  // se midiera contra el total, diez de las doce filas quedarian invisibles.
-  const mayor = porCategoria[0]?.total.amountMinor ?? 1;
-  const unidad = niceUnit(mayor);
-
-  return {
-    periodo: capitalizar(dates.formatDateLong(mes.start).replace(/^\d+ de /, '')),
-    corte: dataset.range.end,
-    // La plata que queda de verdad: saldo inicial mas todo lo que entro menos
-    // todo lo que salio en los 18 meses, no solo el neto del mes.
-    saldo: saldoActual(dataset),
-    gasto,
-    ingreso,
-    neto: money.subtract(ingreso, gasto),
-    fijo,
-    variable: total((tx) => tx.type === 'gasto' && !tx.recurring),
-    shareComprometido: money.ratio(fijo, gasto) ?? 0,
-    porCategoria,
-    unidad,
-    muescas: notchesFor(mayor, unidad),
-    recientes: [...delMes].reverse().slice(0, 8),
-    total: dataset.transactions.length,
-  };
-}
-
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     raiz: { flex: 1, backgroundColor: theme.fondo },
@@ -260,6 +256,15 @@ function crearEstilos(theme: Theme) {
       letterSpacing: 3,
     },
     cambioTema: { fontFamily: fonts.ui.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    accionesEncabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+    botonAgregar: {
+      width: 32,
+      height: 32,
+      borderRadius: radii.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.acento,
+    },
 
     hero: { paddingBottom: spacing.xl },
     heroFila: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
