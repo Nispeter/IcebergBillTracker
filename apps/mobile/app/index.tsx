@@ -42,7 +42,7 @@ export default function Home() {
             accessibilityRole="button"
             accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
           >
-            <Text style={styles.cambioTema}>{tema === 'dark' ? 'deshielo' : 'noche polar'}</Text>
+            <Text style={styles.cambioTema}>{tema === 'dark' ? 'Deshielo' : 'Noche polar'}</Text>
           </Pressable>
         </View>
 
@@ -54,7 +54,7 @@ export default function Home() {
             <Text style={styles.heroCifra}>{money.formatNumber(r.saldo)}</Text>
           </View>
           <Text style={styles.heroPie}>
-            plata restante · {dates.formatDate(r.corte)}
+            Saldo disponible · {dates.formatDateLong(r.corte)}
           </Text>
         </View>
 
@@ -70,16 +70,16 @@ export default function Home() {
             <Leyenda
               styles={styles}
               color={theme.gasto}
-              titulo="Comprometido"
+              titulo="Gasto comprometido"
               monto={money.format(r.fijo)}
-              nota="arriendo, cuentas, cuotas"
+              nota="Arriendo, cuentas y cuotas"
             />
             <Leyenda
               styles={styles}
               color={charts[0]}
-              titulo="Variable"
+              titulo="Gasto variable"
               monto={money.format(r.variable)}
-              nota="lo que no se ve venir"
+              nota="Discrecional del mes"
             />
           </View>
         </View>
@@ -91,7 +91,7 @@ export default function Home() {
           <FilaCifra styles={styles} etiqueta="Neto" valor={money.formatSigned(r.neto)} destacado />
         </View>
 
-        <Regla styles={styles} titulo="en que se fue" />
+        <Regla styles={styles} titulo="Gasto por categoría" />
         <View>
           {r.porCategoria.map(({ categoria, total, parte }) => {
             const Icono = iconoDeCategoria(categoria);
@@ -99,10 +99,12 @@ export default function Home() {
               <View key={categoria} style={styles.filaCategoria}>
                 <Icono size={18} weight="regular" color={theme.silencio} />
                 <Text style={styles.nombreCategoria} numberOfLines={1}>
-                  {categories.categoryName(categoria)}
+                  {categories.categoryShortName(categoria)}
                 </Text>
                 {/* Las barras quedan alineadas en columna a proposito: puestas
-                    una bajo otra se comparan sin leer un solo numero. */}
+                    una bajo otra se comparan sin leer un solo numero. El riel
+                    de atras muestra hasta donde llegarian, que es lo que da la
+                    escala; sin el, las barras chicas flotan sin referencia. */}
                 <View style={styles.pista}>
                   <View style={[styles.relleno, { flex: Math.max(parte, 0.001) }]} />
                   <View style={{ flex: Math.max(1 - parte, 0.001) }} />
@@ -113,7 +115,7 @@ export default function Home() {
           })}
         </View>
 
-        <Regla styles={styles} titulo="ultimos movimientos" />
+        <Regla styles={styles} titulo="Movimientos recientes" />
         <View>
           {r.recientes.map((tx) => {
             const Icono = tx.category ? iconoDeCategoria(tx.category) : null;
@@ -129,7 +131,7 @@ export default function Home() {
                     {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
                     <Text style={styles.categoriaMovimiento}>
                       {tx.category ? categories.categoryName(tx.category) : 'Ingreso'}
-                      {tx.recurring ? ' · recurrente' : ''}
+                      {tx.recurring ? ' · Recurrente' : ''}
                     </Text>
                   </View>
                 </View>
@@ -142,10 +144,15 @@ export default function Home() {
           })}
         </View>
 
-        <Text style={styles.pie}>{r.total} movimientos de semilla determinista</Text>
+        <Text style={styles.pie}>Datos de prueba · {r.total} movimientos</Text>
       </ScrollView>
     </View>
   );
+}
+
+/** Primera letra en mayuscula. `formatDateLong` devuelve el mes en minuscula. */
+function capitalizar(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -204,7 +211,7 @@ function calcularResumen() {
   const mayor = gastoPorCategoria(delMes)[0]?.total.amountMinor ?? 1;
 
   return {
-    periodo: `${MESES[dates.month(mes.start) - 1]} ${dates.year(mes.start)}`,
+    periodo: capitalizar(dates.formatDateLong(mes.start).replace(/^\d+ de /, '')),
     corte: dataset.range.end,
     // La plata que queda de verdad: saldo inicial mas todo lo que entro menos
     // todo lo que salio en los 18 meses, no solo el neto del mes.
@@ -280,13 +287,7 @@ function crearEstilos(theme: Theme) {
     leyenda: { flexDirection: 'row', gap: spacing.md },
     leyendaBarra: { width: 3, borderRadius: radii.full },
     leyendaTextos: { flex: 1, gap: 1 },
-    leyendaTitulo: {
-      fontFamily: fonts.ui.medium,
-      fontSize: fontSizes.xs,
-      color: theme.silencio,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-    },
+    leyendaTitulo: { fontFamily: fonts.ui.medium, fontSize: fontSizes.xs, color: theme.silencio },
     leyendaMonto: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.tinta },
     leyendaNota: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
 
@@ -297,13 +298,7 @@ function crearEstilos(theme: Theme) {
       marginTop: spacing.xxl,
       marginBottom: spacing.md,
     },
-    reglaTitulo: {
-      fontFamily: fonts.ui.semibold,
-      fontSize: fontSizes.xs,
-      color: theme.silencio,
-      textTransform: 'uppercase',
-      letterSpacing: 1.5,
-    },
+    reglaTitulo: { fontFamily: fonts.ui.semibold, fontSize: fontSizes.sm, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 
     filaCifra: {
@@ -322,9 +317,16 @@ function crearEstilos(theme: Theme) {
       gap: spacing.md,
       paddingVertical: spacing.sm,
     },
-    nombreCategoria: { width: 96, fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    pista: { flex: 1, flexDirection: 'row', height: 8 },
-    relleno: { backgroundColor: charts[0], borderRadius: radii.sm },
+    nombreCategoria: { width: 88, fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.tinta },
+    pista: {
+      flex: 1,
+      flexDirection: 'row',
+      height: 8,
+      backgroundColor: theme.hairline,
+      borderRadius: radii.sm,
+      overflow: 'hidden',
+    },
+    relleno: { backgroundColor: charts[0] },
     montoCategoria: {
       width: 76,
       textAlign: 'right',
