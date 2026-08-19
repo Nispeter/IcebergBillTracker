@@ -117,20 +117,24 @@ export function obtenerMovimiento(
  * vuelve a correr sola. Las pantallas usan esta; los tests usan
  * `listarMovimientos`, que la ejecuta de una.
  */
-export function consultaDeMovimientos(
-  db: BaseDeDatos,
-  contexto: Contexto,
-  filtro: FiltroDeMovimientos = {},
-) {
+/** Traduce el filtro a condiciones SQL. Compartido por la lista y el resumen. */
+function condicionesDe(filtro: FiltroDeMovimientos): SQL[] {
   const condiciones: SQL[] = [];
   if (filtro.cuentaId) condiciones.push(eq(movimientos.cuentaId, filtro.cuentaId));
   if (filtro.tipo) condiciones.push(eq(movimientos.tipo, filtro.tipo));
   if (filtro.categoriaId) condiciones.push(eq(movimientos.categoriaId, filtro.categoriaId));
   if (filtro.desde) condiciones.push(gte(movimientos.ocurridoEn, filtro.desde));
   if (filtro.hasta) condiciones.push(lte(movimientos.ocurridoEn, filtro.hasta));
+  return condiciones;
+}
 
+export function consultaDeMovimientos(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  filtro: FiltroDeMovimientos = {},
+) {
   const base = db.select().from(movimientos)
-    .where(vivos(contexto, condiciones))
+    .where(vivos(contexto, condicionesDe(filtro)))
     // Mas nuevo primero. El id desempata dentro del mismo dia, y como es ULID
     // eso equivale a orden de creacion.
     .orderBy(desc(movimientos.ocurridoEn), desc(movimientos.id));
@@ -205,6 +209,43 @@ export function totalPorTipo(
   const total = listarMovimientos(db, contexto, { ...filtro, tipo })
     .reduce((suma, fila) => suma + fila.montoMinor, 0);
   return money.money(total, 'CLP');
+}
+
+export interface ResumenDeFiltro {
+  readonly cantidad: number;
+  readonly ingreso: money.Money;
+  readonly gasto: money.Money;
+  /** Ingreso menos gasto. Las transferencias no entran en ninguno. */
+  readonly neto: money.Money;
+}
+
+/**
+ * Totales de lo que cumple el filtro, **sin traer las filas**.
+ *
+ * Existe por el paginado: el encabezado tiene que decir cuantos movimientos hay
+ * en total y cuanto suman, no cuantos se alcanzaron a cargar. Sumar en memoria
+ * obligaria a traer las 679 filas justamente para no mostrarlas.
+ *
+ * El signo lo pone el `case`, porque los montos se guardan sin signo.
+ */
+export function resumenDeMovimientos(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  filtro: FiltroDeMovimientos = {},
+): ResumenDeFiltro {
+  const filas = db.select({
+    cantidad: sql<number>`count(*)`,
+    ingreso: sql<number>`coalesce(sum(case when ${movimientos.tipo} = 'ingreso' then ${movimientos.montoMinor} else 0 end), 0)`,
+    gasto: sql<number>`coalesce(sum(case when ${movimientos.tipo} = 'gasto' then ${movimientos.montoMinor} else 0 end), 0)`,
+  })
+    .from(movimientos)
+    .where(vivos(contexto, condicionesDe(filtro)))
+    .all();
+
+  const fila = filas[0] ?? { cantidad: 0, ingreso: 0, gasto: 0 };
+  const ingreso = money.money(fila.ingreso, 'CLP');
+  const gasto = money.money(fila.gasto, 'CLP');
+  return { cantidad: fila.cantidad, ingreso, gasto, neto: money.subtract(ingreso, gasto) };
 }
 
 /** Cuenta filas vivas, sin traerlas. Para paginado y para los tests. */

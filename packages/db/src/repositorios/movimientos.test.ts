@@ -4,7 +4,7 @@ import { crearBaseDePrueba, type BaseDePrueba } from '../pruebas';
 import { crearCuenta } from './cuentas';
 import {
   RepositorioError, borrarMovimiento, contarMovimientos, crearMovimiento, editarMovimiento,
-  listarConLapidas, listarMovimientos, obtenerMovimiento, totalPorTipo,
+  listarConLapidas, listarMovimientos, obtenerMovimiento, resumenDeMovimientos, totalPorTipo,
 } from './movimientos';
 
 const d = dates.requirePlainDate;
@@ -124,6 +124,64 @@ describe('listar y filtrar', () => {
   it('totalPorTipo suma solo el tipo pedido', () => {
     expect(totalPorTipo(base.db, base.contexto, 'gasto').amountMinor).toBe(77_000);
     expect(totalPorTipo(base.db, base.contexto, 'ingreso').amountMinor).toBe(1_480_000);
+  });
+});
+
+describe('resumenDeMovimientos', () => {
+  beforeEach(() => {
+    nuevo({ nombre: 'Jumbo', montoMinor: 45_000, categoriaId: 'comida' });
+    nuevo({ nombre: 'Copec', montoMinor: 32_000, categoriaId: 'transporte' });
+    nuevo({ nombre: 'Sueldo', tipo: 'ingreso', montoMinor: 1_480_000, categoriaId: null });
+  });
+
+  it('cuenta y suma sin traer las filas', () => {
+    const r = resumenDeMovimientos(base.db, base.contexto);
+    expect(r.cantidad).toBe(3);
+    expect(r.gasto.amountMinor).toBe(77_000);
+    expect(r.ingreso.amountMinor).toBe(1_480_000);
+  });
+
+  it('el neto es ingreso menos gasto', () => {
+    expect(resumenDeMovimientos(base.db, base.contexto).neto.amountMinor).toBe(1_403_000);
+  });
+
+  it('respeta el filtro', () => {
+    const soloGastos = resumenDeMovimientos(base.db, base.contexto, { tipo: 'gasto' });
+    expect(soloGastos.cantidad).toBe(2);
+    expect(soloGastos.ingreso.amountMinor).toBe(0);
+
+    const soloComida = resumenDeMovimientos(base.db, base.contexto, { categoriaId: 'comida' });
+    expect(soloComida.cantidad).toBe(1);
+    expect(soloComida.gasto.amountMinor).toBe(45_000);
+  });
+
+  it('ignora el limite: el total no depende de cuanto se cargo', () => {
+    // Es toda la razon de existir de esta funcion. Con paginado, el encabezado
+    // debe decir cuantos hay, no cuantos se alcanzaron a traer.
+    expect(resumenDeMovimientos(base.db, base.contexto, { limite: 1 }).cantidad).toBe(3);
+    expect(listarMovimientos(base.db, base.contexto, { limite: 1 })).toHaveLength(1);
+  });
+
+  it('descarta las lapidas', () => {
+    const uno = listarMovimientos(base.db, base.contexto)[0]!;
+    borrarMovimiento(base.db, base.contexto, uno.id);
+    expect(resumenDeMovimientos(base.db, base.contexto).cantidad).toBe(2);
+  });
+
+  it('sin movimientos devuelve ceros y no null', () => {
+    const vacia = crearBaseDePrueba({ householdId: 'otro' });
+    try {
+      const r = resumenDeMovimientos(vacia.db, vacia.contexto);
+      expect(r.cantidad).toBe(0);
+      expect(r.gasto.amountMinor).toBe(0);
+      expect(r.neto.amountMinor).toBe(0);
+    } finally { vacia.cerrar(); }
+  });
+
+  it('coincide con sumar las filas a mano', () => {
+    const filas = listarMovimientos(base.db, base.contexto);
+    const aMano = filas.filter((m) => m.tipo === 'gasto').reduce((s, m) => s + m.montoMinor, 0);
+    expect(resumenDeMovimientos(base.db, base.contexto).gasto.amountMinor).toBe(aMano);
   });
 });
 
