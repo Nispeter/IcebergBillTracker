@@ -8,11 +8,14 @@
  * Es **determinista**: misma semilla, mismo dataset.
  */
 
-import { dates, money } from '@iceberg/core';
-import { RECURRENTES, VARIABLES, seasonalFactor, type Movement } from './catalog';
+import { categories, dates, money } from '@iceberg/core';
+import {
+  RECURRENTES, SALDO_INICIAL, VARIABLES, occursInMonth, seasonalFactor, type Movement,
+} from './catalog';
 import { Random } from './random';
 
 type PlainDate = dates.PlainDate;
+type CategoryId = categories.CategoryId;
 
 export interface SeedTransaction {
   readonly id: string;
@@ -22,7 +25,8 @@ export interface SeedTransaction {
   readonly currency: 'CLP';
   readonly occurredAt: PlainDate;
   readonly name: string;
-  readonly category: string;
+  /** Ausente en los ingresos: el ingreso no se categoriza. */
+  readonly category?: CategoryId;
   /** Presente solo en gasto variable; los recurrentes no tienen comercio. */
   readonly merchant?: string;
   /** Marca los movimientos que nacen de una regla, para probar la deteccion. */
@@ -32,7 +36,9 @@ export interface SeedTransaction {
 export interface SeedDataset {
   readonly seed: number;
   readonly range: dates.DateRange;
-  readonly categories: readonly string[];
+  /** Saldo de la cuenta el primer dia del rango, en pesos enteros. */
+  readonly saldoInicialMinor: number;
+  readonly categories: readonly CategoryId[];
   readonly transactions: readonly SeedTransaction[];
 }
 
@@ -94,27 +100,31 @@ export function generateSeed(options: SeedOptions = {}): SeedDataset {
     const lastDay = dates.daysInMonth(year, month);
 
     for (const spec of RECURRENTES) {
+      if (!occursInMonth(spec, month)) continue;
       const day = Math.min(spec.dayOfMonth, lastDay);
-      const base = spec.spread === 0
-        ? spec.center
-        : random.around(spec.center, spec.spread);
+      const base = spec.spread === 0 ? spec.center : random.around(spec.center, spec.spread);
       const amount = Math.round(base * seasonalFactor(spec, month));
       push({
         type: spec.type,
         amountMinor: amount,
         occurredAt: dates.plainDate(year, month, day),
         name: spec.name,
-        category: spec.category,
+        ...(spec.category === undefined ? {} : { category: spec.category }),
         recurring: true,
       });
     }
 
     for (const spec of VARIABLES) {
+      // La estacionalidad se reparte entre "cuantas veces" y "cuanto cada vez".
+      // En diciembre uno hace **mas** regalos, no un regalo mas caro; en invierno
+      // en cambio llega la misma boleta de gas por mas plata. Cada mitad toma la
+      // raiz para que el efecto total siga siendo el factor declarado.
+      const reparto = Math.sqrt(seasonalFactor(spec, month));
       const [min, max] = spec.perMonth;
-      const count = random.int(min, max);
+      const count = Math.round(random.int(min, max) * reparto);
       for (const day of pickDays(random, year, month, count, spec.weekendBias ?? false)) {
         const merchant = random.pick(spec.merchants);
-        const amount = Math.round(random.around(spec.center, spec.spread) * seasonalFactor(spec, month));
+        const amount = Math.round(random.around(spec.center, spec.spread) * reparto);
         push({
           type: spec.type,
           amountMinor: amount,
@@ -130,10 +140,18 @@ export function generateSeed(options: SeedOptions = {}): SeedDataset {
 
   transactions.sort((a, b) => dates.compareDates(a.occurredAt, b.occurredAt) || a.id.localeCompare(b.id));
 
+  const usadas = new Set(transactions.flatMap((tx) => (tx.category ? [tx.category] : [])));
+
   return {
     seed,
-    range: dates.dateRange(firstMonth, dates.plainDate(dates.year(lastMonth), dates.month(lastMonth), dates.daysInMonth(dates.year(lastMonth), dates.month(lastMonth))), 'custom'),
-    categories: [...new Set(transactions.map((tx) => tx.category))].sort(),
+    range: dates.dateRange(
+      firstMonth,
+      dates.plainDate(dates.year(lastMonth), dates.month(lastMonth), dates.daysInMonth(dates.year(lastMonth), dates.month(lastMonth))),
+      'custom',
+    ),
+    saldoInicialMinor: SALDO_INICIAL,
+    // En el orden canonico del catalogo, no en el de aparicion.
+    categories: categories.CATEGORY_IDS.filter((id) => usadas.has(id)),
     transactions,
   };
 }
@@ -144,4 +162,33 @@ export function totalOf(dataset: SeedDataset, type: Movement): money.Money {
     dataset.transactions.filter((tx) => tx.type === type).map((tx) => money.money(tx.amountMinor, 'CLP')),
     'CLP',
   );
+}
+
+/**
+ * La plata que queda: saldo inicial + todo lo que entro − todo lo que salio.
+ *
+ * Es un saldo de cuenta, no un ahorro acumulado: los aportes a fondo mutuo salen
+ * de aca como cualquier otro gasto, porque desde la cuenta corriente eso es
+ * plata que se fue. El ahorro invertido se mira aparte.
+ */
+export function saldoActual(dataset: SeedDataset): money.Money {
+  const inicial = money.money(dataset.saldoInicialMinor, 'CLP');
+  return money.subtract(
+    money.add(inicial, totalOf(dataset, 'ingreso')),
+    totalOf(dataset, 'gasto'),
+  );
+}
+
+/** Gasto agrupado por categoria, de mayor a menor. Sin categoria queda fuera. */
+export function gastoPorCategoria(
+  transactions: readonly SeedTransaction[],
+): { categoria: CategoryId; total: money.Money }[] {
+  const acumulado = new Map<CategoryId, number>();
+  for (const tx of transactions) {
+    if (tx.type !== 'gasto' || tx.category === undefined) continue;
+    acumulado.set(tx.category, (acumulado.get(tx.category) ?? 0) + tx.amountMinor);
+  }
+  return [...acumulado.entries()]
+    .map(([categoria, total]) => ({ categoria, total: money.money(total, 'CLP') }))
+    .sort((a, b) => money.compare(b.total, a.total));
 }
