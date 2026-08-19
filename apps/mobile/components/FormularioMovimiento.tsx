@@ -11,6 +11,7 @@ import type { TipoDeMovimiento } from '@iceberg/db';
 import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
+import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
@@ -49,6 +50,7 @@ export function FormularioMovimiento({
     inicial?.categoriaId ?? null,
   );
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
+  const [eligiendoCategoria, setEligiendoCategoria] = useState(false);
 
   const montoParseado = money.parseMoney(monto);
   const fechaParseada = dates.parsePlainDate(fecha);
@@ -59,6 +61,8 @@ export function FormularioMovimiento({
     && montoParseado.amountMinor > 0
     && nombre.trim().length > 0
     && fechaParseada !== null;
+
+  const IconoElegido = categoriaId === null ? null : iconoDeCategoria(categoriaId);
 
   return (
     <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
@@ -134,29 +138,67 @@ export function FormularioMovimiento({
 
       {pideCategoria ? (
         <Campo styles={styles} etiqueta="Categoría">
-          <View style={styles.categorias}>
-            {categories.CATEGORIES.map((categoria) => {
-              const Icono = iconoDeCategoria(categoria.id);
-              const activa = categoriaId === categoria.id;
-              return (
+          {/* Doce chips siempre visibles ocupaban media pantalla para un campo
+              que la mayoria de las veces no se toca. Se muestra la elegida y la
+              lista aparece solo al pedirla. */}
+          <Pressable
+            onPress={() => setEligiendoCategoria(!eligiendoCategoria)}
+            style={styles.selectorCategoria}
+            accessibilityRole="button"
+            accessibilityLabel={
+              categoriaId === null
+                ? 'Elegir categoría'
+                : `Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`
+            }
+            accessibilityState={{ expanded: eligiendoCategoria }}
+          >
+            {IconoElegido ? (
+              <IconoElegido size={18} weight="regular" color={theme.tinta} />
+            ) : null}
+            <Text style={categoriaId === null ? styles.categoriaVacia : styles.categoriaElegida}>
+              {categoriaId === null ? 'Sin categoría' : categories.categoryName(categoriaId)}
+            </Text>
+            <CaretDown
+              size={14}
+              weight="bold"
+              color={theme.silencio}
+              style={{ transform: [{ rotate: eligiendoCategoria ? '180deg' : '0deg' }] }}
+            />
+          </Pressable>
+
+          {eligiendoCategoria ? (
+            <View style={styles.categorias}>
+              {categoriaId !== null ? (
                 <Pressable
-                  key={categoria.id}
-                  onPress={() => setCategoriaId(activa ? null : categoria.id)}
-                  style={[styles.chip, activa && styles.chipActivo]}
+                  onPress={() => { setCategoriaId(null); setEligiendoCategoria(false); }}
+                  style={styles.chip}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: activa }}
                 >
-                  {Icono ? (
-                    <Icono size={14} weight="regular" color={activa ? theme.fondo : theme.silencio} />
-                  ) : null}
-                  <Text style={activa ? styles.chipTextoActivo : styles.chipTexto}>
-                    {categoria.nombreCorto}
-                  </Text>
+                  <Text style={styles.chipTexto}>Sin categoría</Text>
                 </Pressable>
-              );
-            })}
-          </View>
-          <Text style={styles.ayuda}>Opcional. Se puede dejar sin categoría.</Text>
+              ) : null}
+              {categories.CATEGORIES.map((categoria) => {
+                const Icono = iconoDeCategoria(categoria.id);
+                const activa = categoriaId === categoria.id;
+                return (
+                  <Pressable
+                    key={categoria.id}
+                    onPress={() => { setCategoriaId(categoria.id); setEligiendoCategoria(false); }}
+                    style={[styles.chip, activa && styles.chipActivo]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: activa }}
+                  >
+                    {Icono ? (
+                      <Icono size={14} weight="regular" color={activa ? theme.fondo : theme.silencio} />
+                    ) : null}
+                    <Text style={activa ? styles.chipTextoActivo : styles.chipTexto}>
+                      {categoria.nombreCorto}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
         </Campo>
       ) : null}
 
@@ -286,7 +328,29 @@ function crearEstilos(theme: Theme) {
     aviso: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     error: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
 
-    categorias: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    selectorCategoria: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      borderBottomWidth: elevation.hairlineWidth,
+      borderBottomColor: theme.hairline,
+      paddingVertical: spacing.md,
+    },
+    categoriaElegida: {
+      flex: 1,
+      fontFamily: fonts.ui,
+      fontWeight: pesos.medium,
+      fontSize: fontSizes.md,
+      color: theme.tinta,
+    },
+    categoriaVacia: {
+      flex: 1,
+      fontFamily: fonts.ui,
+      fontWeight: pesos.regular,
+      fontSize: fontSizes.md,
+      color: theme.silencio,
+    },
+    categorias: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
     chip: {
       flexDirection: 'row',
       alignItems: 'center',
