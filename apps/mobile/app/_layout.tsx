@@ -11,6 +11,7 @@ import {
 } from '@expo-google-fonts/ibm-plex-mono';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
   // Las claves quedan con el nombre de la familia porque es el mismo string que
@@ -27,5 +28,11 @@ export default function RootLayout() {
 
   if (!loaded) return null;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  // GestureHandlerRootView tiene que envolver la app entera para que los gestos
+  // y las hojas de @gorhom/bottom-sheet funcionen (swipe en filas, drill-down).
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </GestureHandlerRootView>
+  );
 }

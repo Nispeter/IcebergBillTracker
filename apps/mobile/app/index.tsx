@@ -1,9 +1,12 @@
 /**
- * Pantalla de verificacion de F0.
+ * Home.
  *
- * No es la Home definitiva: existe para comprobar que los tokens, la tipografia
- * y la matematica de `@iceberg/core` estan bien conectados, y para poder mirar
- * la paleta en claro y en oscuro sin cambiar la configuracion del sistema.
+ * Deliberadamente **sin tarjetas**. Un stack de cards redondeadas con el mismo
+ * padding es la firma del look generico, y esta app tiene una regla dura contra
+ * eso. La jerarquia la dan aca otras cosas: una cifra enorme sin caja, reglas
+ * con etiqueta que separan secciones, filas a sangre completa con hairlines, y
+ * las cifras en monoespaciada formando una columna que se puede comparar de un
+ * vistazo.
  *
  * Ni un solo color literal en este archivo: todo sale de `@iceberg/ui`.
  */
@@ -17,13 +20,15 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Iceberg } from '../components/Iceberg';
+import { iconoDeCategoria } from '../components/iconos';
 
-export default function Pantalla() {
+export default function Home() {
   const sistema = useColorScheme();
   const [tema, setTema] = useState<ThemeName>(sistema === 'dark' ? 'dark' : 'light');
   const theme = themes[tema];
   const styles = useMemo(() => crearEstilos(theme), [theme]);
-  const resumen = useMemo(() => calcularResumen(), []);
+  const r = useMemo(() => calcularResumen(), []);
 
   return (
     <View style={styles.raiz}>
@@ -31,181 +36,156 @@ export default function Pantalla() {
       <ScrollView contentContainerStyle={styles.contenido}>
 
         <View style={styles.encabezado}>
-          <View>
-            <Text style={styles.marca}>Iceberg</Text>
-            <Text style={styles.periodo}>{resumen.periodo}</Text>
-          </View>
+          <Text style={styles.marca}>ICEBERG</Text>
           <Pressable
             onPress={() => setTema(tema === 'dark' ? 'light' : 'dark')}
-            style={styles.interruptor}
             accessibilityRole="button"
             accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
           >
-            <Text style={styles.interruptorTexto}>
-              {tema === 'dark' ? 'Deshielo' : 'Noche polar'}
-            </Text>
+            <Text style={styles.cambioTema}>{tema === 'dark' ? 'deshielo' : 'noche polar'}</Text>
           </Pressable>
         </View>
 
-        {/* La cifra que la gente abre la app para ver. */}
-        <View style={styles.tarjeta}>
-          <Text style={styles.etiqueta}>Plata restante</Text>
-          <Text style={styles.cifraDisplay}>{money.format(resumen.saldo)}</Text>
-          <Text style={styles.pieCifra}>al {dates.formatDateLong(resumen.corte)}</Text>
-
-          <Separador styles={styles} />
-
-          <View style={styles.filaCifras}>
-            <Cifra styles={styles} etiqueta="Ingreso" valor={money.format(resumen.ingreso)} />
-            <Cifra styles={styles} etiqueta="Gasto" valor={money.format(resumen.gasto)} />
-            <Cifra styles={styles} etiqueta="Neto" valor={money.formatSigned(resumen.neto)} />
+        {/* La cifra que la gente abre la app para ver. Sin caja, sin borde: el
+            tamano solo ya establece que es lo mas importante de la pantalla. */}
+        <View style={styles.hero}>
+          <View style={styles.heroFila}>
+            <Text style={styles.heroSimbolo}>$</Text>
+            <Text style={styles.heroCifra}>{money.formatNumber(r.saldo)}</Text>
           </View>
+          <Text style={styles.heroPie}>
+            plata restante · {dates.formatDate(r.corte)}
+          </Text>
+        </View>
 
-          <Separador styles={styles} />
-
-          {/* La metafora del iceberg: lo comprometido sobre la linea de agua,
-              lo variable acumulado debajo. */}
-          <Text style={styles.etiqueta}>Sobre la linea de agua</Text>
-          <View style={styles.barra}>
-            <View style={[styles.barraFijo, { flex: Math.max(resumen.fijo.amountMinor, 1) }]} />
-            <View style={[styles.barraVariable, { flex: Math.max(resumen.variable.amountMinor, 1) }]} />
-          </View>
-          <View style={styles.filaLeyenda}>
-            <Leyenda styles={styles} color={theme.gasto} texto={`Comprometido ${money.format(resumen.fijo)}`} />
-            <Leyenda styles={styles} color={charts[0]} texto={`Variable ${money.format(resumen.variable)}`} />
+        <View style={styles.bloqueIceberg}>
+          <Iceberg
+            shareComprometido={r.shareComprometido}
+            theme={theme}
+            agua={charts[0]}
+            profundidad={charts[1]}
+            alto={210}
+          />
+          <View style={styles.leyendas}>
+            <Leyenda
+              styles={styles}
+              color={theme.gasto}
+              titulo="Comprometido"
+              monto={money.format(r.fijo)}
+              nota="arriendo, cuentas, cuotas"
+            />
+            <Leyenda
+              styles={styles}
+              color={charts[0]}
+              titulo="Variable"
+              monto={money.format(r.variable)}
+              nota="lo que no se ve venir"
+            />
           </View>
         </View>
 
-        <Seccion styles={styles} titulo="Gasto por categoria">
-          <View style={styles.tarjeta}>
-            {resumen.porCategoria.map(({ categoria, total }, indice) => (
-              <View key={categoria}>
-                {indice > 0 ? <Separador styles={styles} /> : null}
-                <View style={styles.filaCategoria}>
-                  <Text style={styles.filaNombre} numberOfLines={1}>
-                    {categories.categoryName(categoria)}
-                  </Text>
-                  <Text style={styles.monto}>
-                    {money.formatNumber(total)}
-                  </Text>
-                </View>
-                {/* Barra ordenada por tamano, no coloreada por categoria: doce
-                    colores distintos serian un arcoiris, justo lo que el sistema
-                    de diseno prohibe. */}
-                <View style={styles.barraCategoria}>
-                  <View
-                    style={[
-                      styles.barraCategoriaRelleno,
-                      { flex: total.amountMinor },
-                    ]}
-                  />
-                  <View style={{ flex: Math.max(resumen.mayorCategoria - total.amountMinor, 0) }} />
-                </View>
-              </View>
-            ))}
-          </View>
-        </Seccion>
+        <Regla styles={styles} titulo={r.periodo} />
+        <View>
+          <FilaCifra styles={styles} etiqueta="Ingreso" valor={money.format(r.ingreso)} />
+          <FilaCifra styles={styles} etiqueta="Gasto" valor={money.format(r.gasto)} />
+          <FilaCifra styles={styles} etiqueta="Neto" valor={money.formatSigned(r.neto)} destacado />
+        </View>
 
-        <Seccion styles={styles} titulo="Ultimos movimientos">
-          <View style={styles.tarjeta}>
-            {resumen.recientes.map((tx, indice) => (
-              <View key={tx.id}>
-                {indice > 0 ? <Separador styles={styles} /> : null}
-                <View style={styles.fila}>
-                  <View style={styles.filaTexto}>
-                    <Text style={styles.filaNombre} numberOfLines={1}>{tx.name}</Text>
-                    <Text style={styles.filaMeta}>
-                      {dates.formatDate(tx.occurredAt)}
-                      {tx.category ? ` · ${categories.categoryName(tx.category)}` : ''}
+        <Regla styles={styles} titulo="en que se fue" />
+        <View>
+          {r.porCategoria.map(({ categoria, total, parte }) => {
+            const Icono = iconoDeCategoria(categoria);
+            return (
+              <View key={categoria} style={styles.filaCategoria}>
+                <Icono size={18} weight="regular" color={theme.silencio} />
+                <Text style={styles.nombreCategoria} numberOfLines={1}>
+                  {categories.categoryName(categoria)}
+                </Text>
+                {/* Las barras quedan alineadas en columna a proposito: puestas
+                    una bajo otra se comparan sin leer un solo numero. */}
+                <View style={styles.pista}>
+                  <View style={[styles.relleno, { flex: Math.max(parte, 0.001) }]} />
+                  <View style={{ flex: Math.max(1 - parte, 0.001) }} />
+                </View>
+                <Text style={styles.montoCategoria}>{money.formatNumber(total)}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <Regla styles={styles} titulo="ultimos movimientos" />
+        <View>
+          {r.recientes.map((tx) => {
+            const Icono = tx.category ? iconoDeCategoria(tx.category) : null;
+            return (
+              <View key={tx.id} style={styles.filaMovimiento}>
+                <View style={styles.marcaFecha}>
+                  <Text style={styles.dia}>{dates.day(tx.occurredAt)}</Text>
+                  <Text style={styles.mes}>{MESES[dates.month(tx.occurredAt) - 1]}</Text>
+                </View>
+                <View style={styles.textoMovimiento}>
+                  <Text style={styles.nombreMovimiento} numberOfLines={1}>{tx.name}</Text>
+                  <View style={styles.metaMovimiento}>
+                    {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
+                    <Text style={styles.categoriaMovimiento}>
+                      {tx.category ? categories.categoryName(tx.category) : 'Ingreso'}
+                      {tx.recurring ? ' · recurrente' : ''}
                     </Text>
                   </View>
-                  <Text style={tx.type === 'ingreso' ? styles.montoIngreso : styles.monto}>
-                    {tx.type === 'ingreso' ? '+' : '−'}
-                    {money.formatNumber(money.money(tx.amountMinor))}
-                  </Text>
                 </View>
+                <Text style={tx.type === 'ingreso' ? styles.montoIngreso : styles.montoGasto}>
+                  {tx.type === 'ingreso' ? '+' : '−'}
+                  {money.formatNumber(money.money(tx.amountMinor))}
+                </Text>
               </View>
-            ))}
-          </View>
-        </Seccion>
+            );
+          })}
+        </View>
 
-        <Seccion styles={styles} titulo="Paleta">
-          <View style={styles.muestrario}>
-            {ROLES.map((rol) => (
-              <View key={rol} style={styles.muestra}>
-                <View style={[styles.muestraColor, { backgroundColor: theme[rol] }]} />
-                <Text style={styles.muestraTexto}>{rol}</Text>
-              </View>
-            ))}
-          </View>
-        </Seccion>
-
-        <Seccion styles={styles} titulo="Serie de graficos">
-          <View style={styles.serie}>
-            {charts.map((color, indice) => (
-              <View
-                key={color}
-                style={[styles.serieBarra, { backgroundColor: color, height: 24 + (indice * 14) }]}
-              />
-            ))}
-          </View>
-        </Seccion>
-
-        <Seccion styles={styles} titulo="Radios">
-          <View style={styles.radios}>
-            {RADIOS.map(([nombre, valor]) => (
-              <View key={nombre} style={styles.radioItem}>
-                <View style={[styles.radioCaja, { borderRadius: valor }]} />
-                <Text style={styles.muestraTexto}>{nombre} · {valor}</Text>
-              </View>
-            ))}
-          </View>
-        </Seccion>
-
-        <Text style={styles.pie}>
-          {resumen.total} movimientos de semilla determinista
-        </Text>
+        <Text style={styles.pie}>{r.total} movimientos de semilla determinista</Text>
       </ScrollView>
     </View>
   );
 }
 
-const ROLES = [
-  'fondo', 'superficie', 'tinta', 'silencio', 'hairline',
-  'acento', 'acentoTexto', 'ingreso', 'ingresoTexto', 'vencido', 'vencidoTexto',
-] as const;
-
-const RADIOS = [['sm', radii.sm], ['md', radii.md], ['lg', radii.lg]] as const;
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 type Estilos = ReturnType<typeof crearEstilos>;
 
-function Cifra({ styles, etiqueta, valor }: { styles: Estilos; etiqueta: string; valor: string }) {
+/** Separador de seccion: etiqueta chica y una linea que se va hasta el borde. */
+function Regla({ styles, titulo }: { styles: Estilos; titulo: string }) {
   return (
-    <View style={styles.cifraBloque}>
-      <Text style={styles.etiqueta}>{etiqueta}</Text>
-      <Text style={styles.cifraChica}>{valor}</Text>
+    <View style={styles.regla}>
+      <Text style={styles.reglaTitulo}>{titulo}</Text>
+      <View style={styles.reglaLinea} />
     </View>
   );
 }
 
-function Seccion({ styles, titulo, children }: { styles: Estilos; titulo: string; children: ReactNode }) {
+function FilaCifra(
+  { styles, etiqueta, valor, destacado }:
+  { styles: Estilos; etiqueta: string; valor: string; destacado?: boolean },
+) {
   return (
-    <View style={styles.seccion}>
-      <Text style={styles.seccionTitulo}>{titulo}</Text>
-      {children}
+    <View style={styles.filaCifra}>
+      <Text style={styles.etiquetaCifra}>{etiqueta}</Text>
+      <Text style={destacado ? styles.valorDestacado : styles.valorCifra}>{valor}</Text>
     </View>
   );
 }
 
-function Separador({ styles }: { styles: Estilos }) {
-  return <View style={styles.separador} />;
-}
-
-function Leyenda({ styles, color, texto }: { styles: Estilos; color: string; texto: string }) {
+function Leyenda(
+  { styles, color, titulo, monto, nota }:
+  { styles: Estilos; color: string; titulo: string; monto: string; nota: string },
+) {
   return (
     <View style={styles.leyenda}>
-      <View style={[styles.leyendaPunto, { backgroundColor: color }]} />
-      <Text style={styles.leyendaTexto}>{texto}</Text>
+      <View style={[styles.leyendaBarra, { backgroundColor: color }]} />
+      <View style={styles.leyendaTextos}>
+        <Text style={styles.leyendaTitulo}>{titulo}</Text>
+        <Text style={styles.leyendaMonto}>{monto}</Text>
+        <Text style={styles.leyendaNota}>{nota}</Text>
+      </View>
     </View>
   );
 }
@@ -220,10 +200,11 @@ function calcularResumen() {
 
   const gasto = total((tx) => tx.type === 'gasto');
   const ingreso = total((tx) => tx.type === 'ingreso');
-  const porCategoria = gastoPorCategoria(delMes);
+  const fijo = total((tx) => tx.type === 'gasto' && tx.recurring);
+  const mayor = gastoPorCategoria(delMes)[0]?.total.amountMinor ?? 1;
 
   return {
-    periodo: dates.formatDateLong(mes.start).replace(/^\d+ de /, ''),
+    periodo: `${MESES[dates.month(mes.start) - 1]} ${dates.year(mes.start)}`,
     corte: dataset.range.end,
     // La plata que queda de verdad: saldo inicial mas todo lo que entro menos
     // todo lo que salio en los 18 meses, no solo el neto del mes.
@@ -231,11 +212,16 @@ function calcularResumen() {
     gasto,
     ingreso,
     neto: money.subtract(ingreso, gasto),
-    fijo: total((tx) => tx.type === 'gasto' && tx.recurring),
+    fijo,
     variable: total((tx) => tx.type === 'gasto' && !tx.recurring),
-    porCategoria,
-    mayorCategoria: porCategoria[0]?.total.amountMinor ?? 1,
-    recientes: [...delMes].reverse().slice(0, 6),
+    shareComprometido: money.ratio(fijo, gasto) ?? 0,
+    // La barra se mide contra la categoria mas grande, no contra el total: si
+    // se midiera contra el total, diez de las doce quedarian invisibles.
+    porCategoria: gastoPorCategoria(delMes).map((fila) => ({
+      ...fila,
+      parte: fila.total.amountMinor / mayor,
+    })),
+    recientes: [...delMes].reverse().slice(0, 8),
     total: dataset.transactions.length,
   };
 }
@@ -244,10 +230,9 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     raiz: { flex: 1, backgroundColor: theme.fondo },
     contenido: {
-      padding: spacing.lg,
+      paddingHorizontal: spacing.xl,
       paddingBottom: spacing.xxxl,
-      gap: spacing.xl,
-      maxWidth: 560,
+      maxWidth: 520,
       width: '100%',
       alignSelf: 'center',
     },
@@ -257,113 +242,123 @@ function crearEstilos(theme: Theme) {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingTop: spacing.xxl,
+      paddingBottom: spacing.xxl,
     },
-    marca: { fontFamily: fonts.ui.bold, fontSize: fontSizes.xl, color: theme.tinta, letterSpacing: -0.5 },
-    periodo: {
-      fontFamily: fonts.ui.medium,
+    marca: {
+      fontFamily: fonts.ui.bold,
       fontSize: fontSizes.sm,
+      color: theme.tinta,
+      letterSpacing: 3,
+    },
+    cambioTema: { fontFamily: fonts.ui.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+
+    hero: { paddingBottom: spacing.xl },
+    heroFila: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+    // El simbolo de moneda va mas chico y apagado: lo que se lee es la cifra.
+    heroSimbolo: {
+      fontFamily: fonts.mono.regular,
+      fontSize: fontSizes.lg,
       color: theme.silencio,
-      textTransform: 'capitalize',
+      marginTop: spacing.sm,
     },
-    interruptor: {
-      borderRadius: radii.full,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      backgroundColor: theme.superficie,
+    heroCifra: {
+      fontFamily: fonts.mono.medium,
+      fontSize: 56,
+      lineHeight: 60,
+      color: theme.tinta,
+      letterSpacing: -2,
     },
-    interruptorTexto: { fontFamily: fonts.ui.semibold, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    heroPie: { fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.silencio },
 
-    tarjeta: {
-      backgroundColor: theme.superficie,
-      borderRadius: radii.md,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-      padding: spacing.xl,
-      gap: spacing.md,
+    bloqueIceberg: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xl,
+      paddingVertical: spacing.lg,
     },
-
-    etiqueta: {
+    leyendas: { flex: 1, gap: spacing.xl },
+    leyenda: { flexDirection: 'row', gap: spacing.md },
+    leyendaBarra: { width: 3, borderRadius: radii.full },
+    leyendaTextos: { flex: 1, gap: 1 },
+    leyendaTitulo: {
       fontFamily: fonts.ui.medium,
       fontSize: fontSizes.xs,
       color: theme.silencio,
       textTransform: 'uppercase',
       letterSpacing: 1,
     },
-    // Toda cifra de dinero va en monoespaciada, sin excepcion: es lo que hace
-    // que las columnas de montos queden alineadas digito a digito.
-    cifraDisplay: {
-      fontFamily: fonts.mono.medium,
-      fontSize: fontSizes.display,
-      color: theme.tinta,
-      letterSpacing: -1,
+    leyendaMonto: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.tinta },
+    leyendaNota: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
+
+    regla: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      marginTop: spacing.xxl,
+      marginBottom: spacing.md,
     },
-    pieCifra: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    cifraChica: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.tinta },
-    filaCifras: { flexDirection: 'row', gap: spacing.xl },
-    cifraBloque: { gap: spacing.xs },
-
-    separador: {
-      height: elevation.hairlineWidth,
-      backgroundColor: theme.hairline,
-      marginVertical: spacing.md,
+    reglaTitulo: {
+      fontFamily: fonts.ui.semibold,
+      fontSize: fontSizes.xs,
+      color: theme.silencio,
+      textTransform: 'uppercase',
+      letterSpacing: 1.5,
     },
+    reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 
-    barra: { flexDirection: 'row', height: 14, gap: 2 },
-    barraFijo: { backgroundColor: theme.gasto, borderRadius: radii.sm },
-    barraVariable: { backgroundColor: charts[0], borderRadius: radii.sm },
-    filaLeyenda: { gap: spacing.xs },
-    leyenda: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    leyendaPunto: { width: 8, height: 8, borderRadius: radii.full },
-    leyendaTexto: { fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.silencio },
-
-    seccion: { gap: spacing.md },
-    seccionTitulo: { fontFamily: fonts.ui.semibold, fontSize: fontSizes.lg, color: theme.tinta },
-
-    filaCategoria: {
+    filaCifra: {
       flexDirection: 'row',
       alignItems: 'baseline',
       justifyContent: 'space-between',
-      gap: spacing.lg,
-      marginBottom: spacing.sm,
+      paddingVertical: spacing.sm,
     },
-    barraCategoria: { flexDirection: 'row', height: 6 },
-    barraCategoriaRelleno: { backgroundColor: charts[0], borderRadius: radii.sm },
+    etiquetaCifra: { fontFamily: fonts.ui.regular, fontSize: fontSizes.md, color: theme.silencio },
+    valorCifra: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.tinta },
+    valorDestacado: { fontFamily: fonts.mono.medium, fontSize: fontSizes.lg, color: theme.tinta },
 
-    fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.lg },
-    filaTexto: { flex: 1, gap: 2 },
-    filaNombre: { fontFamily: fonts.ui.medium, fontSize: fontSizes.md, color: theme.tinta },
-    filaMeta: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    monto: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.gasto },
+    filaCategoria: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    nombreCategoria: { width: 96, fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.tinta },
+    pista: { flex: 1, flexDirection: 'row', height: 8 },
+    relleno: { backgroundColor: charts[0], borderRadius: radii.sm },
+    montoCategoria: {
+      width: 76,
+      textAlign: 'right',
+      fontFamily: fonts.mono.regular,
+      fontSize: fontSizes.sm,
+      color: theme.tinta,
+    },
+
+    filaMovimiento: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.lg,
+      paddingVertical: spacing.md,
+      borderBottomWidth: elevation.hairlineWidth,
+      borderBottomColor: theme.hairline,
+    },
+    marcaFecha: { width: 30, alignItems: 'center' },
+    dia: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.tinta },
+    mes: { fontFamily: fonts.ui.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase' },
+    textoMovimiento: { flex: 1, gap: 2 },
+    nombreMovimiento: { fontFamily: fonts.ui.medium, fontSize: fontSizes.md, color: theme.tinta },
+    metaMovimiento: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    categoriaMovimiento: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    montoGasto: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.gasto },
     // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
     // hasta cumplir AA, en oscuro es la misma aurora viva.
     montoIngreso: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.ingresoTexto },
 
-    muestrario: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-    muestra: { alignItems: 'center', gap: spacing.xs, width: 72 },
-    muestraColor: {
-      width: 56,
-      height: 56,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
+    pie: {
+      fontFamily: fonts.ui.regular,
+      fontSize: fontSizes.xs,
+      color: theme.silencio,
+      textAlign: 'center',
+      marginTop: spacing.xxl,
     },
-    muestraTexto: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
-
-    serie: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, height: 96 },
-    serieBarra: { flex: 1, borderTopLeftRadius: radii.sm, borderTopRightRadius: radii.sm },
-
-    radios: { flexDirection: 'row', gap: spacing.xl },
-    radioItem: { alignItems: 'center', gap: spacing.xs },
-    radioCaja: {
-      width: 56,
-      height: 56,
-      backgroundColor: theme.superficie,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-
-    pie: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio, textAlign: 'center' },
   });
 }
