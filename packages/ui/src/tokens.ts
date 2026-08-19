@@ -84,6 +84,15 @@ export interface Theme {
   readonly acento: string;
   /** El acento cuando hay que **leerlo**. */
   readonly acentoTexto: string;
+  /**
+   * Lo que se escribe **encima** del relleno ambar.
+   *
+   * No sirve `acentoTexto`: en el tema oscuro es el mismo ambar que el relleno,
+   * asi que un boton solido quedaba naranjo y vacio. Tampoco sirve `fondo`, que
+   * en el tema claro es casi blanco sobre ambar. Como el ambar es identico en
+   * los dos temas, lo que va encima tambien: la tinta profunda, 7,6:1.
+   */
+  readonly sobreAcento: string;
   /** Relleno del ingreso: areas y barras de grafico. */
   readonly ingreso: string;
   /** El ingreso cuando es un monto escrito. */
@@ -105,6 +114,7 @@ export const light: Theme = {
   hairline: palette.hairlineClaro,
   acento: palette.ambar,
   acentoTexto: palette.ambarProfundo,
+  sobreAcento: palette.tintaProfunda,
   ingreso: palette.aurora,
   ingresoTexto: palette.auroraProfunda,
   gasto: palette.tintaProfunda,
@@ -128,6 +138,7 @@ export const dark: Theme = {
   hairline: palette.hairlineOscuro,
   acento: palette.ambar,
   acentoTexto: palette.ambar,
+  sobreAcento: palette.tintaProfunda,
   ingreso: palette.aurora,
   ingresoTexto: palette.aurora,
   gasto: palette.tintaClara,

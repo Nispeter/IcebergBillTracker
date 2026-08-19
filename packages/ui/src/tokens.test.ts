@@ -112,6 +112,13 @@ describe('contraste', () => {
     }
   });
 
+  it('lo que se escribe sobre el ambar se lee en ambos temas', () => {
+    for (const [name, theme] of entries) {
+      expect(contrast(theme.sobreAcento, theme.acento), `${name}.sobreAcento sobre acento`)
+        .toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('todo rol de relleno se despega del fondo y de la superficie', () => {
     for (const [name, theme] of entries) {
       for (const rol of ROLES_RELLENO) {

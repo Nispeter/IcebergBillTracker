@@ -310,7 +310,7 @@ function crearEstilos(theme: Theme) {
       marginTop: spacing.md,
     },
     guardarApagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta },
+    guardarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
 
     borrar: { paddingVertical: spacing.md, alignItems: 'center' },
     borrarTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
