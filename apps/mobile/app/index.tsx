@@ -116,8 +116,6 @@ export default function Home() {
           })}
         </View>
 
-        <Text style={styles.notaEscala}>Cada muesca equivale a {money.format(money.money(r.unidad))}</Text>
-
         <Regla styles={styles} titulo="Movimientos recientes" />
         <View>
           {r.recientes.map((tx) => {
@@ -322,12 +320,6 @@ function crearEstilos(theme: Theme) {
       paddingVertical: spacing.sm,
     },
     nombreCategoria: { width: 88, fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    notaEscala: {
-      fontFamily: fonts.ui.regular,
-      fontSize: fontSizes.xs,
-      color: theme.silencio,
-      marginTop: spacing.sm,
-    },
     montoCategoria: {
       width: 76,
       textAlign: 'right',
