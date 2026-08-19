@@ -8,8 +8,8 @@
  * Ni un solo color literal en este archivo: todo sale de `@iceberg/ui`.
  */
 
-import { dates, money } from '@iceberg/core';
-import { generateSeed, type SeedTransaction } from '@iceberg/seed';
+import { categories, dates, money } from '@iceberg/core';
+import { gastoPorCategoria, generateSeed, saldoActual, type SeedTransaction } from '@iceberg/seed';
 import {
   charts, elevation, fontSizes, fonts, radii, spacing, themes,
   type Theme, type ThemeName,
@@ -47,14 +47,18 @@ export default function Pantalla() {
           </Pressable>
         </View>
 
+        {/* La cifra que la gente abre la app para ver. */}
         <View style={styles.tarjeta}>
-          <Text style={styles.etiqueta}>Gasto del mes</Text>
-          <Text style={styles.cifraDisplay}>{money.format(resumen.gasto)}</Text>
+          <Text style={styles.etiqueta}>Plata restante</Text>
+          <Text style={styles.cifraDisplay}>{money.format(resumen.saldo)}</Text>
+          <Text style={styles.pieCifra}>al {dates.formatDateLong(resumen.corte)}</Text>
+
+          <Separador styles={styles} />
 
           <View style={styles.filaCifras}>
             <Cifra styles={styles} etiqueta="Ingreso" valor={money.format(resumen.ingreso)} />
+            <Cifra styles={styles} etiqueta="Gasto" valor={money.format(resumen.gasto)} />
             <Cifra styles={styles} etiqueta="Neto" valor={money.formatSigned(resumen.neto)} />
-            <Cifra styles={styles} etiqueta="Ahorro" valor={resumen.tasaAhorro} />
           </View>
 
           <Separador styles={styles} />
@@ -72,6 +76,36 @@ export default function Pantalla() {
           </View>
         </View>
 
+        <Seccion styles={styles} titulo="Gasto por categoria">
+          <View style={styles.tarjeta}>
+            {resumen.porCategoria.map(({ categoria, total }, indice) => (
+              <View key={categoria}>
+                {indice > 0 ? <Separador styles={styles} /> : null}
+                <View style={styles.filaCategoria}>
+                  <Text style={styles.filaNombre} numberOfLines={1}>
+                    {categories.categoryName(categoria)}
+                  </Text>
+                  <Text style={styles.monto}>
+                    {money.formatNumber(total)}
+                  </Text>
+                </View>
+                {/* Barra ordenada por tamano, no coloreada por categoria: doce
+                    colores distintos serian un arcoiris, justo lo que el sistema
+                    de diseno prohibe. */}
+                <View style={styles.barraCategoria}>
+                  <View
+                    style={[
+                      styles.barraCategoriaRelleno,
+                      { flex: total.amountMinor },
+                    ]}
+                  />
+                  <View style={{ flex: Math.max(resumen.mayorCategoria - total.amountMinor, 0) }} />
+                </View>
+              </View>
+            ))}
+          </View>
+        </Seccion>
+
         <Seccion styles={styles} titulo="Ultimos movimientos">
           <View style={styles.tarjeta}>
             {resumen.recientes.map((tx, indice) => (
@@ -81,7 +115,8 @@ export default function Pantalla() {
                   <View style={styles.filaTexto}>
                     <Text style={styles.filaNombre} numberOfLines={1}>{tx.name}</Text>
                     <Text style={styles.filaMeta}>
-                      {dates.formatDate(tx.occurredAt)} · {tx.category}
+                      {dates.formatDate(tx.occurredAt)}
+                      {tx.category ? ` · ${categories.categoryName(tx.category)}` : ''}
                     </Text>
                   </View>
                   <Text style={tx.type === 'ingreso' ? styles.montoIngreso : styles.monto}>
@@ -185,17 +220,21 @@ function calcularResumen() {
 
   const gasto = total((tx) => tx.type === 'gasto');
   const ingreso = total((tx) => tx.type === 'ingreso');
-  const neto = money.subtract(ingreso, gasto);
-  const tasa = money.ratio(neto, ingreso);
+  const porCategoria = gastoPorCategoria(delMes);
 
   return {
     periodo: dates.formatDateLong(mes.start).replace(/^\d+ de /, ''),
+    corte: dataset.range.end,
+    // La plata que queda de verdad: saldo inicial mas todo lo que entro menos
+    // todo lo que salio en los 18 meses, no solo el neto del mes.
+    saldo: saldoActual(dataset),
     gasto,
     ingreso,
-    neto,
-    tasaAhorro: tasa === null ? '—' : `${(tasa * 100).toFixed(1)}%`,
+    neto: money.subtract(ingreso, gasto),
     fijo: total((tx) => tx.type === 'gasto' && tx.recurring),
     variable: total((tx) => tx.type === 'gasto' && !tx.recurring),
+    porCategoria,
+    mayorCategoria: porCategoria[0]?.total.amountMinor ?? 1,
     recientes: [...delMes].reverse().slice(0, 6),
     total: dataset.transactions.length,
   };
@@ -260,6 +299,7 @@ function crearEstilos(theme: Theme) {
       color: theme.tinta,
       letterSpacing: -1,
     },
+    pieCifra: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
     cifraChica: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.tinta },
     filaCifras: { flexDirection: 'row', gap: spacing.xl },
     cifraBloque: { gap: spacing.xs },
@@ -280,6 +320,16 @@ function crearEstilos(theme: Theme) {
 
     seccion: { gap: spacing.md },
     seccionTitulo: { fontFamily: fonts.ui.semibold, fontSize: fontSizes.lg, color: theme.tinta },
+
+    filaCategoria: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      gap: spacing.lg,
+      marginBottom: spacing.sm,
+    },
+    barraCategoria: { flexDirection: 'row', height: 6 },
+    barraCategoriaRelleno: { backgroundColor: charts[0], borderRadius: radii.sm },
 
     fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.lg },
     filaTexto: { flex: 1, gap: 2 },
