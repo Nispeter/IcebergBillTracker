@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@expo-google-fonts/hanken-grotesk": "^0.4.3",
-    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo-google-fonts/geist-mono": "^0.4.3",
+    "@expo-google-fonts/schibsted-grotesk": "^0.4.2",
     "@expo/metro-runtime": "~57.0.11",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@iceberg/core": "*",

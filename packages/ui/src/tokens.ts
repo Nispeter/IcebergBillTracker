@@ -178,32 +178,36 @@ export const spacing = {
 /**
  * Tipografia.
  *
- * `ui` es una grotesca; `mono` es monoespaciada y se usa en **toda** cifra de
- * dinero, sin excepcion. Al ser monoespaciada los digitos ocupan lo mismo y las
- * columnas de montos quedan alineadas cifra a cifra: es el detalle chico que
- * separa una app financiera seria de una plantilla.
+ * **Schibsted Grotesk** para la interfaz: una grotesca noruega de prensa, algo
+ * condensada y de formas sobrias. Aguanta bien la densidad de una tabla de
+ * movimientos y tiene caracter propio sin caer en lo ingenioso, que en una app
+ * de plata cansa rapido.
+ *
+ * **Geist Mono** para **toda** cifra de dinero, sin excepcion. Al ser
+ * monoespaciada los digitos ocupan lo mismo y las columnas de montos quedan
+ * alineadas cifra a cifra: el detalle chico que separa una app financiera seria
+ * de una plantilla.
  *
  * Cada peso es una familia propia, no un `fontWeight`. En React Native, poner
  * `fontFamily` y `fontWeight` juntos hace que Android sintetice la negrita
  * deformando la regular en vez de usar el archivo correcto. Por eso aca no hay
  * escala de pesos: se elige la familia y listo.
  *
- * Se eligio Hanken Grotesk por sobre Satoshi porque viene como paquete de
- * `@expo-google-fonts`, o sea sin archivos que versionar ni licencia que
- * revisar, y funciona igual en web y en Android. Cambiar de familia es cambiar
- * este objeto y el `useFonts` que las carga.
+ * Las dos vienen como paquete de `@expo-google-fonts`, o sea sin archivos que
+ * versionar ni licencia que revisar, y funcionan igual en web y en Android.
+ * Cambiar de familia es cambiar este objeto y el `useFonts` que las carga.
  */
 export const fonts = {
   ui: {
-    regular: 'HankenGrotesk_400Regular',
-    medium: 'HankenGrotesk_500Medium',
-    semibold: 'HankenGrotesk_600SemiBold',
-    bold: 'HankenGrotesk_700Bold',
+    regular: 'SchibstedGrotesk_400Regular',
+    medium: 'SchibstedGrotesk_500Medium',
+    semibold: 'SchibstedGrotesk_600SemiBold',
+    bold: 'SchibstedGrotesk_700Bold',
   },
   mono: {
-    regular: 'IBMPlexMono_400Regular',
-    medium: 'IBMPlexMono_500Medium',
-    semibold: 'IBMPlexMono_600SemiBold',
+    regular: 'GeistMono_400Regular',
+    medium: 'GeistMono_500Medium',
+    semibold: 'GeistMono_600SemiBold',
   },
 } as const;
 
