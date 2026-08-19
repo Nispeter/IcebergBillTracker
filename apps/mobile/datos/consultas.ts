@@ -57,10 +57,13 @@ export function useMovimientos(limite?: number): Movimiento[] {
 export function useSaldo(saldoInicialMinor: number): money.Money {
   const movimientos = useMovimientos();
   return useMemo(() => {
-    const total = movimientos.reduce(
-      (suma, m) => suma + (m.tipo === 'ingreso' ? m.montoMinor : -m.montoMinor),
-      saldoInicialMinor,
-    );
+    const total = movimientos.reduce((suma, m) => {
+      // Una transferencia mueve plata **entre cuentas propias**: no entra ni
+      // sale del hogar, asi que no toca el saldo total. Contarla como salida
+      // dejaba el saldo mas bajo que la suma real de las cuentas.
+      if (m.tipo === 'transferencia') return suma;
+      return suma + (m.tipo === 'ingreso' ? m.montoMinor : -m.montoMinor);
+    }, saldoInicialMinor);
     return money.money(total, 'CLP');
   }, [movimientos, saldoInicialMinor]);
 }
@@ -78,6 +81,8 @@ export function useResumenDelMes(referencia: dates.PlainDate): ResumenDelMes {
     const sumar = (filtro: (m: Movimiento) => boolean) =>
       money.money(delMes.filter(filtro).reduce((s, m) => s + m.montoMinor, 0), 'CLP');
 
+    // `transferencia` queda fuera de los dos a proposito, igual que en `useSaldo`:
+    // no es plata que entra ni que sale del hogar.
     const gasto = sumar((m) => m.tipo === 'gasto');
     const ingreso = sumar((m) => m.tipo === 'ingreso');
 
@@ -144,9 +149,18 @@ export function useSaldoInicial(): number {
   return useMemo(() => cuentas.reduce((s, c) => s + c.saldoInicialMinor, 0), [cuentas]);
 }
 
-/** La fecha del movimiento mas nuevo, o hoy si la base esta vacia. */
+/**
+ * Hasta que fecha mira Home.
+ *
+ * Es la del movimiento mas nuevo, **pero nunca mas alla de hoy**. Sin ese tope,
+ * un solo movimiento con fecha futura —un dedazo al escribir el ano, o una
+ * cuenta anotada por adelantado— arrastraba toda la pantalla a ese mes: el
+ * titulo, ingreso, gasto, neto, el iceberg y las categorias pasaban a mostrar un
+ * mes vacio mientras el saldo seguia contando todo.
+ */
 export function useFechaDeCorte(): dates.PlainDate {
   const movimientos = useMovimientos(1);
-  const primero = movimientos[0];
-  return (primero?.ocurridoEn as dates.PlainDate | undefined) ?? dates.today();
+  const masNuevo = movimientos[0]?.ocurridoEn as dates.PlainDate | undefined;
+  const hoy = dates.today();
+  return masNuevo === undefined ? hoy : dates.minDate(masNuevo, hoy);
 }
