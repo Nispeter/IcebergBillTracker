@@ -6,7 +6,7 @@
  * total", las barras dicen "cuanto mas que la siguiente".
  */
 
-import { categories, money } from '@iceberg/core';
+import { categories, dates, money } from '@iceberg/core';
 import {
   elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
 } from '@iceberg/ui';
@@ -15,19 +15,26 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarraSegmentada } from '../../components/BarraSegmentada';
 import { Pantalla } from '../../components/Pantalla';
+import { QueCambio } from '../../components/QueCambio';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAnalisisDeRango } from '../../datos/consultas';
-import { usePeriodo } from '../../datos/periodo';
+import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
 export default function Categorias() {
   const { theme } = useTema();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
-  const { rango, corte } = usePeriodo();
+  const { tipo, rango, corte } = usePeriodo();
   const router = useRouter();
 
   const a = useAnalisisDeRango(rango, corte);
+  // `nombreDePeriodo` viene con mayuscula porque normalmente es un titulo; aca
+  // va detras de "vs." y en medio de una frase.
+  const referencia = useMemo(() => {
+    const nombre = nombreDePeriodo(tipo, dates.previousPeriod(rango));
+    return nombre.charAt(0).toLowerCase() + nombre.slice(1);
+  }, [tipo, rango]);
   const unidad = niceUnit(a.mayorCategoria);
   const muescas = notchesFor(a.mayorCategoria, unidad);
 
@@ -36,6 +43,16 @@ export default function Categorias() {
       <ScrollView contentContainerStyle={styles.contenido}>
         <TortaDeCategorias
           porciones={a.porCategoria}
+          theme={theme}
+          onElegir={(categoriaId) => router.push({
+            pathname: '/movimientos',
+            params: { categoria: categoriaId },
+          })}
+        />
+
+        <QueCambio
+          deriva={a.deriva}
+          referencia={referencia}
           theme={theme}
           onElegir={(categoriaId) => router.push({
             pathname: '/movimientos',

@@ -7,13 +7,12 @@
 
 import { money } from '@iceberg/core';
 import { charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FilaMovimiento } from '../../components/FilaMovimiento';
 import { Iceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
-import { QueCambio } from '../../components/QueCambio';
 import {
   useAnalisisDeRango, useMovimientosFiltrados, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
@@ -24,7 +23,6 @@ export default function Resumen() {
   const { theme } = useTema();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte } = usePeriodo();
-  const router = useRouter();
 
   const saldo = useSaldo(useSaldoInicial());
   const a = useAnalisisDeRango(rango, corte);
@@ -63,16 +61,12 @@ export default function Resumen() {
             <Leyenda styles={styles} color={charts[0]} titulo="Variable" monto={money.format(variable)} />
           </View>
         </View>
-
-        <View style={styles.regla}>
-          <Text style={styles.reglaTitulo}>Qué cambió</Text>
-          <View style={styles.reglaLinea} />
-        </View>
-        <QueCambio
-          deriva={a.deriva}
-          theme={theme}
-          onElegir={(categoriaId) => router.push(`/movimientos?categoria=${categoriaId}`)}
-        />
+        {/* Dos montos sin una palabra que los separe no dicen nada. Es la unica
+            frase de la pantalla y se gana el lugar: sobre el variable es lo
+            unico que uno puede decidir, y eso es el margen real. */}
+        <Text style={styles.glosa}>
+          Comprometido llega igual —arriendo, cuentas, cuotas—. Variable es lo que decides tú.
+        </Text>
 
         <View style={styles.regla}>
           <Text style={styles.reglaTitulo}>Últimos movimientos</Text>
@@ -173,6 +167,7 @@ function crearEstilos(theme: Theme) {
     // Discreto a proposito: no compite con los movimientos que tiene encima.
     verTodos: { marginTop: spacing.md, alignItems: 'flex-end' },
     verTodosTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
+    glosa: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, lineHeight: 15, color: theme.silencio },
     sinMovimientos: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }
