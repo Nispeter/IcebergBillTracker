@@ -45,16 +45,44 @@ export function useMovimientos(limite?: number): Movimiento[] {
  * para F6.
  */
 export function useSaldo(saldoInicialMinor: number): money.Money {
+  return useDesgloseDelSaldo(saldoInicialMinor).saldo;
+}
+
+export interface DesgloseDelSaldo {
+  readonly saldo: money.Money;
+  readonly inicial: money.Money;
+  /** Todo lo que entro, desde siempre. */
+  readonly ingresos: money.Money;
+  /** Todo lo que salio, desde siempre. */
+  readonly gastos: money.Money;
+}
+
+/**
+ * El saldo y las tres piezas de las que sale.
+ *
+ * Existe para que la hoja de "de donde sale este numero" no tenga que rehacer
+ * la cuenta ni abrir una segunda consulta identica: si el desglose se calculara
+ * aparte, podria decir algo distinto de lo que muestra la cifra.
+ */
+export function useDesgloseDelSaldo(saldoInicialMinor: number): DesgloseDelSaldo {
   const movimientos = useMovimientos();
   return useMemo(() => {
-    const total = movimientos.reduce((suma, m) => {
+    let ingresos = 0;
+    let gastos = 0;
+    for (const m of movimientos) {
       // Una transferencia mueve plata **entre cuentas propias**: no entra ni
-      // sale del hogar, asi que no toca el saldo total. Contarla como salida
-      // dejaba el saldo mas bajo que la suma real de las cuentas.
-      if (m.tipo === 'transferencia') return suma;
-      return suma + (m.tipo === 'ingreso' ? m.montoMinor : -m.montoMinor);
-    }, saldoInicialMinor);
-    return money.money(total, 'CLP');
+      // sale del hogar, asi que no toca el saldo. Contarla como salida dejaba
+      // el saldo mas bajo que la suma real de las cuentas.
+      if (m.tipo === 'transferencia') continue;
+      if (m.tipo === 'ingreso') ingresos += m.montoMinor;
+      else gastos += m.montoMinor;
+    }
+    return {
+      saldo: money.money(saldoInicialMinor + ingresos - gastos, 'CLP'),
+      inicial: money.money(saldoInicialMinor, 'CLP'),
+      ingresos: money.money(ingresos, 'CLP'),
+      gastos: money.money(gastos, 'CLP'),
+    };
   }, [movimientos, saldoInicialMinor]);
 }
 
@@ -113,6 +141,11 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
  * "comprometido" se leera de la marca de cada movimiento y no de su categoria.
  */
 const COMPROMETIDAS = new Set(['vivienda', 'servicios', 'deudas', 'ahorros', 'impuestos']);
+
+/** Si un gasto de esa categoria cuenta como compromiso fijo. */
+export function esComprometido(categoriaId: string | null): boolean {
+  return categoriaId !== null && COMPROMETIDAS.has(categoriaId);
+}
 
 /**
  * Movimientos filtrados, reactivos.
