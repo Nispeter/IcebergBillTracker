@@ -9,8 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@expo-google-fonts/geist-mono": "^0.4.3",
-    "@expo-google-fonts/schibsted-grotesk": "^0.4.2",
     "@expo/metro-runtime": "~57.0.11",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@iceberg/core": "*",
@@ -20,7 +18,6 @@
     "drizzle-orm": "^0.45.2",
     "expo": "~57.0.14",
     "expo-constants": "~57.0.12",
-    "expo-font": "~57.0.1",
     "expo-linking": "~57.0.6",
     "expo-router": "~57.0.14",
     "expo-sqlite": "~57.0.1",
