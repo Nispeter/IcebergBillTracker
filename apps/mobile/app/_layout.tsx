@@ -69,6 +69,8 @@ function Contenido() {
             <Stack.Screen name="(app)" />
             <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
             <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="regla/nueva" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="regla/[id]" options={{ presentation: 'modal' }} />
           </Stack>
         </ConPeriodo>
       </ProveedorDeDatos>

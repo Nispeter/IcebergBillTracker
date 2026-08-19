@@ -12,7 +12,7 @@
  */
 
 import { dates, recurrence } from '@iceberg/core';
-import { and, eq, gte, inArray, isNull, lte, type SQL } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte, type SQL } from 'drizzle-orm';
 import { columnasEditadas, columnasNuevas, type Contexto } from '../contexto';
 import {
   instancias, reglas,
@@ -175,42 +175,45 @@ export function borrarRegla(db: BaseDeDatos, contexto: Contexto, id: string): bo
   return true;
 }
 
-function instanciasDe(
+/** La consulta sin ejecutar de las decisiones del rango, para `useLiveQuery`. */
+export function consultaDeInstancias(
   db: BaseDeDatos,
   contexto: Contexto,
-  ids: readonly string[],
   rango: dates.DateRange,
-): Instancia[] {
-  if (ids.length === 0) return [];
-  return db.select().from(instancias)
-    .where(and(
-      eq(instancias.householdId, contexto.householdId),
-      isNull(instancias.deletedAt),
-      inArray(instancias.reglaId, [...ids]),
-      gte(instancias.ocurreEn, rango.start),
-      lte(instancias.ocurreEn, rango.end),
-    )!)
-    .all() as Instancia[];
+) {
+  return db.select().from(instancias).where(and(
+    eq(instancias.householdId, contexto.householdId),
+    isNull(instancias.deletedAt),
+    gte(instancias.ocurreEn, rango.start),
+    lte(instancias.ocurreEn, rango.end),
+  )!);
 }
 
 /**
- * Las ocurrencias del rango con su estado, ordenadas por fecha.
+ * Combina reglas y decisiones en las ocurrencias del rango, ordenadas por fecha.
  *
- * Solo de reglas activas: una regla apagada conserva su historia pero deja de
- * proyectar.
+ * Va aparte de `proyectarTempanos` —que ademas consulta— porque la pantalla
+ * necesita las dos listas por `useLiveQuery`, que entrega filas y no puede
+ * llamar a una funcion que abre consultas por su cuenta. Con la parte pura
+ * suelta, la app y los tests hacen la misma cuenta.
+ *
+ * Solo proyecta reglas activas: una apagada conserva su historia pero deja de
+ * mirar hacia adelante.
  */
-export function proyectarTempanos(
-  db: BaseDeDatos,
-  contexto: Contexto,
+export function combinarTempanos(
+  todasLasReglas: readonly Regla[],
+  decisiones: readonly Instancia[],
   rango: dates.DateRange,
   hoy: dates.PlainDate,
 ): Tempano[] {
-  const activas = listarReglas(db, contexto).filter((regla) => regla.activa === 1);
-  const decididas = instanciasDe(db, contexto, activas.map((r) => r.id), rango);
+  const activas = todasLasReglas.filter((regla) => regla.activa === 1 && regla.deletedAt === null);
 
   // Clave compuesta: una regla puede tener varias fechas decididas en el rango.
   const porClave = new Map<string, Instancia>();
-  for (const instancia of decididas) porClave.set(`${instancia.reglaId}|${instancia.ocurreEn}`, instancia);
+  for (const instancia of decisiones) {
+    if (instancia.deletedAt !== null) continue;
+    porClave.set(`${instancia.reglaId}|${instancia.ocurreEn}`, instancia);
+  }
 
   const salida: Tempano[] = [];
   for (const regla of activas) {
@@ -237,6 +240,21 @@ export function proyectarTempanos(
 
   return salida.sort((a, b) =>
     dates.compareDates(a.ocurreEn, b.ocurreEn) || a.regla.nombre.localeCompare(b.regla.nombre));
+}
+
+/** Lo mismo, consultando la base. Lo que usan los tests y cualquier script. */
+export function proyectarTempanos(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  rango: dates.DateRange,
+  hoy: dates.PlainDate,
+): Tempano[] {
+  return combinarTempanos(
+    listarReglas(db, contexto),
+    consultaDeInstancias(db, contexto, rango).all() as Instancia[],
+    rango,
+    hoy,
+  );
 }
 
 /**

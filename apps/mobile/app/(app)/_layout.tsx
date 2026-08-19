@@ -18,6 +18,7 @@ export default function AppLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="categorias" />
       <Stack.Screen name="calendario" />
+      <Stack.Screen name="tempanos" />
       <Stack.Screen name="movimientos" />
       <Stack.Screen name="ajustes" />
     </Stack>

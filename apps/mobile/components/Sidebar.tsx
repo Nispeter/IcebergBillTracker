@@ -20,6 +20,7 @@ import { usePathname, useRouter } from 'expo-router';
 import { CalendarBlank } from 'phosphor-react-native/src/icons/CalendarBlank';
 import { ChartPieSlice } from 'phosphor-react-native/src/icons/ChartPieSlice';
 import { Gear } from 'phosphor-react-native/src/icons/Gear';
+import { Snowflake } from 'phosphor-react-native/src/icons/Snowflake';
 import { ListBullets } from 'phosphor-react-native/src/icons/ListBullets';
 import { Waves } from 'phosphor-react-native/src/icons/Waves';
 import { X } from 'phosphor-react-native/src/icons/X';
@@ -37,6 +38,7 @@ const DESTINOS: readonly Destino[] = [
   { ruta: '/', etiqueta: 'Resumen', icono: Waves },
   { ruta: '/categorias', etiqueta: 'Categorías', icono: ChartPieSlice },
   { ruta: '/calendario', etiqueta: 'Día a día', icono: CalendarBlank },
+  { ruta: '/tempanos', etiqueta: 'Témpanos', icono: Snowflake },
   { ruta: '/movimientos', etiqueta: 'Movimientos', icono: ListBullets },
   { ruta: '/ajustes', etiqueta: 'Ajustes', icono: Gear },
 ];

@@ -18,8 +18,10 @@
 
 import { analytics, dates, money } from '@iceberg/core';
 import {
-  consultaDeCuentas, consultaDeMovimientos, resumenDeMovimientos,
-  type Cuenta, type FiltroDeMovimientos, type Movimiento, type ResumenDeFiltro,
+  combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeMovimientos,
+  consultaDeReglas, resumenDeMovimientos,
+  type Cuenta, type FiltroDeMovimientos, type Instancia, type Movimiento, type Regla,
+  type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
@@ -261,4 +263,40 @@ export function useAnomalias(): ReadonlySet<string> {
       (m) => m.montoMinor,
     ).map((anomalia) => anomalia.item.id),
   ), [movimientos]);
+}
+
+/** Las reglas de recurrencia del hogar, reactivas. */
+export function useReglas(): Regla[] {
+  const { db, contexto } = useDatos();
+  const consulta = useMemo(() => consultaDeReglas(db, contexto), [db, contexto]);
+  const { data } = useLiveQuery(consulta, []);
+  return (data ?? []) as Regla[];
+}
+
+/**
+ * Los tempanos del rango: cada ocurrencia con lo que se haya decidido sobre ella.
+ *
+ * Se piden las dos tablas por separado y se combinan en memoria porque
+ * `useLiveQuery` entrega filas de **una** consulta: no puede llamar a una
+ * funcion que abre varias. La combinacion vive en `@iceberg/db`, asi que la
+ * pantalla y los tests hacen exactamente la misma cuenta.
+ */
+export function useTempanos(rango: dates.DateRange, hoy: dates.PlainDate): Tempano[] {
+  const { db, contexto } = useDatos();
+  const reglas = useReglas();
+
+  const clave = `${rango.start}:${rango.end}`;
+  const consulta = useMemo(
+    () => consultaDeInstancias(db, contexto, rango),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [db, contexto, clave],
+  );
+  const { data } = useLiveQuery(consulta, [clave]);
+  const decisiones = (data ?? []) as Instancia[];
+
+  return useMemo(
+    () => combinarTempanos(reglas, decisiones, rango, hoy),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reglas, decisiones, clave, hoy],
+  );
 }
