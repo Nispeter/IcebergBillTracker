@@ -11,9 +11,9 @@ import type { TipoDeMovimiento } from '@iceberg/db';
 import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
-import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SelectorDesplegable } from './SelectorDesplegable';
 import { iconoDeCategoria } from './iconos';
 
 export interface ValoresDelFormulario {
@@ -62,7 +62,14 @@ export function FormularioMovimiento({
     && nombre.trim().length > 0
     && fechaParseada !== null;
 
-  const IconoElegido = categoriaId === null ? null : iconoDeCategoria(categoriaId);
+  const opcionesDeCategoria = useMemo(() => [
+    { valor: null, etiqueta: 'Sin categoría' },
+    ...categories.CATEGORIES.map((categoria) => ({
+      valor: categoria.id,
+      etiqueta: categoria.nombreCorto,
+      icono: iconoDeCategoria(categoria.id),
+    })),
+  ], []);
 
   return (
     <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
@@ -138,67 +145,22 @@ export function FormularioMovimiento({
 
       {pideCategoria ? (
         <Campo styles={styles} etiqueta="Categoría">
-          {/* Doce chips siempre visibles ocupaban media pantalla para un campo
-              que la mayoria de las veces no se toca. Se muestra la elegida y la
-              lista aparece solo al pedirla. */}
-          <Pressable
-            onPress={() => setEligiendoCategoria(!eligiendoCategoria)}
-            style={styles.selectorCategoria}
-            accessibilityRole="button"
-            accessibilityLabel={
+          <SelectorDesplegable
+            theme={theme}
+            resumen={categoriaId === null ? 'Sin categoría' : categories.categoryName(categoriaId)}
+            icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
+            vacio={categoriaId === null}
+            abierto={eligiendoCategoria}
+            onAlternar={() => setEligiendoCategoria(!eligiendoCategoria)}
+            opciones={opcionesDeCategoria}
+            seleccionado={categoriaId}
+            onElegir={(valor) => { setCategoriaId(valor); setEligiendoCategoria(false); }}
+            accesible={
               categoriaId === null
                 ? 'Elegir categoría'
                 : `Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`
             }
-            accessibilityState={{ expanded: eligiendoCategoria }}
-          >
-            {IconoElegido ? (
-              <IconoElegido size={18} weight="regular" color={theme.tinta} />
-            ) : null}
-            <Text style={categoriaId === null ? styles.categoriaVacia : styles.categoriaElegida}>
-              {categoriaId === null ? 'Sin categoría' : categories.categoryName(categoriaId)}
-            </Text>
-            <CaretDown
-              size={14}
-              weight="bold"
-              color={theme.silencio}
-              style={{ transform: [{ rotate: eligiendoCategoria ? '180deg' : '0deg' }] }}
-            />
-          </Pressable>
-
-          {eligiendoCategoria ? (
-            <View style={styles.categorias}>
-              {categoriaId !== null ? (
-                <Pressable
-                  onPress={() => { setCategoriaId(null); setEligiendoCategoria(false); }}
-                  style={styles.chip}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.chipTexto}>Sin categoría</Text>
-                </Pressable>
-              ) : null}
-              {categories.CATEGORIES.map((categoria) => {
-                const Icono = iconoDeCategoria(categoria.id);
-                const activa = categoriaId === categoria.id;
-                return (
-                  <Pressable
-                    key={categoria.id}
-                    onPress={() => { setCategoriaId(categoria.id); setEligiendoCategoria(false); }}
-                    style={[styles.chip, activa && styles.chipActivo]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: activa }}
-                  >
-                    {Icono ? (
-                      <Icono size={14} weight="regular" color={activa ? theme.fondo : theme.silencio} />
-                    ) : null}
-                    <Text style={activa ? styles.chipTextoActivo : styles.chipTexto}>
-                      {categoria.nombreCorto}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : null}
+          />
         </Campo>
       ) : null}
 
@@ -328,42 +290,6 @@ function crearEstilos(theme: Theme) {
     aviso: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     error: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
 
-    selectorCategoria: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-      paddingVertical: spacing.md,
-    },
-    categoriaElegida: {
-      flex: 1,
-      fontFamily: fonts.ui,
-      fontWeight: pesos.medium,
-      fontSize: fontSizes.md,
-      color: theme.tinta,
-    },
-    categoriaVacia: {
-      flex: 1,
-      fontFamily: fonts.ui,
-      fontWeight: pesos.regular,
-      fontSize: fontSizes.md,
-      color: theme.silencio,
-    },
-    categorias: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
-    chip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    chipActivo: { backgroundColor: theme.tinta, borderColor: theme.tinta },
-    chipTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    chipTextoActivo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.fondo },
 
     guardar: {
       backgroundColor: theme.acento,

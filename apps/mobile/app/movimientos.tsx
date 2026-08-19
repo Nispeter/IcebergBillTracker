@@ -17,6 +17,8 @@ import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FilaMovimiento } from '../components/FilaMovimiento';
+import { SelectorDesplegable } from '../components/SelectorDesplegable';
+import { iconoDeCategoria } from '../components/iconos';
 import { useMovimientosFiltrados } from '../datos/consultas';
 import { volver } from '../datos/navegacion';
 import { useTema } from '../datos/tema';
@@ -28,6 +30,7 @@ export default function Movimientos() {
 
   const [tipo, setTipo] = useState<TipoDeMovimiento | null>(null);
   const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(null);
+  const [abierto, setAbierto] = useState<'tipo' | 'categoria' | null>(null);
 
   const filtro = useMemo<FiltroDeMovimientos>(
     () => ({
@@ -37,6 +40,21 @@ export default function Movimientos() {
     [tipo, categoriaId],
   );
   const movimientos = useMovimientosFiltrados(filtro);
+
+  const opcionesDeTipo = useMemo(() => [
+    { valor: null, etiqueta: 'Todos' },
+    { valor: 'gasto' as const, etiqueta: 'Gastos' },
+    { valor: 'ingreso' as const, etiqueta: 'Ingresos' },
+  ], []);
+
+  const opcionesDeCategoria = useMemo(() => [
+    { valor: null, etiqueta: 'Todas' },
+    ...categories.CATEGORIES.map((categoria) => ({
+      valor: categoria.id,
+      etiqueta: categoria.nombreCorto,
+      icono: iconoDeCategoria(categoria.id),
+    })),
+  ], []);
 
   // Los montos se guardan **sin signo**; el signo lo da el tipo. Sumarlos a
   // secas daba un numero sin sentido: $500.000 de ingreso mas $300.000 de gasto
@@ -78,28 +96,33 @@ export default function Movimientos() {
           {movimientos.length} {movimientos.length === 1 ? 'movimiento' : 'movimientos'} · {money.formatSigned(total)}
         </Text>
 
+        {/* Antes eran quince chips siempre a la vista: empujaban la lista
+            fuera de la primera pantalla para mostrar un filtro que la mayoria
+            de las veces esta en "todos". */}
         <View style={styles.filtros}>
-          <Chip styles={styles} activo={tipo === null} onPress={() => setTipo(null)} texto="Todos" />
-          <Chip styles={styles} activo={tipo === 'gasto'} onPress={() => setTipo('gasto')} texto="Gastos" />
-          <Chip styles={styles} activo={tipo === 'ingreso'} onPress={() => setTipo('ingreso')} texto="Ingresos" />
-        </View>
-
-        <View style={styles.filtros}>
-          <Chip
-            styles={styles}
-            activo={categoriaId === null}
-            onPress={() => setCategoriaId(null)}
-            texto="Toda categoría"
+          <SelectorDesplegable
+            theme={theme}
+            resumen={tipo === null ? 'Todos los movimientos' : tipo === 'gasto' ? 'Solo gastos' : 'Solo ingresos'}
+            vacio={tipo === null}
+            abierto={abierto === 'tipo'}
+            onAlternar={() => setAbierto(abierto === 'tipo' ? null : 'tipo')}
+            opciones={opcionesDeTipo}
+            seleccionado={tipo}
+            onElegir={(valor) => { setTipo(valor); setAbierto(null); }}
+            accesible="Filtrar por tipo"
           />
-          {categories.CATEGORIES.map((categoria) => (
-            <Chip
-              key={categoria.id}
-              styles={styles}
-              activo={categoriaId === categoria.id}
-              onPress={() => setCategoriaId(categoriaId === categoria.id ? null : categoria.id)}
-              texto={categoria.nombreCorto}
-            />
-          ))}
+          <SelectorDesplegable
+            theme={theme}
+            resumen={categoriaId === null ? 'Todas las categorías' : categories.categoryName(categoriaId)}
+            icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
+            vacio={categoriaId === null}
+            abierto={abierto === 'categoria'}
+            onAlternar={() => setAbierto(abierto === 'categoria' ? null : 'categoria')}
+            opciones={opcionesDeCategoria}
+            seleccionado={categoriaId}
+            onElegir={(valor) => { setCategoriaId(valor); setAbierto(null); }}
+            accesible="Filtrar por categoría"
+          />
         </View>
 
         {movimientos.length === 0 ? (
@@ -117,22 +140,6 @@ export default function Movimientos() {
 }
 
 type Estilos = ReturnType<typeof crearEstilos>;
-
-function Chip(
-  { styles, activo, onPress, texto }:
-  { styles: Estilos; activo: boolean; onPress: () => void; texto: string },
-) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, activo && styles.chipActivo]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: activo }}
-    >
-      <Text style={activo ? styles.chipTextoActivo : styles.chipTexto}>{texto}</Text>
-    </Pressable>
-  );
-}
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
@@ -165,17 +172,7 @@ function crearEstilos(theme: Theme) {
       marginBottom: spacing.xl,
     },
 
-    filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-    chip: {
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    chipActivo: { backgroundColor: theme.tinta, borderColor: theme.tinta },
-    chipTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    chipTextoActivo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.fondo },
+    filtros: { marginBottom: spacing.md },
 
     vacio: {
       fontFamily: fonts.ui,
