@@ -1,0 +1,17 @@
+diff --git a/node_modules/expo-sqlite/web/WorkerChannel.ts b/node_modules/expo-sqlite/web/WorkerChannel.ts
+index 7fba380..7fd3a24 100644
+--- a/node_modules/expo-sqlite/web/WorkerChannel.ts
++++ b/node_modules/expo-sqlite/web/WorkerChannel.ts
+@@ -40,7 +40,11 @@ export function sendWorkerResult({
+     const resultJson = error != null ? serialize({ error }) : serialize({ result });
+     const resultBytes = new TextEncoder().encode(resultJson);
+     const length = resultBytes.length;
+-    resultArray.set(new Uint32Array([length]), 0);
++    // FIX (iceberg): `resultArray` es Uint8Array, asi que `.set(new Uint32Array(...))`
++    // convierte elemento a elemento y escribe UN solo byte: length & 0xFF. El
++    // lector en cambio lee 4 bytes, asi que todo resultado de mas de 255 bytes
++    // llega truncado y revienta con "Unterminated string in JSON".
++    new DataView(resultBuffer).setUint32(0, length, true);
+     resultArray.set(resultBytes, 4);
+     Atomics.store(lock, 0, RESOLVED);
+   } else {
