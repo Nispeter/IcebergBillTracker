@@ -13,7 +13,7 @@ import {
 } from '@iceberg/ui';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SelectorDesplegable } from './SelectorDesplegable';
+import { ChipDisparador, ListaDeOpciones } from './SelectorDesplegable';
 import { iconoDeCategoria } from './iconos';
 
 export interface ValoresDelFormulario {
@@ -66,7 +66,7 @@ export function FormularioMovimiento({
     { valor: null, etiqueta: 'Sin categoría' },
     ...categories.CATEGORIES.map((categoria) => ({
       valor: categoria.id,
-      etiqueta: categoria.nombreCorto,
+      etiqueta: categoria.nombre,
       icono: iconoDeCategoria(categoria.id),
     })),
   ], []);
@@ -145,22 +145,32 @@ export function FormularioMovimiento({
 
       {pideCategoria ? (
         <Campo styles={styles} etiqueta="Categoría">
-          <SelectorDesplegable
-            theme={theme}
-            resumen={categoriaId === null ? 'Sin categoría' : categories.categoryName(categoriaId)}
-            icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
-            vacio={categoriaId === null}
-            abierto={eligiendoCategoria}
-            onAlternar={() => setEligiendoCategoria(!eligiendoCategoria)}
-            opciones={opcionesDeCategoria}
-            seleccionado={categoriaId}
-            onElegir={(valor) => { setCategoriaId(valor); setEligiendoCategoria(false); }}
-            accesible={
-              categoriaId === null
-                ? 'Elegir categoría'
-                : `Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`
-            }
-          />
+          <View style={styles.filaChip}>
+            <ChipDisparador
+              theme={theme}
+              etiqueta={categoriaId === null ? 'Sin categoría' : categories.categoryShortName(categoriaId)}
+              icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
+              abierto={eligiendoCategoria}
+              activo={categoriaId !== null}
+              onPress={() => setEligiendoCategoria(!eligiendoCategoria)}
+              accesible={
+                categoriaId === null
+                  ? 'Elegir categoría'
+                  : `Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`
+              }
+            />
+          </View>
+          {eligiendoCategoria ? (
+            <ListaDeOpciones
+              theme={theme}
+              opciones={opcionesDeCategoria}
+              seleccionado={categoriaId}
+              onElegir={(valor: categories.CategoryId | null) => {
+                setCategoriaId(valor);
+                setEligiendoCategoria(false);
+              }}
+            />
+          ) : null}
         </Campo>
       ) : null}
 
@@ -250,6 +260,7 @@ function crearEstilos(theme: Theme) {
     opcionTextoActivo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.fondo },
 
     campo: { gap: spacing.sm },
+    filaChip: { flexDirection: 'row' },
     etiqueta: {
       fontFamily: fonts.ui,
       fontWeight: pesos.medium,

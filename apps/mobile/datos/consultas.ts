@@ -18,7 +18,8 @@
 
 import { analytics, dates, money } from '@iceberg/core';
 import {
-  consultaDeCuentas, consultaDeMovimientos, type Cuenta, type FiltroDeMovimientos, type Movimiento,
+  consultaDeCuentas, consultaDeMovimientos, resumenDeMovimientos,
+  type Cuenta, type FiltroDeMovimientos, type Movimiento, type ResumenDeFiltro,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
@@ -170,6 +171,22 @@ export function useAnalisisDelMes(referencia: dates.PlainDate) {
       deriva: analytics.derivaPorCategoria(analizables, rango, dates.previousPeriod(rango)),
     };
   }, [movimientos, referencia]);
+}
+
+/**
+ * Cuantos movimientos cumplen el filtro y cuanto suman, **sin traerlos**.
+ *
+ * Va aparte de la lista porque con paginado el encabezado tiene que decir el
+ * total, no lo que se alcanzo a cargar. Se recalcula cuando cambian los
+ * movimientos —el largo de la lista alcanza como senal— o cuando cambia el
+ * filtro.
+ */
+export function useResumenDeFiltro(filtro: FiltroDeMovimientos): ResumenDeFiltro {
+  const { db, contexto } = useDatos();
+  const movimientos = useMovimientos();
+  const clave = JSON.stringify(filtro);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => resumenDeMovimientos(db, contexto, filtro), [db, contexto, clave, movimientos]);
 }
 
 /** Las cuentas vivas del hogar. */
