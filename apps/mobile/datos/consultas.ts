@@ -11,7 +11,9 @@
  */
 
 import { dates, money } from '@iceberg/core';
-import { consultaDeCuentas, consultaDeMovimientos, type Cuenta, type Movimiento } from '@iceberg/db';
+import {
+  consultaDeCuentas, consultaDeMovimientos, type Cuenta, type FiltroDeMovimientos, type Movimiento,
+} from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
 import { useDatos } from './BaseDeDatos';
@@ -107,6 +109,25 @@ export function useResumenDelMes(referencia: dates.PlainDate): ResumenDelMes {
       mayorCategoria: porCategoria[0]?.total.amountMinor ?? 1,
     };
   }, [movimientos, referencia]);
+}
+
+/**
+ * Movimientos filtrados, reactivos.
+ *
+ * El filtro va a SQL, no a un `.filter()` sobre todo lo cargado: con 50.000
+ * movimientos la diferencia deja de ser academica.
+ */
+export function useMovimientosFiltrados(filtro: FiltroDeMovimientos): Movimiento[] {
+  const { db, contexto } = useDatos();
+  const clave = JSON.stringify(filtro);
+  const consulta = useMemo(
+    () => consultaDeMovimientos(db, contexto, filtro),
+    // El filtro es un objeto nuevo en cada render; se compara por su contenido.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [db, contexto, clave],
+  );
+  const { data } = useLiveQuery(consulta);
+  return (data ?? []) as Movimiento[];
 }
 
 /** Las cuentas vivas del hogar. */

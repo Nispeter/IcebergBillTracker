@@ -14,7 +14,7 @@
 import { categories, dates, money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
-  charts, elevation, fontSizes, fonts, niceUnit, notchesFor, radii, spacing, themes,
+  charts, elevation, fontSizes, fonts, pesos, niceUnit, notchesFor, radii, spacing, themes,
   type Theme, type ThemeName,
 } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
@@ -149,13 +149,32 @@ export default function Home() {
           })}
         </View>
 
-        <Regla styles={styles} titulo="Movimientos recientes" />
+        <Regla
+          styles={styles}
+          titulo="Movimientos recientes"
+          accion={(
+            <Link href="/movimientos" asChild>
+              <Pressable accessibilityRole="button">
+                <Text style={styles.verTodos}>Ver todos</Text>
+              </Pressable>
+            </Link>
+          )}
+        />
         <View>
           {r.recientes.map((tx: Movimiento) => {
             const fecha = tx.ocurridoEn as dates.PlainDate;
             const Icono = tx.categoriaId ? iconoDeCategoria(tx.categoriaId) : null;
             return (
-              <View key={tx.id} style={styles.filaMovimiento}>
+              <Link
+                key={tx.id}
+                href={{ pathname: '/movimiento/[id]', params: { id: tx.id } }}
+                asChild
+              >
+                <Pressable
+                  style={styles.filaMovimiento}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Editar ${tx.nombre}`}
+                >
                 <View style={styles.marcaFecha}>
                   <Text style={styles.dia}>{dates.day(fecha)}</Text>
                   <Text style={styles.mes}>{MESES[dates.month(fecha) - 1]}</Text>
@@ -173,7 +192,8 @@ export default function Home() {
                   {tx.tipo === 'ingreso' ? '+' : '−'}
                   {money.formatNumber(money.money(tx.montoMinor))}
                 </Text>
-              </View>
+                </Pressable>
+              </Link>
             );
           })}
         </View>
@@ -194,11 +214,15 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 type Estilos = ReturnType<typeof crearEstilos>;
 
 /** Separador de seccion: etiqueta chica y una linea que se va hasta el borde. */
-function Regla({ styles, titulo }: { styles: Estilos; titulo: string }) {
+function Regla(
+  { styles, titulo, accion }:
+  { styles: Estilos; titulo: string; accion?: ReactNode },
+) {
   return (
     <View style={styles.regla}>
       <Text style={styles.reglaTitulo}>{titulo}</Text>
       <View style={styles.reglaLinea} />
+      {accion}
     </View>
   );
 }
@@ -250,12 +274,12 @@ function crearEstilos(theme: Theme) {
       paddingBottom: spacing.xxl,
     },
     marca: {
-      fontFamily: fonts.ui.bold,
+      fontFamily: fonts.ui, fontWeight: pesos.bold,
       fontSize: fontSizes.sm,
       color: theme.tinta,
       letterSpacing: 3,
     },
-    cambioTema: { fontFamily: fonts.ui.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    cambioTema: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
     accionesEncabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
     botonAgregar: {
       width: 32,
@@ -270,19 +294,19 @@ function crearEstilos(theme: Theme) {
     heroFila: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
     // El simbolo de moneda va mas chico y apagado: lo que se lee es la cifra.
     heroSimbolo: {
-      fontFamily: fonts.mono.regular,
+      fontFamily: fonts.mono, fontWeight: pesos.regular,
       fontSize: fontSizes.lg,
       color: theme.silencio,
       marginTop: spacing.sm,
     },
     heroCifra: {
-      fontFamily: fonts.mono.medium,
+      fontFamily: fonts.mono, fontWeight: pesos.medium,
       fontSize: 56,
       lineHeight: 60,
       color: theme.tinta,
       letterSpacing: -2,
     },
-    heroPie: { fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.silencio },
+    heroPie: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio },
 
     bloqueIceberg: {
       flexDirection: 'row',
@@ -294,9 +318,9 @@ function crearEstilos(theme: Theme) {
     leyenda: { flexDirection: 'row', gap: spacing.md },
     leyendaBarra: { width: 3, borderRadius: radii.full },
     leyendaTextos: { flex: 1, gap: 1 },
-    leyendaTitulo: { fontFamily: fonts.ui.medium, fontSize: fontSizes.xs, color: theme.silencio },
-    leyendaMonto: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.tinta },
-    leyendaNota: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    leyendaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.silencio },
+    leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
+    leyendaNota: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
 
     regla: {
       flexDirection: 'row',
@@ -305,8 +329,9 @@ function crearEstilos(theme: Theme) {
       marginTop: spacing.xxl,
       marginBottom: spacing.md,
     },
-    reglaTitulo: { fontFamily: fonts.ui.semibold, fontSize: fontSizes.sm, color: theme.tinta },
+    reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
+    verTodos: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
     filaCifra: {
       flexDirection: 'row',
@@ -314,9 +339,9 @@ function crearEstilos(theme: Theme) {
       justifyContent: 'space-between',
       paddingVertical: spacing.sm,
     },
-    etiquetaCifra: { fontFamily: fonts.ui.regular, fontSize: fontSizes.md, color: theme.silencio },
-    valorCifra: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.tinta },
-    valorDestacado: { fontFamily: fonts.mono.medium, fontSize: fontSizes.lg, color: theme.tinta },
+    etiquetaCifra: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.silencio },
+    valorCifra: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.tinta },
+    valorDestacado: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.lg, color: theme.tinta },
 
     filaCategoria: {
       flexDirection: 'row',
@@ -324,11 +349,11 @@ function crearEstilos(theme: Theme) {
       gap: spacing.md,
       paddingVertical: spacing.sm,
     },
-    nombreCategoria: { width: 88, fontFamily: fonts.ui.regular, fontSize: fontSizes.sm, color: theme.tinta },
+    nombreCategoria: { width: 88, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
     montoCategoria: {
       width: 76,
       textAlign: 'right',
-      fontFamily: fonts.mono.regular,
+      fontFamily: fonts.mono, fontWeight: pesos.regular,
       fontSize: fontSizes.sm,
       color: theme.tinta,
     },
@@ -342,19 +367,19 @@ function crearEstilos(theme: Theme) {
       borderBottomColor: theme.hairline,
     },
     marcaFecha: { width: 30, alignItems: 'center' },
-    dia: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.tinta },
-    mes: { fontFamily: fonts.ui.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase' },
+    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
+    mes: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase' },
     textoMovimiento: { flex: 1, gap: 2 },
-    nombreMovimiento: { fontFamily: fonts.ui.medium, fontSize: fontSizes.md, color: theme.tinta },
+    nombreMovimiento: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
     metaMovimiento: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    categoriaMovimiento: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    montoGasto: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.gasto },
+    categoriaMovimiento: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.gasto },
     // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
     // hasta cumplir AA, en oscuro es la misma aurora viva.
-    montoIngreso: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.ingresoTexto },
+    montoIngreso: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.ingresoTexto },
 
     pie: {
-      fontFamily: fonts.ui.regular,
+      fontFamily: fonts.ui, fontWeight: pesos.regular,
       fontSize: fontSizes.xs,
       color: theme.silencio,
       textAlign: 'center',
