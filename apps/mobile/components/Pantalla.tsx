@@ -1,5 +1,5 @@
 /**
- * El marco que comparten todas las vistas: marca, acciones y barra de periodo.
+ * El marco que comparten todas las vistas: menu, marca, acciones y periodo.
  *
  * Existe para que el periodo este **en todas partes**. Si cada pantalla armara
  * su propio encabezado, tarde o temprano alguna se olvidaria de la barra y el
@@ -9,45 +9,54 @@
 import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { List } from 'phosphor-react-native/src/icons/List';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BarraDePeriodo } from './BarraDePeriodo';
+import { Sidebar } from './Sidebar';
 import { useTema } from '../datos/tema';
 
 export function Pantalla({ children, sinPeriodo }: { children: ReactNode; sinPeriodo?: boolean }) {
-  const { nombre: tema, theme, alternar } = useTema();
+  const { nombre: tema, theme } = useTema();
   const styles = crearEstilos(theme);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   return (
     <View style={styles.raiz}>
       <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
       <View style={styles.marco}>
         <View style={styles.encabezado}>
-          <Text style={styles.marca}>ICEBERG</Text>
-          <View style={styles.acciones}>
+          <Pressable
+            onPress={() => setMenuAbierto(true)}
+            style={styles.boton}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir menú"
+            hitSlop={8}
+          >
+            <List size={15} weight="bold" color={theme.tinta} />
+          </Pressable>
+
+          {sinPeriodo ? <Text style={styles.marca}>ICEBERG</Text> : (
+            <View style={styles.periodo}><BarraDePeriodo theme={theme} /></View>
+          )}
+
+          <Link href="/nuevo" asChild>
             <Pressable
-              onPress={alternar}
-              style={styles.botonTema}
+              style={styles.botonAgregar}
               accessibilityRole="button"
-              accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
+              accessibilityLabel="Agregar movimiento"
             >
-              <Text style={styles.textoTema}>{tema === 'dark' ? 'Deshielo' : 'Noche polar'}</Text>
+              <Plus size={14} weight="bold" color={theme.sobreAcento} />
+              <Text style={styles.agregarTexto}>Agregar</Text>
             </Pressable>
-            <Link href="/nuevo" asChild>
-              <Pressable
-                style={styles.botonAgregar}
-                accessibilityRole="button"
-                accessibilityLabel="Agregar movimiento"
-              >
-                <Plus size={16} weight="bold" color={theme.fondo} />
-              </Pressable>
-            </Link>
-          </View>
+          </Link>
         </View>
-        {sinPeriodo ? null : <BarraDePeriodo theme={theme} />}
       </View>
+
       {children}
+
+      <Sidebar theme={theme} abierta={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
     </View>
   );
 }
@@ -57,32 +66,43 @@ function crearEstilos(theme: Theme) {
     raiz: { flex: 1, backgroundColor: theme.fondo },
     marco: {
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.xl,
-      paddingBottom: spacing.md,
-      gap: spacing.md,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.sm,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',
     },
-    encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    marca: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
-    acciones: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    // Con borde: sin el, el texto suelto no se lee como algo que se pueda tocar.
-    botonTema: {
-      paddingVertical: 4,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radii.full,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    textoTema: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
-    botonAgregar: {
-      width: 28,
-      height: 28,
+    // El periodo va en la misma linea que el menu y el mas: es marco, no
+    // contenido, y no merece una franja propia.
+    encabezado: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+    periodo: { flex: 1, paddingTop: 1 },
+    marca: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
+    boton: {
+      width: 26,
+      height: 26,
       borderRadius: radii.full,
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: elevation.hairlineWidth,
+      borderColor: theme.hairline,
+    },
+    // La accion principal de la app no puede ser un circulo de 26px igual al
+    // del menu: lleva su nombre escrito y el color de acento para que se lea
+    // como el boton, no como un icono mas de la fila.
+    botonAgregar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      height: 26,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radii.full,
       backgroundColor: theme.acento,
+    },
+    agregarTexto: {
+      fontFamily: fonts.ui,
+      fontWeight: pesos.bold,
+      fontSize: fontSizes.xs,
+      color: theme.sobreAcento,
     },
   });
 }

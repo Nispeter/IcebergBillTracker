@@ -66,7 +66,7 @@ function Contenido() {
       >
         <ConPeriodo>
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(app)" />
             <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
             <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />
           </Stack>

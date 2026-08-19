@@ -17,7 +17,7 @@ import type { useRouter } from 'expo-router';
 type Router = ReturnType<typeof useRouter>;
 
 /** Ruta a la que caer cuando no hay historial: el resumen. */
-const INICIO = '/(tabs)' as const;
+const INICIO = '/(app)' as const;
 
 export function volver(router: Router): void {
   if (router.canGoBack()) {
