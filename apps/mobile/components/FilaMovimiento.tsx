@@ -16,6 +16,10 @@ import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
 
+/** Lo que dice el `?` de las pantallas que muestran el punto. */
+export const EXPLICACION_ANOMALIA = 'El punto ámbar marca un gasto muy por encima de lo que '
+  + 'sueles pagar en ese mismo lugar. Se compara contra todo tu historial, no contra este período.';
+
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 /** Lo que va bajo el nombre. Depende del **tipo**, no de si hay categoria. */
@@ -30,7 +34,14 @@ function signo(tx: Movimiento): string {
   return tx.tipo === 'ingreso' ? '+' : '−';
 }
 
-export function FilaMovimiento({ tx, theme }: { tx: Movimiento; theme: Theme }) {
+export function FilaMovimiento(
+  { tx, theme, anomala }: {
+    tx: Movimiento;
+    theme: Theme;
+    /** Marca el gasto como muy por encima de lo normal para su categoria. */
+    anomala?: boolean;
+  },
+) {
   const styles = crearEstilos(theme);
   const fecha = tx.ocurridoEn as dates.PlainDate;
   const Icono = tx.categoriaId ? iconoDeCategoria(tx.categoriaId) : null;
@@ -53,6 +64,10 @@ export function FilaMovimiento({ tx, theme }: { tx: Movimiento; theme: Theme }) 
             <Text style={styles.subtitulo}>{subtitulo(tx)}</Text>
           </View>
         </View>
+        {/* Un punto ambar y nada mas. El ambar es el color de "esto pide
+            atencion" y no hay lugar en una fila para explicar por que; la
+            explicacion vive una sola vez, en el `?` del encabezado. */}
+        {anomala ? <View style={styles.punto} /> : null}
         <Text style={tx.tipo === 'ingreso' ? styles.montoIngreso : styles.montoGasto}>
           {signo(tx)}{money.formatNumber(money.money(tx.montoMinor))}
         </Text>
@@ -84,6 +99,7 @@ function crearEstilos(theme: Theme) {
     nombre: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
     meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
     subtitulo: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.acento },
     montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.gasto },
     // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
     // hasta cumplir AA, en oscuro es la misma aurora viva.

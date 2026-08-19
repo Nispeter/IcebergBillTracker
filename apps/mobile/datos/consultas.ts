@@ -180,3 +180,29 @@ export function useFechaDeCorte(): dates.PlainDate {
   const hoy = dates.today();
   return masNuevo === undefined ? hoy : dates.minDate(masNuevo, hoy);
 }
+
+/**
+ * Los gastos que se salen de lo normal **para ese comercio**, por id.
+ *
+ * El agrupamiento es la decision de esta capa, y no fue la primera que probe:
+ * agrupar por **categoria** marcaba 23 de 54 movimientos de Transporte, porque
+ * ahi conviven viajes de $6.500 con bencinas de $32.000 y mediana + MAD suponen
+ * una sola poblacion. Sobre los 661 gastos de la semilla, por categoria marca el
+ * 9,2% y por comercio el 1,2%. Contra el mismo comercio si hay una sola
+ * poblacion: los Copec se parecen entre ellos.
+ *
+ * Se compara contra **toda la historia**: un mes no da los cinco datos que el
+ * motor exige para que "lo normal" signifique algo.
+ */
+export function useAnomalias(): ReadonlySet<string> {
+  const movimientos = useMovimientos();
+
+  return useMemo(() => new Set(
+    analytics.anomaliasAltasPorGrupo(
+      movimientos.filter((m) => m.tipo === 'gasto'),
+      // "Copec" y "COPEC " son el mismo comercio.
+      (m) => m.nombre.trim().toLowerCase(),
+      (m) => m.montoMinor,
+    ).map((anomalia) => anomalia.item.id),
+  ), [movimientos]);
+}

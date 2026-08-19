@@ -10,12 +10,12 @@ import { charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme 
 import { Link } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { FilaMovimiento } from '../../components/FilaMovimiento';
+import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Ayuda } from '../../components/Ayuda';
 import { Iceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
 import {
-  useAnalisisDeRango, useMovimientosFiltrados, useSaldo, useSaldoInicial,
+  useAnalisisDeRango, useAnomalias, useMovimientosFiltrados, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
@@ -32,6 +32,8 @@ export default function Resumen() {
   const recientes = useMovimientosFiltrados(
     useMemo(() => ({ desde: rango.start, hasta: rango.end, limite: 4 }), [rango.start, rango.end]),
   );
+
+  const anomalias = useAnomalias();
 
   const variable = money.subtract(a.resumen.gasto, a.fijo);
   const share = money.ratio(a.fijo, a.resumen.gasto) ?? 0;
@@ -75,10 +77,13 @@ export default function Resumen() {
         <View style={styles.regla}>
           <Text style={styles.reglaTitulo}>Últimos movimientos</Text>
           <View style={styles.reglaLinea} />
+          <Ayuda theme={theme} texto={EXPLICACION_ANOMALIA} />
         </View>
         {recientes.length === 0
           ? <Text style={styles.sinMovimientos}>Sin movimientos en este período.</Text>
-          : recientes.map((tx) => <FilaMovimiento key={tx.id} tx={tx} theme={theme} />)}
+          : recientes.map((tx) => (
+            <FilaMovimiento key={tx.id} tx={tx} theme={theme} anomala={anomalias.has(tx.id)} />
+          ))}
 
         <Link href="/movimientos" asChild>
           <Pressable style={styles.verTodos} accessibilityRole="button">
@@ -156,7 +161,8 @@ function crearEstilos(theme: Theme) {
     deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
 
     bloqueIceberg: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
-    leyendas: { flex: 1, gap: spacing.sm },
+    // Corridas del dibujo: pegadas al hielo se leian como parte de el.
+    leyendas: { flex: 1, gap: spacing.sm, paddingLeft: spacing.md },
     // Elevada para que la burbuja de la ayuda tape las leyendas de abajo.
     leyendasCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: spacing.xs, zIndex: 20 },
     leyendasTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
@@ -167,7 +173,7 @@ function crearEstilos(theme: Theme) {
     leyendaTitulo: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
     leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.tinta },
 
-    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.xs },
+    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.xs, zIndex: 20 },
     reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 

@@ -20,11 +20,12 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { FilaMovimiento } from '../../components/FilaMovimiento';
+import { Ayuda } from '../../components/Ayuda';
+import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Pantalla } from '../../components/Pantalla';
 import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../../components/iconos';
-import { useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
+import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
@@ -61,6 +62,7 @@ export default function Movimientos() {
 
   const movimientos = useMovimientosFiltrados({ ...filtro, limite: pagina * POR_PAGINA });
   const resumen = useResumenDeFiltro(filtro);
+  const anomalias = useAnomalias();
   const hayMas = movimientos.length < resumen.cantidad;
 
   /** Cambiar de filtro vuelve a la primera pagina: si no, se veria un tramo suelto. */
@@ -87,10 +89,13 @@ export default function Movimientos() {
 
   const encabezado = (
     <View>
-      <Text style={styles.resumen}>
-        {resumen.cantidad} {resumen.cantidad === 1 ? 'movimiento' : 'movimientos'}
-        {' · '}{money.formatSigned(resumen.neto)}
-      </Text>
+      <View style={styles.cabecera}>
+        <Text style={styles.resumen}>
+          {resumen.cantidad} {resumen.cantidad === 1 ? 'movimiento' : 'movimientos'}
+          {' · '}{money.formatSigned(resumen.neto)}
+        </Text>
+        <Ayuda theme={theme} texto={EXPLICACION_ANOMALIA} />
+      </View>
 
       {/* Los dos disparadores en una linea, y un solo panel debajo a lo ancho. */}
       <View style={styles.filtros}>
@@ -140,7 +145,7 @@ export default function Movimientos() {
         data={movimientos}
         keyExtractor={(tx) => tx.id}
         renderItem={({ item }: { item: Movimiento }) => (
-          <FilaMovimiento tx={item} theme={theme} />
+          <FilaMovimiento tx={item} theme={theme} anomala={anomalias.has(item.id)} />
         )}
         ListHeaderComponent={encabezado}
         ListEmptyComponent={<Text style={styles.vacio}>Ningún movimiento con esos filtros.</Text>}
@@ -184,6 +189,7 @@ function crearEstilos(theme: Theme) {
     },
 
 
+    cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 },
     resumen: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
