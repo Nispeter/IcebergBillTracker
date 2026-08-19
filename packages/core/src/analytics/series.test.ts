@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { dateRange, monthRange, requirePlainDate } from '../dates/index';
 import type { MovimientoAnalizable } from './movimiento';
 import {
-  diaDeMayorGasto, gastoPorDiaDeSemana, rachaMasLargaSinGasto, seriePorDia,
+  diaDeMayorGasto, gastoPorDiaDeSemana, rachaMasLargaSinGasto, saldoAcumulado, seriePorDia,
 } from './series';
+import { money } from '../money/index';
 
 const d = requirePlainDate;
 const gasto = (fecha: string, monto: number): MovimientoAnalizable =>
@@ -130,5 +131,57 @@ describe('rachaMasLargaSinGasto', () => {
 
   it('sin ningun gasto la racha es todo el rango', () => {
     expect(rachaMasLargaSinGasto(seriePorDia([], AGOSTO))).toBe(31);
+  });
+});
+
+describe('saldoAcumulado', () => {
+  const partida = money(100_000, 'CLP');
+
+  it('cada punto es el saldo al cerrar el dia', () => {
+    const serie = seriePorDia(
+      [gasto('2026-08-01', 30_000), gasto('2026-08-03', 20_000)],
+      dateRange(d('2026-08-01'), d('2026-08-03'), 'days'),
+    );
+    expect(saldoAcumulado(serie, partida).map((x) => x.saldo.amountMinor))
+      .toEqual([70_000, 70_000, 50_000]);
+  });
+
+  it('el ingreso levanta la linea el dia que entra, no repartido en el mes', () => {
+    const serie = seriePorDia(
+      [gasto('2026-08-01', 30_000), ingreso('2026-08-03', 500_000)],
+      dateRange(d('2026-08-01'), d('2026-08-03'), 'days'),
+    );
+    expect(saldoAcumulado(serie, partida).map((x) => x.saldo.amountMinor))
+      .toEqual([70_000, 70_000, 570_000]);
+  });
+
+  it('un dia sin movimiento repite el saldo del dia anterior', () => {
+    const serie = seriePorDia([], dateRange(d('2026-08-01'), d('2026-08-04'), 'days'));
+    expect(saldoAcumulado(serie, partida).map((x) => x.saldo.amountMinor))
+      .toEqual([100_000, 100_000, 100_000, 100_000]);
+  });
+
+  it('el saldo puede quedar negativo: gastar mas de lo que hay es un hecho', () => {
+    const serie = seriePorDia(
+      [gasto('2026-08-01', 250_000)],
+      dateRange(d('2026-08-01'), d('2026-08-01'), 'days'),
+    );
+    expect(saldoAcumulado(serie, partida)[0]!.saldo.amountMinor).toBe(-150_000);
+  });
+
+  it('devuelve un punto por dia del rango, tambien sin datos', () => {
+    const serie = seriePorDia([], AGOSTO);
+    expect(saldoAcumulado(serie, partida)).toHaveLength(31);
+  });
+
+  it('las transferencias no mueven el saldo', () => {
+    const transferencia: MovimientoAnalizable =
+      { tipo: 'transferencia', montoMinor: 80_000, ocurridoEn: d('2026-08-02') };
+    const serie = seriePorDia(
+      [transferencia],
+      dateRange(d('2026-08-01'), d('2026-08-02'), 'days'),
+    );
+    expect(saldoAcumulado(serie, partida).map((x) => x.saldo.amountMinor))
+      .toEqual([100_000, 100_000]);
   });
 });

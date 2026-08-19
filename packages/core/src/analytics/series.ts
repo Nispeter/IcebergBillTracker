@@ -48,6 +48,34 @@ export function seriePorDia(
   }));
 }
 
+export interface DiaConSaldo {
+  readonly fecha: PlainDate;
+  /** Saldo al **cerrar** ese dia, ya aplicados sus movimientos. */
+  readonly saldo: Money;
+}
+
+/**
+ * El saldo dia a dia, partiendo de lo que habia al empezar el rango.
+ *
+ * Cada punto es el saldo al **cerrar** el dia, que es como lo muestra un banco.
+ * Asi la linea baja durante el mes y pega el salto el dia que entra el sueldo,
+ * que es la forma real de un mes y no un promedio suavizado.
+ *
+ * El saldo de partida se lo tiene que dar quien llama: `analytics` solo ve los
+ * movimientos que le pasan, y el saldo verdadero incluye todo lo anterior al
+ * rango mas el saldo inicial de las cuentas.
+ */
+export function saldoAcumulado(
+  serie: readonly DiaDeLaSerie[],
+  saldoAlEmpezar: Money,
+): DiaConSaldo[] {
+  let corriente = saldoAlEmpezar.amountMinor;
+  return serie.map((dia) => {
+    corriente += dia.ingreso.amountMinor - dia.gasto.amountMinor;
+    return { fecha: dia.fecha, saldo: money(corriente, saldoAlEmpezar.currency) };
+  });
+}
+
 /** El dia que mas se gasto. `null` si no hubo gasto en todo el rango. */
 export function diaDeMayorGasto(serie: readonly DiaDeLaSerie[]): DiaDeLaSerie | null {
   let mayor: DiaDeLaSerie | null = null;
