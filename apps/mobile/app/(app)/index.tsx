@@ -13,7 +13,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FilaMovimiento } from '../../components/FilaMovimiento';
 import { Iceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
-import { useAnalisisDeRango, useMovimientos, useSaldo, useSaldoInicial } from '../../datos/consultas';
+import {
+  useAnalisisDeRango, useMovimientosFiltrados, useSaldo, useSaldoInicial,
+} from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
@@ -24,7 +26,11 @@ export default function Resumen() {
 
   const saldo = useSaldo(useSaldoInicial());
   const a = useAnalisisDeRango(rango, corte);
-  const recientes = useMovimientos(4);
+  // Del periodo, no de siempre: el resto de la pantalla habla del rango
+  // elegido, y una lista de agosto debajo de cifras de marzo no se entiende.
+  const recientes = useMovimientosFiltrados(
+    useMemo(() => ({ desde: rango.start, hasta: rango.end, limite: 4 }), [rango.start, rango.end]),
+  );
 
   const variable = money.subtract(a.resumen.gasto, a.fijo);
   const share = money.ratio(a.fijo, a.resumen.gasto) ?? 0;
@@ -60,11 +66,13 @@ export default function Resumen() {
           <Text style={styles.reglaTitulo}>Últimos movimientos</Text>
           <View style={styles.reglaLinea} />
         </View>
-        {recientes.map((tx) => <FilaMovimiento key={tx.id} tx={tx} theme={theme} />)}
+        {recientes.length === 0
+          ? <Text style={styles.sinMovimientos}>Sin movimientos en este período.</Text>
+          : recientes.map((tx) => <FilaMovimiento key={tx.id} tx={tx} theme={theme} />)}
 
         <Link href="/movimientos" asChild>
-          <Pressable style={styles.boton} accessibilityRole="button">
-            <Text style={styles.botonTexto}>Ver todos los movimientos</Text>
+          <Pressable style={styles.verTodos} accessibilityRole="button">
+            <Text style={styles.verTodosTexto}>Ver todos</Text>
           </Pressable>
         </Link>
       </ScrollView>
@@ -150,14 +158,9 @@ function crearEstilos(theme: Theme) {
     reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 
-    boton: {
-      marginTop: spacing.lg,
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    botonTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto },
+    // Discreto a proposito: no compite con los movimientos que tiene encima.
+    verTodos: { marginTop: spacing.md, alignItems: 'flex-end' },
+    verTodosTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
+    sinMovimientos: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }
