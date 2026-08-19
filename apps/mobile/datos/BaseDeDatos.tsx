@@ -24,7 +24,7 @@
 import type { dates } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, CLAVE_SEMILLA_CARGADA,
-  contarMovimientos, crearContexto, crearCuenta, crearMovimiento, escribirAjuste, leerOCrear,
+  crearContexto, crearCuenta, crearMovimiento, escribirAjuste, leerAjuste, leerOCrear,
   type BaseDeDatos as Base, type Contexto,
 } from '@iceberg/db';
 import migraciones from '@iceberg/db/migraciones';
@@ -109,9 +109,11 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
 
       const contexto = crearContexto({ householdId, deviceId, memberId });
 
-      if (contarMovimientos(db, contexto) === 0) {
+      // Se consulta la marca, **no** si hay filas. Con el conteo, borrar todos
+      // los movimientos volveria a sembrar 679 mas y una segunda cuenta, y el
+      // saldo quedaria al doble sin que nada avise.
+      if (leerAjuste(db, CLAVE_SEMILLA_CARGADA) === null) {
         cargarSemilla(db, contexto);
-        escribirAjuste(db, CLAVE_SEMILLA_CARGADA, 'si');
       }
 
       setDatos({ db, contexto, sqlite: conexion.sqlite });
@@ -137,20 +139,28 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
 function cargarSemilla(db: Base, contexto: Contexto): void {
   const dataset = generateSeed();
 
-  const cuenta = crearCuenta(db, contexto, {
-    nombre: 'Cuenta corriente',
-    tipo: 'corriente',
-    saldoInicialMinor: dataset.saldoInicialMinor,
-  });
-
-  for (const tx of dataset.transactions) {
-    crearMovimiento(db, contexto, {
-      cuentaId: cuenta.id,
-      tipo: tx.type,
-      montoMinor: tx.amountMinor,
-      ocurridoEn: tx.occurredAt as dates.PlainDate,
-      nombre: tx.name,
-      categoriaId: tx.category ?? null,
+  // Todo en una transaccion: si una validacion falla a mitad de los 679
+  // movimientos, sin esto quedarian escritos los anteriores mas la cuenta, la
+  // marca no se pondria, y el proximo arranque volveria a intentar sobre una
+  // base a medio llenar.
+  db.transaction((tx) => {
+    const cuenta = crearCuenta(tx as unknown as Base, contexto, {
+      nombre: 'Cuenta corriente',
+      tipo: 'corriente',
+      saldoInicialMinor: dataset.saldoInicialMinor,
     });
-  }
+
+    for (const movimiento of dataset.transactions) {
+      crearMovimiento(tx as unknown as Base, contexto, {
+        cuentaId: cuenta.id,
+        tipo: movimiento.type,
+        montoMinor: movimiento.amountMinor,
+        ocurridoEn: movimiento.occurredAt as dates.PlainDate,
+        nombre: movimiento.name,
+        categoriaId: movimiento.category ?? null,
+      });
+    }
+
+    escribirAjuste(tx as unknown as Base, CLAVE_SEMILLA_CARGADA, 'si');
+  });
 }
