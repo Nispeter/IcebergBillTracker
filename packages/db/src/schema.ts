@@ -80,6 +80,72 @@ export const movimientos = sqliteTable('movimientos', {
 ]);
 
 /**
+ * Reglas de recurrencia: "el arriendo, $450.000, el 5 de cada mes".
+ *
+ * La regla guarda **el molde**, no las fechas. Las ocurrencias se calculan con
+ * `core/recurrence` cada vez que hacen falta. Materializar doce filas por regla
+ * y por ano obligaria a reescribirlas todas cada vez que cambia el monto o el
+ * dia, y a decidir que pasa con las que ya estaban.
+ */
+export const reglas = sqliteTable('reglas', {
+  ...sincronizable,
+  cuentaId: text('cuenta_id').notNull(),
+  tipo: text('tipo', { enum: TIPOS_DE_MOVIMIENTO }).notNull(),
+  /** Entero en la unidad menor, siempre positivo. El signo lo da `tipo`. */
+  montoMinor: integer('monto_minor').notNull(),
+  moneda: text('moneda').notNull().default('CLP'),
+  nombre: text('nombre').notNull(),
+  categoriaId: text('categoria_id'),
+  /** `diaria` | `semanal` | `mensual` | `anual`, de `core/recurrence`. */
+  frecuencia: text('frecuencia').notNull(),
+  /** Cada cuantas unidades de la frecuencia. */
+  cada: integer('cada').notNull().default(1),
+  /** Fecha civil del ancla: dice tambien el dia del mes y el de la semana. */
+  desde: text('desde').notNull(),
+  /** Fecha civil de termino, inclusive. Null si no termina. */
+  hasta: text('hasta'),
+  /**
+   * Una regla apagada deja de proyectar sin perder su historia.
+   *
+   * Se guarda como entero porque SQLite no tiene booleano.
+   */
+  activa: integer('activa').notNull().default(1),
+  notas: text('notas'),
+}, (tabla) => [
+  index('reglas_hogar_idx').on(tabla.householdId, tabla.deletedAt),
+]);
+
+export const ESTADOS_DE_INSTANCIA = ['pagada', 'omitida'] as const;
+export type EstadoDeInstancia = (typeof ESTADOS_DE_INSTANCIA)[number];
+
+/**
+ * Lo que se decidio sobre **una** ocurrencia concreta de una regla.
+ *
+ * Solo se guardan las decisiones, no las ocurrencias. Una fila aca significa
+ * "esta fecha de esta regla ya la resolvi"; si no hay fila, la ocurrencia sigue
+ * pendiente. Guardar tambien las pendientes seria guardar lo que ya se sabe
+ * calcular, y habria que crearlas y borrarlas cada vez que la regla cambia.
+ *
+ * `movimientoId` enlaza con el gasto real cuando se marca pagada, para poder
+ * deshacer sin adivinar cual de los movimientos del dia era.
+ */
+export const instancias = sqliteTable('instancias', {
+  ...sincronizable,
+  reglaId: text('regla_id').notNull(),
+  /** Fecha civil de la ocurrencia, tal como la devuelve `core/recurrence`. */
+  ocurreEn: text('ocurre_en').notNull(),
+  estado: text('estado', { enum: ESTADOS_DE_INSTANCIA }).notNull(),
+  /** El movimiento que se creo al marcarla pagada, si se creo. */
+  movimientoId: text('movimiento_id'),
+  /** Lo que se pago de verdad, si no coincide con el monto de la regla. */
+  montoMinor: integer('monto_minor'),
+}, (tabla) => [
+  // Se consulta siempre "las decisiones de estas reglas en este rango".
+  index('inst_regla_fecha_idx').on(tabla.reglaId, tabla.ocurreEn),
+  index('inst_hogar_idx').on(tabla.householdId, tabla.deletedAt),
+]);
+
+/**
  * Ajustes locales del dispositivo, como clave-valor.
  *
  * **No lleva columnas de sync y no se sincroniza**: guarda justamente lo que
@@ -97,3 +163,7 @@ export type Cuenta = typeof cuentas.$inferSelect;
 export type CuentaInsert = typeof cuentas.$inferInsert;
 export type Movimiento = typeof movimientos.$inferSelect;
 export type MovimientoInsert = typeof movimientos.$inferInsert;
+export type Regla = typeof reglas.$inferSelect;
+export type ReglaInsert = typeof reglas.$inferInsert;
+export type Instancia = typeof instancias.$inferSelect;
+export type InstanciaInsert = typeof instancias.$inferInsert;
