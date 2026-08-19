@@ -69,17 +69,53 @@ export function ProveedorDeDatos(props: ProveedorDeDatosProps) {
 
   useEffect(() => {
     let vigente = true;
+    let abierta: SQLiteDatabase | null = null;
+
+    /**
+     * En web la base vive en OPFS, que admite **un solo** handle de acceso por
+     * archivo. Al recargar la pagina, el handle de la sesion anterior puede no
+     * haberse soltado todavia y abrir falla con `NoModificationAllowedError`.
+     * Se reintenta un par de veces con una pausa corta: el sistema lo libera
+     * solo, tarda milisegundos.
+     */
+    const abrirConReintento = async (): Promise<SQLiteDatabase> => {
+      for (let intento = 0; ; intento++) {
+        try {
+          // `enableChangeListener` es lo que hace reactivo a `useLiveQuery`.
+          return await openDatabaseAsync(NOMBRE_ARCHIVO, { enableChangeListener: true });
+        } catch (e) {
+          const esHandleOcupado = (e as Error).name === 'NoModificationAllowedError'
+            || /Access Handle/i.test((e as Error).message);
+          if (!esHandleOcupado || intento >= 4) throw e;
+          await new Promise((listo) => setTimeout(listo, 120 * (intento + 1)));
+        }
+      }
+    };
+
     (async () => {
       try {
-        // `enableChangeListener` es lo que hace reactivo a `useLiveQuery`.
-        const sqlite = await openDatabaseAsync(NOMBRE_ARCHIVO, { enableChangeListener: true });
-        if (!vigente) return;
+        const sqlite = await abrirConReintento();
+        abierta = sqlite;
+        if (!vigente) { sqlite.closeAsync().catch(() => {}); return; }
         setConexion({ sqlite, drizzleDb: drizzle(sqlite) });
       } catch (e) {
         if (vigente) setFallo(`No se pudo abrir la base: ${(e as Error).message}`);
       }
     })();
-    return () => { vigente = false; };
+
+    // React no desmonta al navegar fuera de la pagina, asi que la limpieza del
+    // efecto no alcanza: hay que soltar el handle explicitamente al salir.
+    const soltar = () => { abierta?.closeAsync().catch(() => {}); };
+    if (typeof globalThis.addEventListener === 'function') {
+      globalThis.addEventListener('pagehide', soltar);
+    }
+
+    return () => {
+      vigente = false;
+      if (typeof globalThis.removeEventListener === 'function') {
+        globalThis.removeEventListener('pagehide', soltar);
+      }
+    };
   }, []);
 
   if (fallo !== null) return props.error(fallo);
