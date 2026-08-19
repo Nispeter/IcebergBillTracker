@@ -20,38 +20,55 @@ function luminance(color: string): number {
   return (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
 }
 
-/** Razon de contraste WCAG, de 1 a 21. */
+/** Razon de contraste WCAG, de 1 a 21. La metrica para **texto**. */
 function contrast(a: string, b: string): number {
   const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
   return (high + 0.05) / (low + 0.05);
 }
 
+function toLab(color: string): [number, number, number] {
+  const [r, g, b] = channels(color).map((channel) => {
+    const s = channel / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : (7.787 * t) + (16 / 116));
+  const x = f(((0.4124 * r) + (0.3576 * g) + (0.1805 * b)) / 0.95047);
+  const y = f((0.2126 * r) + (0.7152 * g) + (0.0722 * b));
+  const z = f(((0.0193 * r) + (0.1192 * g) + (0.9505 * b)) / 1.08883);
+  return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)];
+}
+
 /**
- * Distancia perceptual CIE76 en CIELAB.
+ * Distancia perceptual CIE76 en CIELAB. La metrica para **rellenos**.
  *
- * Para marcas de grafico el contraste WCAG es la metrica equivocada: mide solo
- * luminancia, asi que dos colores de matiz muy distinto pero brillo parecido
- * (el celeste y el agua de la serie) le salen "confundibles" cuando a ojo se
- * separan sin esfuerzo. WCAG se usa para texto; esto, para colores categoricos.
+ * Para una barra o un chip, el contraste WCAG es la metrica equivocada: mide
+ * solo luminancia, asi que un naranjo saturado sobre casi-blanco le sale
+ * "invisible" cuando a ojo salta de inmediato. WCAG se usa para lo que se lee;
+ * esto, para lo que se ve.
  */
 function deltaE(a: string, b: string): number {
-  const toLab = (color: string): [number, number, number] => {
-    const [r, g, b2] = channels(color).map((channel) => {
-      const s = channel / 255;
-      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    }) as [number, number, number];
-    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : (7.787 * t) + (16 / 116));
-    const x = f(((0.4124 * r) + (0.3576 * g) + (0.1805 * b2)) / 0.95047);
-    const y = f((0.2126 * r) + (0.7152 * g) + (0.0722 * b2));
-    const z = f(((0.0193 * r) + (0.1192 * g) + (0.9505 * b2)) / 1.08883);
-    return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)];
-  };
   const [l1, a1, b1] = toLab(a);
   const [l2, a2, b2] = toLab(b);
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }
 
+/** Diferencia de matiz en grados sobre el circulo LCh. */
+function hueDistance(a: string, b: string): number {
+  const angle = (color: string) => {
+    const [, x, y] = toLab(color);
+    return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360;
+  };
+  const diff = Math.abs(angle(a) - angle(b)) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
 const entries = Object.entries(themes) as [keyof typeof themes, Theme][];
+
+/** Roles que la gente lee. Obligados a cumplir AA sobre fondo y superficie. */
+const ROLES_TEXTO = ['tinta', 'gasto', 'silencio', 'acentoTexto', 'ingresoTexto', 'vencidoTexto'] as const;
+
+/** Roles de relleno: barras, chips, puntos, areas. Se miden en perceptual. */
+const ROLES_RELLENO = ['acento', 'ingreso', 'vencido'] as const;
 
 describe('forma de los tokens', () => {
   it('todo color es hexadecimal de 6 digitos en mayuscula', () => {
@@ -71,7 +88,7 @@ describe('forma de los tokens', () => {
     expect(dark.acento).toBe(light.acento);
   });
 
-  it('vencido es el unico rojo y es igual en ambos temas', () => {
+  it('vencido es el unico rojo y su relleno es igual en ambos temas', () => {
     expect(dark.vencido).toBe(light.vencido);
   });
 });
@@ -84,33 +101,54 @@ describe('contraste', () => {
     }
   });
 
-  it('el silencio del tema oscuro cumple AA para texto normal', () => {
-    expect(contrast(dark.silencio, dark.superficie)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(dark.silencio, dark.fondo)).toBeGreaterThanOrEqual(4.5);
+  it('todo rol de texto cumple AA en los dos temas', () => {
+    for (const [name, theme] of entries) {
+      for (const rol of ROLES_TEXTO) {
+        expect(contrast(theme[rol], theme.fondo), `${name}.${rol} sobre fondo`)
+          .toBeGreaterThanOrEqual(4.5);
+        expect(contrast(theme[rol], theme.superficie), `${name}.${rol} sobre superficie`)
+          .toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 
-  it('el silencio del tema claro solo alcanza para texto grande', () => {
-    // Medido: 3.98 sobre superficie. Cumple AA de texto grande (3:1) pero no el
-    // de texto normal (4.5:1). Queda restringido a etiquetas de 18.66px o de
-    // 16px semibold hacia arriba. Si se necesita para texto chico, hay que
-    // oscurecerlo (#5E748B da 4.83) — decision de diseno, no de implementacion.
-    const razon = contrast(light.silencio, light.superficie);
-    expect(razon).toBeGreaterThanOrEqual(3);
-    expect(razon).toBeLessThan(4.5);
+  it('todo rol de relleno se despega del fondo y de la superficie', () => {
+    for (const [name, theme] of entries) {
+      for (const rol of ROLES_RELLENO) {
+        expect(deltaE(theme[rol], theme.fondo), `${name}.${rol} sobre fondo`)
+          .toBeGreaterThanOrEqual(15);
+        expect(deltaE(theme[rol], theme.superficie), `${name}.${rol} sobre superficie`)
+          .toBeGreaterThanOrEqual(15);
+      }
+    }
   });
 
-  it('el ambar funciona como relleno con tinta encima, no como texto en claro', () => {
-    // Sobre el fondo claro el ambar da 1.98: es un color de relleno y de icono,
-    // no de texto. Lo que si tiene que cumplir es legibilidad de la tinta puesta
-    // encima de un chip ambar.
+  it('cada variante de texto conserva el matiz de su relleno', () => {
+    // Si la version legible cambiara de matiz dejaria de leerse como el mismo
+    // color y la paleta perderia coherencia: seria otro color, no el mismo mas
+    // oscuro.
+    expect(hueDistance(light.acentoTexto, light.acento), 'ambar').toBeLessThan(12);
+    expect(hueDistance(light.ingresoTexto, light.ingreso), 'aurora').toBeLessThan(12);
+    expect(hueDistance(light.vencidoTexto, light.vencido), 'vencido').toBeLessThan(12);
+  });
+
+  it('en el tema oscuro el relleno ya sirve de texto', () => {
+    // Sobre la noche polar el ambar da 7,7:1 y la aurora 10,9:1, asi que no hace
+    // falta una variante aparte.
+    expect(dark.acentoTexto).toBe(dark.acento);
+    expect(dark.ingresoTexto).toBe(dark.ingreso);
+  });
+
+  it('el ambar de relleno aguanta tinta encima', () => {
+    // El acento como fondo de un chip, con la tinta escrita arriba.
     expect(contrast(light.tinta, light.acento)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(dark.acento, dark.fondo)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('la serie de graficos se despega del fondo en ambos temas', () => {
+  it('la serie de graficos se despega del fondo y de la superficie', () => {
     for (const [name, theme] of entries) {
       for (const color of charts) {
-        expect(deltaE(color, theme.fondo), `${name} ${color}`).toBeGreaterThanOrEqual(15);
+        expect(deltaE(color, theme.fondo), `${name} ${color} sobre fondo`).toBeGreaterThanOrEqual(15);
+        expect(deltaE(color, theme.superficie), `${name} ${color} sobre superficie`).toBeGreaterThanOrEqual(15);
       }
     }
   });
@@ -122,16 +160,6 @@ describe('contraste', () => {
         expect(deltaE(a, b), `${a} vs ${b}`).toBeGreaterThanOrEqual(20);
       }
     }
-  });
-
-  it('el ingreso en tema claro sirve de relleno, no de texto', () => {
-    // La aurora sobre el fondo claro da 1.51:1. Como marca de grafico se ve sin
-    // problema (dE 43), pero un monto de ingreso escrito en aurora sobre blanco
-    // es ilegible. En claro el ingreso se distingue por signo y por icono, y la
-    // aurora queda para el relleno del area. En oscuro si funciona como texto.
-    expect(contrast(light.ingreso, light.superficie)).toBeLessThan(3);
-    expect(deltaE(light.ingreso, light.fondo)).toBeGreaterThanOrEqual(15);
-    expect(contrast(dark.ingreso, dark.superficie)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('el hairline se ve pero no compite con el texto', () => {

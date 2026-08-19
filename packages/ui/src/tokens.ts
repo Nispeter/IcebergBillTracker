@@ -18,6 +18,18 @@
 /**
  * Valores crudos. Nada de la app importa `palette` directamente: se consume
  * `light` / `dark` / `charts`, que dicen para que sirve cada color.
+ *
+ * Varios colores vienen en dos versiones, y la distincion importa:
+ *
+ * - la **viva** es de relleno — una barra, un chip, un punto, un area de grafico.
+ *   Ahi lo que manda es que se vea, y eso se mide en distancia perceptual.
+ * - la **profunda** es de texto sobre fondo claro. El contraste WCAG solo mide
+ *   luminancia, y un color vivo sobre casi-blanco lo reprueba por mas visible
+ *   que sea a ojo. Un monto escrito en aurora sobre el fondo claro daba 1,51:1:
+ *   se veia el color y no se leia el numero.
+ *
+ * En el tema oscuro no hace falta la distincion: sobre la noche polar los mismos
+ * colores vivos ya pasan AA como texto.
  */
 const palette = {
   // Claro "Deshielo"
@@ -25,7 +37,7 @@ const palette = {
   blanco: '#FFFFFF',
   tintaProfunda: '#0E2233',
   hairlineClaro: '#D7E3EC',
-  silencioClaro: '#6B8299',
+  silencioClaro: '#5E7388',
 
   // Oscuro "Noche polar"
   nochePolar: '#0A1620',
@@ -34,23 +46,27 @@ const palette = {
   hairlineOscuro: '#1E3547',
   /**
    * El gris apagado del tema oscuro no venia definido en la paleta original.
-   * Se eligio como espejo de `silencioClaro` aclarado hasta cumplir AA (4.5:1)
-   * sobre la superficie nocturna; el original a esa altura solo llegaba a 4.11.
+   * Se eligio como espejo de `silencioClaro`, aclarado hasta cumplir AA sobre la
+   * superficie nocturna.
    */
   silencioOscuro: '#8299AF',
 
-  // Acento unico
+  // Acento unico: el ambar del pico del pinguino
   ambar: '#F59E3C',
+  ambarProfundo: '#A95E09',
 
   // Serie de graficos: frias, ordenadas por profundidad, no arcoiris
   agua: '#4FB3D9',
   profundidad: '#1B4F72',
   aurora: '#6EE7C8',
+  auroraProfunda: '#157E63',
   cieloPalido: '#8AB4F8',
   nieblaAzul: '#B9C7D6',
 
   /** El unico rojo del sistema. Solo para vencido. */
   vencido: '#D9534F',
+  vencidoProfundo: '#D2322D',
+  vencidoSuave: '#DC5F5C',
 } as const;
 
 export interface Theme {
@@ -59,11 +75,20 @@ export interface Theme {
   readonly tinta: string;
   readonly silencio: string;
   readonly hairline: string;
+  /** Relleno del acento: chips, puntos, barras. No usar como texto. */
   readonly acento: string;
+  /** El acento cuando hay que **leerlo**. */
+  readonly acentoTexto: string;
+  /** Relleno del ingreso: areas y barras de grafico. */
   readonly ingreso: string;
+  /** El ingreso cuando es un monto escrito. */
+  readonly ingresoTexto: string;
   readonly gasto: string;
   readonly alerta: string;
+  /** Relleno de vencido: badges y marcadores. */
   readonly vencido: string;
+  /** Vencido cuando es texto. */
+  readonly vencidoTexto: string;
 }
 
 /** Tema claro "Deshielo". */
@@ -74,13 +99,22 @@ export const light: Theme = {
   silencio: palette.silencioClaro,
   hairline: palette.hairlineClaro,
   acento: palette.ambar,
+  acentoTexto: palette.ambarProfundo,
   ingreso: palette.aurora,
+  ingresoTexto: palette.auroraProfunda,
   gasto: palette.tintaProfunda,
   alerta: palette.ambar,
   vencido: palette.vencido,
+  vencidoTexto: palette.vencidoProfundo,
 };
 
-/** Tema oscuro "Noche polar". */
+/**
+ * Tema oscuro "Noche polar".
+ *
+ * Sobre la noche polar el ambar da 7,7:1 y la aurora 10,9:1, asi que el color de
+ * relleno y el de texto son el mismo. El unico que necesita ajuste es el rojo de
+ * vencido, que se aclara apenas para cruzar AA sobre la superficie.
+ */
 export const dark: Theme = {
   fondo: palette.nochePolar,
   superficie: palette.superficieNoche,
@@ -88,10 +122,13 @@ export const dark: Theme = {
   silencio: palette.silencioOscuro,
   hairline: palette.hairlineOscuro,
   acento: palette.ambar,
+  acentoTexto: palette.ambar,
   ingreso: palette.aurora,
+  ingresoTexto: palette.aurora,
   gasto: palette.tintaClara,
   alerta: palette.ambar,
   vencido: palette.vencido,
+  vencidoTexto: palette.vencidoSuave,
 };
 
 export const themes = { light, dark } as const;

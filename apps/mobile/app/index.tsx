@@ -84,7 +84,7 @@ export default function Pantalla() {
                       {dates.formatDate(tx.occurredAt)} · {tx.category}
                     </Text>
                   </View>
-                  <Text style={styles.monto}>
+                  <Text style={tx.type === 'ingreso' ? styles.montoIngreso : styles.monto}>
                     {tx.type === 'ingreso' ? '+' : '−'}
                     {money.formatNumber(money.money(tx.amountMinor))}
                   </Text>
@@ -135,7 +135,10 @@ export default function Pantalla() {
   );
 }
 
-const ROLES = ['fondo', 'superficie', 'tinta', 'silencio', 'hairline', 'acento', 'vencido'] as const;
+const ROLES = [
+  'fondo', 'superficie', 'tinta', 'silencio', 'hairline',
+  'acento', 'acentoTexto', 'ingreso', 'ingresoTexto', 'vencido', 'vencidoTexto',
+] as const;
 
 const RADIOS = [['sm', radii.sm], ['md', radii.md], ['lg', radii.lg]] as const;
 
@@ -231,7 +234,7 @@ function crearEstilos(theme: Theme) {
       paddingHorizontal: spacing.lg,
       backgroundColor: theme.superficie,
     },
-    interruptorTexto: { fontFamily: fonts.ui.semibold, fontSize: fontSizes.xs, color: theme.acento },
+    interruptorTexto: { fontFamily: fonts.ui.semibold, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
     tarjeta: {
       backgroundColor: theme.superficie,
@@ -282,9 +285,10 @@ function crearEstilos(theme: Theme) {
     filaTexto: { flex: 1, gap: 2 },
     filaNombre: { fontFamily: fonts.ui.medium, fontSize: fontSizes.md, color: theme.tinta },
     filaMeta: { fontFamily: fonts.ui.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    // El ingreso se marca con el signo, no con la aurora: sobre el fondo claro
-    // ese verde da 1,5:1 de contraste y no se lee.
-    monto: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.tinta },
+    monto: { fontFamily: fonts.mono.regular, fontSize: fontSizes.md, color: theme.gasto },
+    // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
+    // hasta cumplir AA, en oscuro es la misma aurora viva.
+    montoIngreso: { fontFamily: fonts.mono.medium, fontSize: fontSizes.md, color: theme.ingresoTexto },
 
     muestrario: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
     muestra: { alignItems: 'center', gap: spacing.xs, width: 72 },
