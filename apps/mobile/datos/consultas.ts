@@ -87,6 +87,29 @@ export function useDesgloseDelSaldo(saldoInicialMinor: number): DesgloseDelSaldo
 }
 
 /**
+ * El saldo justo antes de que empiece el rango.
+ *
+ * Hace falta para dibujar la linea de saldo del periodo: `analytics` solo ve los
+ * movimientos que le pasan, y el saldo de verdad arrastra todo lo anterior mas
+ * el saldo inicial de las cuentas. Sin esto la linea arrancaria en cero y diria
+ * que uno empieza cada mes quebrado.
+ */
+export function useSaldoAlEmpezar(rango: dates.DateRange): money.Money {
+  const movimientos = useMovimientos();
+  const inicial = useSaldoInicial();
+
+  return useMemo(() => {
+    let total = inicial;
+    for (const m of movimientos) {
+      if (m.tipo === 'transferencia') continue;
+      if (m.ocurridoEn >= rango.start) continue;
+      total += m.tipo === 'ingreso' ? m.montoMinor : -m.montoMinor;
+    }
+    return money.money(total, 'CLP');
+  }, [movimientos, inicial, rango.start]);
+}
+
+/**
  * El analisis de **cualquier** rango: resumen, comparacion y ritmo.
  *
  * Toma un `DateRange` y no un mes porque el rango ya sabe de que tipo es: el

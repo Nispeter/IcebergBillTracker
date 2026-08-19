@@ -12,8 +12,10 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendario } from '../../components/Calendario';
+import { Ayuda } from '../../components/Ayuda';
+import { LineaDeSaldo } from '../../components/LineaDeSaldo';
 import { Pantalla } from '../../components/Pantalla';
-import { useAnalisisDeRango } from '../../datos/consultas';
+import { useAnalisisDeRango, useSaldoAlEmpezar } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
@@ -32,6 +34,12 @@ export default function DiaADia() {
   const racha = analytics.rachaMasLargaSinGasto(a.serie);
   const masCaro = analytics.diaDeMayorGasto(a.serie);
 
+  const saldoAlEmpezar = useSaldoAlEmpezar(rango);
+  const serieDeSaldo = useMemo(
+    () => analytics.saldoAcumulado(a.serie, saldoAlEmpezar),
+    [a.serie, saldoAlEmpezar],
+  );
+
   return (
     <Pantalla>
       <ScrollView contentContainerStyle={styles.contenido}>
@@ -47,6 +55,17 @@ export default function DiaADia() {
             onElegirDia={(fecha) => router.push({ pathname: '/movimientos', params: { dia: fecha } })}
           />
         )}
+
+        <View style={styles.regla}>
+          <Text style={styles.reglaTitulo}>Saldo día a día</Text>
+          <View style={styles.reglaLinea} />
+          <Ayuda
+            theme={theme}
+            texto={'Cuánta plata te quedaba al cerrar cada día. Baja con cada gasto y sube '
+              + 'cuando entra un ingreso. El punto ámbar marca el día en que estuviste más abajo.'}
+          />
+        </View>
+        <LineaDeSaldo serie={serieDeSaldo} theme={theme} />
 
         <View style={styles.regla}>
           <Text style={styles.reglaTitulo}>Por día de la semana</Text>
@@ -107,7 +126,8 @@ function crearEstilos(theme: Theme) {
     },
     aviso: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
 
-    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs },
+    // Elevada para que la burbuja de la ayuda tape lo que viene debajo.
+    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 20 },
     reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 
