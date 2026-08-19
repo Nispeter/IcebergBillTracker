@@ -2,7 +2,13 @@
  * Consultas reactivas de las pantallas.
  *
  * `useLiveQuery` se queda escuchando los cambios de SQLite y vuelve a correr la
- * consulta sola. Por eso ninguna pantalla necesita refrescar a mano despues de
+ * consulta sola.
+ *
+ * **Ojo con el segundo argumento**: su valor por defecto es `[]`, asi que el
+ * efecto corre **una sola vez al montar**. Si la consulta cambia —otro filtro,
+ * otro limite— y no se le pasan dependencias, sigue devolviendo el resultado de
+ * la primera. Todo hook de aca abajo que arme una consulta variable **tiene que
+ * pasarlas**. Por eso ninguna pantalla necesita refrescar a mano despues de
  * escribir: se agrega un movimiento y el listado, los totales y el iceberg se
  * actualizan solos, porque todos salen de la misma base.
  *
@@ -42,7 +48,7 @@ export function useMovimientos(limite?: number): Movimiento[] {
     () => consultaDeMovimientos(db, contexto, limite === undefined ? {} : { limite }),
     [db, contexto, limite],
   );
-  const { data } = useLiveQuery(consulta);
+  const { data } = useLiveQuery(consulta, [limite]);
   return (data ?? []) as Movimiento[];
 }
 
@@ -131,7 +137,9 @@ export function useMovimientosFiltrados(filtro: FiltroDeMovimientos): Movimiento
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [db, contexto, clave],
   );
-  const { data } = useLiveQuery(consulta);
+  // Sin `[clave]`, cambiar de filtro no hacia nada: la lista seguia mostrando
+  // el resultado de la primera consulta.
+  const { data } = useLiveQuery(consulta, [clave]);
   return (data ?? []) as Movimiento[];
 }
 
