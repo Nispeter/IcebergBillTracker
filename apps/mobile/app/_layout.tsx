@@ -1,12 +1,22 @@
-import { fontSizes, fonts, pesos, spacing, themes } from '@iceberg/ui';
+import { fontSizes, fonts, pesos, spacing } from '@iceberg/ui';
 import { Stack } from 'expo-router';
-import { ActivityIndicator, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ProveedorDeDatos } from '../datos/BaseDeDatos';
+import { ProveedorDeTema, useTema } from '../datos/tema';
 
 export default function RootLayout() {
-  const sistema = useColorScheme();
-  const theme = themes[sistema === 'dark' ? 'dark' : 'light'];
+  // El proveedor de tema envuelve todo, incluidas las pantallas de carga y de
+  // error: si no, el arranque parpadearia en el tema equivocado.
+  return (
+    <ProveedorDeTema>
+      <Contenido />
+    </ProveedorDeTema>
+  );
+}
+
+function Contenido() {
+  const { theme } = useTema();
 
   // Sin `useFonts`: Consolas viene del sistema, no se empaqueta.
 

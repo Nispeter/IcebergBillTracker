@@ -1,19 +1,17 @@
 /** Alta manual de un movimiento. */
 
 import { listarCuentas, crearMovimiento } from '@iceberg/db';
-import { themes, type ThemeName } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { useColorScheme, View } from 'react-native';
+import { View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../components/FormularioMovimiento';
 import { useDatos } from '../datos/BaseDeDatos';
+import { useTema } from '../datos/tema';
 import { volver } from '../datos/navegacion';
 
 export default function NuevoMovimiento() {
-  const sistema = useColorScheme();
-  const [tema] = useState<ThemeName>(sistema === 'dark' ? 'dark' : 'light');
-  const theme = themes[tema];
+  const { nombre: tema, theme } = useTema();
 
   const { db, contexto } = useDatos();
   const router = useRouter();

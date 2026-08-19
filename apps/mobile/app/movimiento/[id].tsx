@@ -2,19 +2,18 @@
 
 import type { categories, dates } from '@iceberg/core';
 import { borrarMovimiento, editarMovimiento, obtenerMovimiento } from '@iceberg/db';
-import { fontSizes, fonts, pesos, spacing, themes, type ThemeName } from '@iceberg/ui';
+import { fontSizes, fonts, pesos, spacing } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Text, useColorScheme, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../../components/FormularioMovimiento';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
+import { useTema } from '../../datos/tema';
 
 export default function EditarMovimiento() {
-  const sistema = useColorScheme();
-  const [tema] = useState<ThemeName>(sistema === 'dark' ? 'dark' : 'light');
-  const theme = themes[tema];
+  const { nombre: tema, theme } = useTema();
 
   const { db, contexto } = useDatos();
   const router = useRouter();
