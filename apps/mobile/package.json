@@ -14,6 +14,7 @@
     "@expo/metro-runtime": "~57.0.11",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@iceberg/core": "*",
+    "@iceberg/db": "*",
     "@iceberg/seed": "*",
     "@iceberg/ui": "*",
     "drizzle-orm": "^0.45.2",
@@ -34,6 +35,10 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "ulid": "^3.0.2"
+  },
+  "devDependencies": {
+    "babel-plugin-inline-import": "^3.0.0"
   }
 }

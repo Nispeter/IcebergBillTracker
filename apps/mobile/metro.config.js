@@ -23,4 +23,40 @@ config.resolver.disableHierarchicalLookup = true;
 // siempre: no resuelve ni lanza, que es lo peor posible para depurar.
 config.resolver.assetExts.push('wasm');
 
+// Las migraciones de drizzle-kit son archivos .sql importados desde JS. Van a
+// sourceExts (no a assetExts) porque babel-plugin-inline-import las inserta como
+// texto en tiempo de compilacion.
+config.resolver.sourceExts.push('sql');
+
+/**
+ * Aislamiento de origen cruzado para el servidor de desarrollo web.
+ *
+ * En web, expo-sqlite corre wa-sqlite en un Web Worker y hace el puente
+ * sincrono con `SharedArrayBuffer`, que el navegador solo expone si la pagina
+ * esta "cross-origin isolated". Sin estas cabeceras, abrir la base falla con
+ * `SharedArrayBuffer is not defined`.
+ *
+ * Se parchea `writeHead` en vez de usar un middleware porque no hay donde
+ * engancharse: Expo monta su propio stack **delante** del de Metro, asi que un
+ * `enhanceMiddleware` nunca ve la peticion del documento HTML —que es justo la
+ * que necesita las cabeceras— y el `server` que Metro pasa a ese hook es su
+ * propio Server, no el de node, asi que tampoco sirve `prependListener`.
+ *
+ * El parche vive solo en el proceso del servidor de desarrollo; no entra al
+ * bundle ni corre en el telefono. Es un problema **solo de web**: en Android
+ * expo-sqlite usa SQLite nativo. Al publicar la version web habria que poner las
+ * mismas cabeceras en el hosting.
+ */
+const http = require('node:http');
+
+const writeHeadOriginal = http.ServerResponse.prototype.writeHead;
+http.ServerResponse.prototype.writeHead = function writeHeadConAislamiento(...args) {
+  if (!this.headersSent) {
+    this.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    this.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    this.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+  return writeHeadOriginal.apply(this, args);
+};
+
 module.exports = config;
