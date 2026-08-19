@@ -183,37 +183,40 @@ export const spacing = {
 /**
  * Tipografia.
  *
- * **Schibsted Grotesk** para la interfaz: una grotesca noruega de prensa, algo
- * condensada y de formas sobrias. Aguanta bien la densidad de una tabla de
- * movimientos y tiene caracter propio sin caer en lo ingenioso, que en una app
- * de plata cansa rapido.
+ * **Consolas**, la monoespaciada de Windows, para toda la interfaz. Que las
+ * etiquetas y las cifras compartan familia le da a la app un aire de instrumento
+ * antes que de folleto, y como es monoespaciada las columnas de montos quedan
+ * alineadas digito a digito sin esfuerzo.
  *
- * **Geist Mono** para **toda** cifra de dinero, sin excepcion. Al ser
- * monoespaciada los digitos ocupan lo mismo y las columnas de montos quedan
- * alineadas cifra a cifra: el detalle chico que separa una app financiera seria
- * de una plantilla.
+ * ## Ojo con Android
  *
- * Cada peso es una familia propia, no un `fontWeight`. En React Native, poner
- * `fontFamily` y `fontWeight` juntos hace que Android sintetice la negrita
- * deformando la regular en vez de usar el archivo correcto. Por eso aca no hay
- * escala de pesos: se elige la familia y listo.
+ * Consolas es **propietaria de Microsoft**: no se puede empaquetar en una app.
+ * En web resuelve desde el sistema —perfecta en Windows, y en Mac o Linux cae a
+ * la siguiente de la pila— pero en el build de Android **no va a existir**.
  *
- * Las dos vienen como paquete de `@expo-google-fonts`, o sea sin archivos que
- * versionar ni licencia que revisar, y funcionan igual en web y en Android.
- * Cambiar de familia es cambiar este objeto y el `useFonts` que las carga.
+ * Antes de F3 hay que empaquetar una sustituta libre. Candidatas, en orden:
+ * **Inconsolata** (Google Fonts, disenada explicitamente a partir de Consolas) o
+ * **Cascadia Mono** (la sucesora de Microsoft, con licencia SIL OFL).
+ *
+ * ## Pesos
+ *
+ * Al ser una fuente del sistema y no un archivo por peso, aca **si** se usa
+ * `fontWeight`. La regla de "una familia por peso" existia para evitar que
+ * Android sintetizara la negrita deformando la regular, y eso solo aplica cuando
+ * uno empaqueta las variantes.
  */
+const PILA_CONSOLAS = 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace';
+
 export const fonts = {
-  ui: {
-    regular: 'SchibstedGrotesk_400Regular',
-    medium: 'SchibstedGrotesk_500Medium',
-    semibold: 'SchibstedGrotesk_600SemiBold',
-    bold: 'SchibstedGrotesk_700Bold',
-  },
-  mono: {
-    regular: 'GeistMono_400Regular',
-    medium: 'GeistMono_500Medium',
-    semibold: 'GeistMono_600SemiBold',
-  },
+  ui: PILA_CONSOLAS,
+  mono: PILA_CONSOLAS,
+} as const;
+
+export const pesos = {
+  regular: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700',
 } as const;
 
 export const fontSizes = {
