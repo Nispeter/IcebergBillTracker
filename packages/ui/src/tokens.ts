@@ -40,10 +40,15 @@ const palette = {
   silencioClaro: '#5E7388',
 
   // Oscuro "Noche polar"
-  nochePolar: '#0A1620',
-  superficieNoche: '#102131',
+  //
+  // La primera version estaba a 8% de luminosidad: tan oscura que el azul no
+  // alcanzaba a leerse y el fondo quedaba como pizarra sucia. Se subio a 11% y
+  // se corrio el matiz a 216 para que sea un azul de medianoche de verdad, y se
+  // separo mas la superficie del fondo para que una hoja o un menu se despeguen.
+  nochePolar: '#0E192A',
+  superficieNoche: '#16253D',
   tintaClara: '#E6F1F8',
-  hairlineOscuro: '#1E3547',
+  hairlineOscuro: '#273C5B',
   /**
    * El gris apagado del tema oscuro no venia definido en la paleta original.
    * Se eligio como espejo de `silencioClaro`, aclarado hasta cumplir AA sobre la
@@ -66,7 +71,7 @@ const palette = {
   /** El unico rojo del sistema. Solo para vencido. */
   vencido: '#D9534F',
   vencidoProfundo: '#D2322D',
-  vencidoSuave: '#DC5F5C',
+  vencidoSuave: '#E06B68',
 } as const;
 
 export interface Theme {
