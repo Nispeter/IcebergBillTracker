@@ -86,6 +86,10 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
       porCategoria,
       mayorCategoria: porCategoria[0]?.total.amountMinor ?? 1,
       serie: analytics.seriePorDia(analizables, rango),
+      // Que categoria explica el cambio contra el periodo anterior. El "contra
+      // que" lo decide el rango: el anterior de una semana es la semana pasada
+      // completa, no siete dias atras.
+      deriva: analytics.derivaPorCategoria(analizables, rango, dates.previousPeriod(rango)),
       // El comprometido se aproxima por categorias hasta que F3 traiga las
       // reglas de recurrencia.
       fijo: money.money(

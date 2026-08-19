@@ -7,12 +7,13 @@
 
 import { money } from '@iceberg/core';
 import { charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FilaMovimiento } from '../../components/FilaMovimiento';
 import { Iceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
+import { QueCambio } from '../../components/QueCambio';
 import {
   useAnalisisDeRango, useMovimientosFiltrados, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
@@ -23,6 +24,7 @@ export default function Resumen() {
   const { theme } = useTema();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte } = usePeriodo();
+  const router = useRouter();
 
   const saldo = useSaldo(useSaldoInicial());
   const a = useAnalisisDeRango(rango, corte);
@@ -61,6 +63,16 @@ export default function Resumen() {
             <Leyenda styles={styles} color={charts[0]} titulo="Variable" monto={money.format(variable)} />
           </View>
         </View>
+
+        <View style={styles.regla}>
+          <Text style={styles.reglaTitulo}>Qué cambió</Text>
+          <View style={styles.reglaLinea} />
+        </View>
+        <QueCambio
+          deriva={a.deriva}
+          theme={theme}
+          onElegir={(categoriaId) => router.push(`/movimientos?categoria=${categoriaId}`)}
+        />
 
         <View style={styles.regla}>
           <Text style={styles.reglaTitulo}>Últimos movimientos</Text>
