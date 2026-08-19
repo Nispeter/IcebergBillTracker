@@ -17,7 +17,14 @@ import { BarraDePeriodo } from './BarraDePeriodo';
 import { Sidebar } from './Sidebar';
 import { useTema } from '../datos/tema';
 
-export function Pantalla({ children, sinPeriodo }: { children: ReactNode; sinPeriodo?: boolean }) {
+export function Pantalla(
+  { children, sinPeriodo, permitirFuturo }: {
+    children: ReactNode;
+    sinPeriodo?: boolean;
+    /** Ver `BarraDePeriodo`: solo Tempanos necesita mirar hacia adelante. */
+    permitirFuturo?: boolean;
+  },
+) {
   const { nombre: tema, theme } = useTema();
   const styles = crearEstilos(theme);
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -38,7 +45,7 @@ export function Pantalla({ children, sinPeriodo }: { children: ReactNode; sinPer
           </Pressable>
 
           {sinPeriodo ? <Text style={styles.marca}>ICEBERG</Text> : (
-            <View style={styles.periodo}><BarraDePeriodo theme={theme} /></View>
+            <View style={styles.periodo}><BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} /></View>
           )}
 
           <Link href="/nuevo" asChild>

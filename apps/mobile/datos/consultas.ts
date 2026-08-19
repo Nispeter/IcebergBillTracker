@@ -16,7 +16,7 @@
  * proyecto descarta: dos fuentes de verdad que se desincronizan.
  */
 
-import { analytics, dates, money } from '@iceberg/core';
+import { analytics, dates, money, recurrence } from '@iceberg/core';
 import {
   combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeMovimientos,
   consultaDeReglas, resumenDeMovimientos,
@@ -299,4 +299,30 @@ export function useTempanos(rango: dates.DateRange, hoy: dates.PlainDate): Tempa
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [reglas, decisiones, clave, hoy],
   );
+}
+
+/**
+ * Cuentas periodicas que se pueden proponer, sin las que ya son regla.
+ *
+ * El filtro por nombre es lo que evita que la pantalla ofrezca crear el arriendo
+ * cuando el arriendo ya existe. Se compara normalizado, igual que agrupa el
+ * detector: si no, "Enel" y "ENEL" se propondrian como dos cuentas distintas.
+ */
+export function useCandidatasARegla(hoy: dates.PlainDate): recurrence.Candidata[] {
+  const movimientos = useMovimientos();
+  const reglas = useReglas();
+
+  return useMemo(() => {
+    const yaSonRegla = new Set(reglas.map((r) => recurrence.normalizarNombre(r.nombre)));
+    const observados = movimientos
+      .filter((m) => m.tipo === 'gasto')
+      .map((m) => ({
+        nombre: m.nombre,
+        montoMinor: m.montoMinor,
+        ocurridoEn: m.ocurridoEn as dates.PlainDate,
+        categoriaId: m.categoriaId,
+      }));
+    return recurrence.detectarRecurrentes(observados, hoy)
+      .filter((c) => !yaSonRegla.has(recurrence.normalizarNombre(c.nombre)));
+  }, [movimientos, reglas, hoy]);
 }

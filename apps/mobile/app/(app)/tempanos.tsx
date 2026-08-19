@@ -10,8 +10,10 @@
  * informacion de la pantalla sobre la que hay que hacer algo hoy.
  */
 
-import { categories, money } from '@iceberg/core';
-import { desmarcar, marcarOmitida, marcarPagada, type Tempano } from '@iceberg/db';
+import { categories, money, recurrence } from '@iceberg/core';
+import {
+  crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
+} from '@iceberg/db';
 import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
@@ -25,7 +27,7 @@ import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useDatos } from '../../datos/BaseDeDatos';
-import { useTempanos } from '../../datos/consultas';
+import { useCandidatasARegla, useTempanos } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
@@ -38,6 +40,9 @@ export default function Tempanos() {
   const { db, contexto } = useDatos();
 
   const tempanos = useTempanos(rango, corte);
+  // Encontradas en el historial: es lo que evita tener que cargar a mano el
+  // arriendo, la luz y el agua antes de que la pantalla sirva para algo.
+  const candidatas = useCandidatasARegla(corte);
 
   const pendientes = tempanos.filter((t) => t.estado === 'pendiente');
   const vencidos = pendientes.filter((t) => t.diasRestantes < 0);
@@ -47,7 +52,7 @@ export default function Tempanos() {
   );
 
   return (
-    <Pantalla>
+    <Pantalla permitirFuturo>
       <ScrollView contentContainerStyle={styles.contenido}>
         <View style={styles.cabecera}>
           <View style={styles.total}>
@@ -69,16 +74,9 @@ export default function Tempanos() {
         ) : null}
 
         {tempanos.length === 0 ? (
-          <View style={styles.vacio}>
-            <Text style={styles.vacioTexto}>
-              No hay cuentas periódicas en este período.
-            </Text>
-            <Link href="/regla/nueva" asChild>
-              <Pressable style={styles.crear} accessibilityRole="button">
-                <Text style={styles.crearTexto}>Crear una cuenta periódica</Text>
-              </Pressable>
-            </Link>
-          </View>
+          <Text style={styles.vacioTexto}>
+            No hay cuentas periódicas en este período.
+          </Text>
         ) : (
           tempanos.map((tempano) => (
             <Fila
@@ -93,13 +91,48 @@ export default function Tempanos() {
           ))
         )}
 
-        {tempanos.length > 0 ? (
-          <Link href="/regla/nueva" asChild>
-            <Pressable style={styles.agregar} accessibilityRole="button">
-              <Text style={styles.agregarTexto}>Nueva cuenta periódica</Text>
-            </Pressable>
-          </Link>
+        {candidatas.length > 0 ? (
+          <>
+            <View style={styles.regla}>
+              <Text style={styles.reglaTitulo}>Encontradas en tu historial</Text>
+              <View style={styles.reglaLinea} />
+              <Ayuda
+                theme={theme}
+                texto={'Movimientos que se repiten con la misma frecuencia y un monto '
+                  + 'parecido. Son una propuesta: nada se crea hasta que la confirmes.'}
+              />
+            </View>
+
+            {candidatas.map((candidata) => (
+              <Sugerencia
+                key={candidata.nombre}
+                candidata={candidata}
+                styles={styles}
+                theme={theme}
+                onCrear={() => {
+                  const cuenta = listarCuentas(db, contexto)[0];
+                  if (!cuenta) return;
+                  crearRegla(db, contexto, {
+                    cuentaId: cuenta.id,
+                    tipo: 'gasto',
+                    montoMinor: candidata.montoMinor,
+                    nombre: candidata.nombre,
+                    categoriaId: candidata.categoriaId,
+                    frecuencia: candidata.frecuencia,
+                    cada: candidata.cada,
+                    desde: candidata.desde,
+                  });
+                }}
+              />
+            ))}
+          </>
         ) : null}
+
+        <Link href="/regla/nueva" asChild>
+          <Pressable style={styles.agregar} accessibilityRole="button">
+            <Text style={styles.agregarTexto}>Nueva cuenta periódica</Text>
+          </Pressable>
+        </Link>
       </ScrollView>
     </Pantalla>
   );
@@ -197,6 +230,48 @@ function Fila(
   );
 }
 
+function Sugerencia(
+  { candidata, styles, theme, onCrear }: {
+    candidata: recurrence.Candidata;
+    styles: Estilos;
+    theme: Theme;
+    onCrear: () => void;
+  },
+) {
+  const Icono = candidata.categoriaId ? iconoDeCategoria(candidata.categoriaId) : null;
+
+  return (
+    <View style={styles.fila}>
+      <View style={styles.texto}>
+        <Text style={styles.nombre} numberOfLines={1}>{candidata.nombre}</Text>
+        <View style={styles.meta}>
+          {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
+          <Text style={styles.subtitulo}>
+            {recurrence.describirRegla({
+              frecuencia: candidata.frecuencia,
+              cada: candidata.cada,
+              desde: candidata.desde,
+              hasta: null,
+            })}
+            {` · ${candidata.veces} veces`}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.monto}>{money.format(money.money(candidata.montoMinor))}</Text>
+
+      <Pressable
+        onPress={onCrear}
+        style={styles.crearChico}
+        accessibilityRole="button"
+        accessibilityLabel={`Crear cuenta periódica ${candidata.nombre}`}
+      >
+        <Text style={styles.crearChicoTexto}>Crear</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function crearEstilos(theme: Theme) {
   const boton = {
     width: 26,
@@ -252,10 +327,18 @@ function crearEstilos(theme: Theme) {
     accion: { ...boton, borderWidth: elevation.hairlineWidth, borderColor: theme.hairline },
     accionPagar: { ...boton, backgroundColor: theme.acento },
 
-    vacio: { paddingVertical: spacing.xxl, gap: spacing.lg, alignItems: 'flex-start' },
-    vacioTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio },
-    crear: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderRadius: radii.sm, backgroundColor: theme.acento },
-    crearTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
+    vacioTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio, paddingVertical: spacing.lg },
+
+    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 20 },
+    reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
+    crearChico: {
+      paddingVertical: 5,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.full,
+      backgroundColor: theme.acento,
+    },
+    crearChicoTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
     agregar: { marginTop: spacing.lg, alignItems: 'flex-end' },
     agregarTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
   });

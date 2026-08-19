@@ -22,7 +22,19 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { TIPOS, nombreDePeriodo, usePeriodo, type TipoDePeriodo } from '../datos/periodo';
 
-export function BarraDePeriodo({ theme }: { theme: Theme }) {
+export function BarraDePeriodo(
+  { theme, permitirFuturo }: {
+    theme: Theme;
+    /**
+     * Deja avanzar mas alla del ultimo periodo con datos.
+     *
+     * Por defecto la flecha se apaga ahi, para no pasear por meses vacios. Pero
+     * Tempanos habla justamente de lo que **todavia no paso**: sin esto, crear
+     * una cuenta que vence el mes que viene la volvia invisible.
+     */
+    permitirFuturo?: boolean;
+  },
+) {
   const styles = crearEstilos(theme);
   const periodo = usePeriodo();
   const [abierto, setAbierto] = useState(false);
@@ -32,6 +44,8 @@ export function BarraDePeriodo({ theme }: { theme: Theme }) {
   const desdeOk = dates.parsePlainDate(desde);
   const hastaOk = dates.parsePlainDate(hasta);
   const rangoValido = desdeOk !== null && hastaOk !== null && desdeOk <= hastaOk;
+
+  const frenado = periodo.esElUltimo && permitirFuturo !== true;
 
   const elegir = (tipo: TipoDePeriodo) => {
     if (tipo === 'custom') {
@@ -73,12 +87,12 @@ export function BarraDePeriodo({ theme }: { theme: Theme }) {
         <Pressable
           onPress={periodo.siguiente}
           style={styles.flecha}
-          disabled={periodo.esElUltimo}
+          disabled={frenado}
           accessibilityRole="button"
           accessibilityLabel="Período siguiente"
           hitSlop={10}
         >
-          <CaretRight size={13} weight="bold" color={periodo.esElUltimo ? theme.hairline : theme.tinta} />
+          <CaretRight size={13} weight="bold" color={frenado ? theme.hairline : theme.tinta} />
         </Pressable>
       </View>
 
