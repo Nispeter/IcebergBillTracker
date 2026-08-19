@@ -14,23 +14,23 @@
 import { categories, dates, money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
-  charts, elevation, fontSizes, fonts, pesos, niceUnit, notchesFor, radii, spacing, themes,
-  type Theme, type ThemeName,
+  charts, elevation, fontSizes, fonts, pesos, niceUnit, notchesFor, radii, spacing,
+  type Theme,
 } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { Link } from 'expo-router';
-import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { useMemo, type ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { useFechaDeCorte, useMovimientos, useResumenDelMes, useSaldo, useSaldoInicial } from '../datos/consultas';
+import { useTema } from '../datos/tema';
 import { BarraSegmentada } from '../components/BarraSegmentada';
 import { Iceberg } from '../components/Iceberg';
+import { FilaMovimiento } from '../components/FilaMovimiento';
 import { iconoDeCategoria } from '../components/iconos';
 
 export default function Home() {
-  const sistema = useColorScheme();
-  const [tema, setTema] = useState<ThemeName>(sistema === 'dark' ? 'dark' : 'light');
-  const theme = themes[tema];
+  const { nombre: tema, theme, alternar } = useTema();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
 
   // Todo sale de la base y es reactivo: al agregar un movimiento, el saldo, el
@@ -62,7 +62,7 @@ export default function Home() {
           <Text style={styles.marca}>ICEBERG</Text>
           <View style={styles.accionesEncabezado}>
             <Pressable
-              onPress={() => setTema(tema === 'dark' ? 'light' : 'dark')}
+              onPress={alternar}
               accessibilityRole="button"
               accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
             >
@@ -161,41 +161,9 @@ export default function Home() {
           )}
         />
         <View>
-          {r.recientes.map((tx: Movimiento) => {
-            const fecha = tx.ocurridoEn as dates.PlainDate;
-            const Icono = tx.categoriaId ? iconoDeCategoria(tx.categoriaId) : null;
-            return (
-              <Link
-                key={tx.id}
-                href={{ pathname: '/movimiento/[id]', params: { id: tx.id } }}
-                asChild
-              >
-                <Pressable
-                  style={styles.filaMovimiento}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Editar ${tx.nombre}`}
-                >
-                <View style={styles.marcaFecha}>
-                  <Text style={styles.dia}>{dates.day(fecha)}</Text>
-                  <Text style={styles.mes}>{MESES[dates.month(fecha) - 1]}</Text>
-                </View>
-                <View style={styles.textoMovimiento}>
-                  <Text style={styles.nombreMovimiento} numberOfLines={1}>{tx.nombre}</Text>
-                  <View style={styles.metaMovimiento}>
-                    {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
-                    <Text style={styles.categoriaMovimiento}>
-                      {tx.categoriaId ? categories.categoryName(tx.categoriaId) : 'Ingreso'}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={tx.tipo === 'ingreso' ? styles.montoIngreso : styles.montoGasto}>
-                  {tx.tipo === 'ingreso' ? '+' : '−'}
-                  {money.formatNumber(money.money(tx.montoMinor))}
-                </Text>
-                </Pressable>
-              </Link>
-            );
-          })}
+          {r.recientes.map((tx: Movimiento) => (
+            <FilaMovimiento key={tx.id} tx={tx} theme={theme} />
+          ))}
         </View>
 
         <Text style={styles.pie}>{r.total} movimientos guardados</Text>
@@ -208,8 +176,6 @@ export default function Home() {
 function capitalizar(texto: string): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
-
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 type Estilos = ReturnType<typeof crearEstilos>;
 
@@ -358,25 +324,6 @@ function crearEstilos(theme: Theme) {
       color: theme.tinta,
     },
 
-    filaMovimiento: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.lg,
-      paddingVertical: spacing.md,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-    },
-    marcaFecha: { width: 30, alignItems: 'center' },
-    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
-    mes: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase' },
-    textoMovimiento: { flex: 1, gap: 2 },
-    nombreMovimiento: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
-    metaMovimiento: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    categoriaMovimiento: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.gasto },
-    // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
-    // hasta cumplir AA, en oscuro es la misma aurora viva.
-    montoIngreso: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.ingresoTexto },
 
     pie: {
       fontFamily: fonts.ui, fontWeight: pesos.regular,

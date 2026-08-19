@@ -5,26 +5,24 @@
  * SQL, no se aplica sobre todo lo cargado en memoria.
  */
 
-import { categories, dates, money } from '@iceberg/core';
+
+import { categories, money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, themes, type Theme, type ThemeName,
+  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import { iconoDeCategoria } from '../components/iconos';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FilaMovimiento } from '../components/FilaMovimiento';
 import { useMovimientosFiltrados } from '../datos/consultas';
 import { volver } from '../datos/navegacion';
-
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+import { useTema } from '../datos/tema';
 
 export default function Movimientos() {
-  const sistema = useColorScheme();
-  const [tema, setTema] = useState<ThemeName>(sistema === 'dark' ? 'dark' : 'light');
-  const theme = themes[tema];
+  const { nombre: tema, theme, alternar } = useTema();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const router = useRouter();
 
@@ -40,8 +38,14 @@ export default function Movimientos() {
   );
   const movimientos = useMovimientosFiltrados(filtro);
 
+  // Los montos se guardan **sin signo**; el signo lo da el tipo. Sumarlos a
+  // secas daba un numero sin sentido: $500.000 de ingreso mas $300.000 de gasto
+  // mostraban $800.000.
   const total = useMemo(
-    () => money.money(movimientos.reduce((s, m) => s + m.montoMinor, 0), 'CLP'),
+    () => money.money(
+      movimientos.reduce((s, m) => s + (m.tipo === 'ingreso' ? m.montoMinor : -m.montoMinor), 0),
+      'CLP',
+    ),
     [movimientos],
   );
 
@@ -61,7 +65,7 @@ export default function Movimientos() {
             <Text style={styles.volverTexto}>Home</Text>
           </Pressable>
           <Pressable
-            onPress={() => setTema(tema === 'dark' ? 'light' : 'dark')}
+            onPress={alternar}
             accessibilityRole="button"
             accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
           >
@@ -71,7 +75,7 @@ export default function Movimientos() {
 
         <Text style={styles.titulo}>Movimientos</Text>
         <Text style={styles.resumen}>
-          {movimientos.length} {movimientos.length === 1 ? 'movimiento' : 'movimientos'} · {money.format(total)}
+          {movimientos.length} {movimientos.length === 1 ? 'movimiento' : 'movimientos'} · {money.formatSigned(total)}
         </Text>
 
         <View style={styles.filtros}>
@@ -102,37 +106,9 @@ export default function Movimientos() {
           <Text style={styles.vacio}>Ningún movimiento con esos filtros.</Text>
         ) : (
           <View style={styles.lista}>
-            {movimientos.map((tx: Movimiento) => {
-              const fecha = tx.ocurridoEn as dates.PlainDate;
-              const Icono = tx.categoriaId ? iconoDeCategoria(tx.categoriaId) : null;
-              return (
-                <Link key={tx.id} href={{ pathname: '/movimiento/[id]', params: { id: tx.id } }} asChild>
-                  <Pressable
-                    style={styles.fila}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Editar ${tx.nombre}`}
-                  >
-                    <View style={styles.marcaFecha}>
-                      <Text style={styles.dia}>{dates.day(fecha)}</Text>
-                      <Text style={styles.mes}>{MESES[dates.month(fecha) - 1]}</Text>
-                    </View>
-                    <View style={styles.textoMovimiento}>
-                      <Text style={styles.nombre} numberOfLines={1}>{tx.nombre}</Text>
-                      <View style={styles.meta}>
-                        {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
-                        <Text style={styles.categoria}>
-                          {tx.categoriaId ? categories.categoryName(tx.categoriaId) : 'Ingreso'}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={tx.tipo === 'ingreso' ? styles.montoIngreso : styles.montoGasto}>
-                      {tx.tipo === 'ingreso' ? '+' : '−'}
-                      {money.formatNumber(money.money(tx.montoMinor))}
-                    </Text>
-                  </Pressable>
-                </Link>
-              );
-            })}
+            {movimientos.map((tx: Movimiento) => (
+              <FilaMovimiento key={tx.id} tx={tx} theme={theme} />
+            ))}
           </View>
         )}
       </ScrollView>
@@ -211,22 +187,5 @@ function crearEstilos(theme: Theme) {
     },
 
     lista: { marginTop: spacing.lg },
-    fila: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.lg,
-      paddingVertical: spacing.md,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-    },
-    marcaFecha: { width: 30, alignItems: 'center' },
-    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
-    mes: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase' },
-    textoMovimiento: { flex: 1, gap: 2 },
-    nombre: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
-    meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    categoria: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.gasto },
-    montoIngreso: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.ingresoTexto },
   });
 }
