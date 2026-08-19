@@ -27,6 +27,7 @@ import { X } from 'phosphor-react-native/src/icons/X';
 import type { IconProps } from 'phosphor-react-native';
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pinguino } from './Pinguino';
 
 interface Destino {
   readonly ruta: string;
@@ -91,7 +92,10 @@ export function Sidebar(
 
       <Animated.View style={[styles.panel, { transform: [{ translateX: desplazamiento }] }]}>
         <View style={styles.cabecera}>
-          <Text style={styles.marca}>ICEBERG</Text>
+          <View style={styles.marcaFila}>
+            <Pinguino theme={theme} tamano={22} />
+            <Text style={styles.marca}>ICEBERG</Text>
+          </View>
           <Pressable
             onPress={onCerrar}
             style={styles.cerrar}
@@ -151,6 +155,7 @@ function crearEstilos(theme: Theme) {
       paddingHorizontal: spacing.sm,
       paddingBottom: spacing.lg,
     },
+    marcaFila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     marca: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
     cerrar: {
       width: 22,

@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Pinguino } from '../components/Pinguino';
 import { ProveedorDeDatos } from '../datos/BaseDeDatos';
 import { useFechaDeCorte } from '../datos/consultas';
 import { ProveedorDePeriodo } from '../datos/periodo';
@@ -47,6 +48,7 @@ function Contenido() {
       <ProveedorDeDatos
         cargando={
           <View style={centro}>
+            <Pinguino theme={theme} tamano={48} />
             <ActivityIndicator color={theme.acento} />
             <Text style={{ fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio }}>
               Preparando la base…

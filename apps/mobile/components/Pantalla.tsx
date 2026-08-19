@@ -14,6 +14,7 @@ import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BarraDePeriodo } from './BarraDePeriodo';
+import { Pinguino } from './Pinguino';
 import { Sidebar } from './Sidebar';
 import { useTema } from '../datos/tema';
 
@@ -44,7 +45,12 @@ export function Pantalla(
             <List size={15} weight="bold" color={theme.tinta} />
           </Pressable>
 
-          {sinPeriodo ? <Text style={styles.marca}>ICEBERG</Text> : (
+          {sinPeriodo ? (
+            <View style={styles.marcaFila}>
+              <Pinguino theme={theme} tamano={18} />
+              <Text style={styles.marca}>ICEBERG</Text>
+            </View>
+          ) : (
             <View style={styles.periodo}><BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} /></View>
           )}
 
@@ -83,7 +89,8 @@ function crearEstilos(theme: Theme) {
     // contenido, y no merece una franja propia.
     encabezado: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
     periodo: { flex: 1, paddingTop: 1 },
-    marca: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
+    marcaFila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    marca: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
     boton: {
       width: 26,
       height: 26,
