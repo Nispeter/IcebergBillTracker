@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { Text, useColorScheme, View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../../components/FormularioMovimiento';
 import { useDatos } from '../../datos/BaseDeDatos';
+import { volver } from '../../datos/navegacion';
 
 export default function EditarMovimiento() {
   const sistema = useColorScheme();
@@ -34,7 +35,7 @@ export default function EditarMovimiento() {
           Ese movimiento ya no existe
         </Text>
         <Text
-          onPress={() => router.back()}
+          onPress={() => volver(router)}
           style={{ fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto }}
         >
           Volver
@@ -46,7 +47,7 @@ export default function EditarMovimiento() {
   function guardar(valores: ValoresDelFormulario) {
     try {
       editarMovimiento(db, contexto, movimiento!.id, valores);
-      router.back();
+      volver(router);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -55,7 +56,7 @@ export default function EditarMovimiento() {
   function borrar() {
     try {
       borrarMovimiento(db, contexto, movimiento!.id);
-      router.back();
+      volver(router);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -75,7 +76,7 @@ export default function EditarMovimiento() {
           categoriaId: movimiento.categoriaId as categories.CategoryId | null,
         }}
         onGuardar={guardar}
-        onCancelar={() => router.back()}
+        onCancelar={() => volver(router)}
         onBorrar={borrar}
         error={error}
       />

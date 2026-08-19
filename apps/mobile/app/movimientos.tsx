@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { iconoDeCategoria } from '../components/iconos';
 import { useMovimientosFiltrados } from '../datos/consultas';
+import { volver } from '../datos/navegacion';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
@@ -51,7 +52,7 @@ export default function Movimientos() {
 
         <View style={styles.encabezado}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => volver(router)}
             style={styles.volver}
             accessibilityRole="button"
             accessibilityLabel="Volver"

@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useColorScheme, View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../components/FormularioMovimiento';
 import { useDatos } from '../datos/BaseDeDatos';
+import { volver } from '../datos/navegacion';
 
 export default function NuevoMovimiento() {
   const sistema = useColorScheme();
@@ -26,7 +27,7 @@ export default function NuevoMovimiento() {
         return;
       }
       crearMovimiento(db, contexto, { cuentaId: cuenta.id, ...valores });
-      router.back();
+      volver(router);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -39,7 +40,7 @@ export default function NuevoMovimiento() {
         theme={theme}
         titulo="Nuevo movimiento"
         onGuardar={guardar}
-        onCancelar={() => router.back()}
+        onCancelar={() => volver(router)}
         error={error}
       />
     </View>
