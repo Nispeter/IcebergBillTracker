@@ -85,6 +85,7 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
       ritmo: analytics.calcularRitmo(analizables, rango, hoy),
       porCategoria,
       mayorCategoria: porCategoria[0]?.total.amountMinor ?? 1,
+      serie: analytics.seriePorDia(analizables, rango),
       // El comprometido se aproxima por categorias hasta que F3 traiga las
       // reglas de recurrencia.
       fijo: money.money(

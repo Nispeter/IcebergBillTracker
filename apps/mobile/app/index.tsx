@@ -26,9 +26,11 @@ import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarraSegmentada } from '../components/BarraSegmentada';
+import { Calendario } from '../components/Calendario';
 import { FilaMovimiento } from '../components/FilaMovimiento';
 import { Iceberg } from '../components/Iceberg';
 import { SelectorDeRango, nombreDeRango, rangoDe, type TipoDeRango } from '../components/SelectorDeRango';
+import { TortaDeCategorias } from '../components/TortaDeCategorias';
 import { iconoDeCategoria } from '../components/iconos';
 import {
   useAnalisisDeRango, useFechaDeCorte, useMovimientos, useSaldo, useSaldoInicial,
@@ -43,6 +45,7 @@ export default function Home() {
   const styles = useMemo(() => crearEstilos(theme), [theme]);
 
   const [tipoDeRango, setTipoDeRango] = useState<TipoDeRango>('month');
+  const [vistaCategorias, setVistaCategorias] = useState<'barras' | 'torta'>('barras');
 
   const corte = useFechaDeCorte();
   const rango = useMemo(() => rangoDe(tipoDeRango, corte), [tipoDeRango, corte]);
@@ -150,7 +153,22 @@ export default function Home() {
           </View>
         </View>
 
-        <Regla styles={styles} titulo="Gasto por categoría" />
+        <Regla
+          styles={styles}
+          titulo="Gasto por categoría"
+          accion={(
+            <Pressable
+              onPress={() => setVistaCategorias(vistaCategorias === 'barras' ? 'torta' : 'barras')}
+              accessibilityRole="button"
+              accessibilityLabel={`Ver como ${vistaCategorias === 'barras' ? 'torta' : 'barras'}`}
+            >
+              <Text style={styles.verTodos}>{vistaCategorias === 'barras' ? 'Torta' : 'Barras'}</Text>
+            </Pressable>
+          )}
+        />
+        {vistaCategorias === 'torta' ? (
+          <TortaDeCategorias porciones={a.porCategoria} theme={theme} />
+        ) : (
         <View>
           {visibles.map(({ categoriaId, total }) => {
             const Icono = iconoDeCategoria(categoriaId);
@@ -174,6 +192,16 @@ export default function Home() {
             <Text style={styles.vacio}>Sin gastos en este período.</Text>
           ) : null}
         </View>
+        )}
+
+        {/* El calendario solo tiene sentido en rangos de varios dias. En "Día"
+            seria una sola celda, y en "Año" serian 365 celdas de 3 pixeles. */}
+        {tipoDeRango === 'month' || tipoDeRango === 'week' ? (
+          <>
+            <Regla styles={styles} titulo="Día a día" />
+            <Calendario serie={a.serie} theme={theme} hoy={corte} />
+          </>
+        ) : null}
 
         <Regla
           styles={styles}
