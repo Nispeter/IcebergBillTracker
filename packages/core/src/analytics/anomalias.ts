@@ -86,3 +86,42 @@ export function detectarAnomalias<T>(
 export function montoDeAnomalia<T>(anomalia: Anomalia<T>): Money {
   return money(Math.round(anomalia.valor), 'CLP');
 }
+
+/**
+ * Anomalias **altas** dentro de cada grupo, todas juntas.
+ *
+ * Existe porque la pregunta util casi nunca es "que gasto se sale de lo normal"
+ * a secas, sino "que gasto se sale de lo normal **comparado con sus pares**". Un
+ * arriendo de $450.000 es enorme entre todos los gastos del mes y perfectamente
+ * normal entre otros arriendos.
+ *
+ * De que agrupar depende de quien llama, y la eleccion importa mas que el
+ * umbral: agrupar los gastos por categoria marcaba el 9,2% de la semilla —una
+ * categoria como Transporte junta viajes de $6.500 con bencinas de $32.000, y
+ * mediana + MAD suponen **una sola** poblacion— mientras que agrupar por
+ * comercio marca el 1,2%.
+ *
+ * Solo devuelve las altas: un gasto sospechosamente chico no le sirve a nadie.
+ */
+export function anomaliasAltasPorGrupo<T>(
+  items: readonly T[],
+  claveDe: (item: T) => string,
+  valorDe: (item: T) => number,
+  umbral = UMBRAL_ANOMALIA,
+): Anomalia<T>[] {
+  const grupos = new Map<string, T[]>();
+  for (const item of items) {
+    const clave = claveDe(item);
+    const lista = grupos.get(clave);
+    if (lista === undefined) grupos.set(clave, [item]);
+    else lista.push(item);
+  }
+
+  const salida: Anomalia<T>[] = [];
+  for (const lista of grupos.values()) {
+    for (const anomalia of detectarAnomalias(lista, valorDe, umbral)) {
+      if (anomalia.esAlta) salida.push(anomalia);
+    }
+  }
+  return salida.sort((a, b) => b.z - a.z);
+}

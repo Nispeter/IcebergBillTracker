@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectarAnomalias, dispersionRobusta, zRobusto } from './anomalias';
+import { anomaliasAltasPorGrupo, detectarAnomalias, dispersionRobusta, zRobusto } from './anomalias';
 
 describe('dispersionRobusta', () => {
   it('devuelve la mediana y la MAD escalada', () => {
@@ -114,5 +114,64 @@ describe('detectarAnomalias', () => {
     const anomalias = detectarAnomalias(semanas, monto);
     expect(anomalias).toHaveLength(1);
     expect(anomalias[0]!.z).toBeGreaterThan(8);
+  });
+});
+
+describe('anomaliasAltasPorGrupo', () => {
+  /**
+   * Treinta cafes de ~$3.000 y ocho arriendos de ~$450.000.
+   *
+   * La proporcion importa: con diez y diez la mediana del monton cae justo entre
+   * los dos grupos y la MAD se dispara, asi que **nada** sale anomalo ni siquiera
+   * sin agrupar. Es el mismo efecto que hace inservible agrupar por categoria,
+   * visto desde el otro lado.
+   */
+  const items = [
+    ...Array.from({ length: 30 }, (_, i) => ({ tipo: 'cafe', monto: 2800 + i * 20 })),
+    ...Array.from({ length: 8 }, (_, i) => ({ tipo: 'arriendo', monto: 448000 + i * 500 })),
+  ];
+  const clave = (x: { tipo: string }) => x.tipo;
+  const valor = (x: { monto: number }) => x.monto;
+
+  it('no marca al grande solo por ser grande: se compara con sus pares', () => {
+    expect(anomaliasAltasPorGrupo(items, clave, valor)).toHaveLength(0);
+    // Y sin agrupar, cada arriendo se sale de lo normal del monton entero.
+    expect(detectarAnomalias(items, valor).length).toBeGreaterThan(0);
+  });
+
+  it('marca al que se sale dentro de su propio grupo', () => {
+    const conRaro = [...items, { tipo: 'cafe', monto: 40000 }];
+    const salida = anomaliasAltasPorGrupo(conRaro, clave, valor);
+    expect(salida).toHaveLength(1);
+    expect(salida[0]!.item.monto).toBe(40000);
+  });
+
+  it('ignora las bajas: un gasto sospechosamente chico no es noticia', () => {
+    const conBarato = [...items, { tipo: 'arriendo', monto: 1000 }];
+    expect(anomaliasAltasPorGrupo(conBarato, clave, valor)).toHaveLength(0);
+  });
+
+  it('un grupo cuyos montos son todos iguales no marca nada: la MAD es cero', () => {
+    const fijos = Array.from({ length: 12 }, () => ({ tipo: 'arriendo', monto: 450000 }));
+    expect(anomaliasAltasPorGrupo(fijos, clave, valor)).toHaveLength(0);
+  });
+
+  it('un grupo con menos de cinco datos no marca nada', () => {
+    const pocos = [
+      { tipo: 'x', monto: 100 }, { tipo: 'x', monto: 100 },
+      { tipo: 'x', monto: 100 }, { tipo: 'x', monto: 9999 },
+    ];
+    expect(anomaliasAltasPorGrupo(pocos, clave, valor)).toHaveLength(0);
+  });
+
+  it('viene ordenado de la mas rara a la menos rara', () => {
+    const conDos = [
+      ...items,
+      { tipo: 'cafe', monto: 40000 },
+      { tipo: 'arriendo', monto: 900000 },
+    ];
+    const salida = anomaliasAltasPorGrupo(conDos, clave, valor);
+    expect(salida).toHaveLength(2);
+    expect(salida[0]!.z).toBeGreaterThanOrEqual(salida[1]!.z);
   });
 });
