@@ -12,14 +12,14 @@ describe('format', () => {
   });
 
   it('pone el menos antes del simbolo, no despues', () => {
-    expect(format(clp(-45000))).toBe('-$45.000');
+    expect(format(clp(-45000))).toBe('\u2212$45.000');
   });
 });
 
 describe('formatSigned', () => {
   it('marca explicitamente el signo de un delta', () => {
     expect(formatSigned(clp(45000))).toBe('+$45.000');
-    expect(formatSigned(clp(-45000))).toBe('-$45.000');
+    expect(formatSigned(clp(-45000))).toBe('\u2212$45.000');
   });
 
   it('el cero no lleva signo', () => {
@@ -30,7 +30,7 @@ describe('formatSigned', () => {
 describe('formatNumber', () => {
   it('devuelve la cifra sin simbolo de moneda', () => {
     expect(formatNumber(clp(1806324))).toBe('1.806.324');
-    expect(formatNumber(clp(-45000))).toBe('-45.000');
+    expect(formatNumber(clp(-45000))).toBe('\u221245.000');
   });
 });
 
@@ -69,5 +69,22 @@ describe('parseMoney', () => {
     for (const n of [0, 1, 1234, 1806324, -45000]) {
       expect(parseMoney(format(clp(n)))?.amountMinor).toBe(n);
     }
+  });
+});
+
+describe('parseMoney con los dos signos de resta', () => {
+  // Copiar una cifra de la pantalla y pegarla en un campo tiene que funcionar:
+  // `format` devuelve el menos tipografico, no el guion del teclado.
+  it('acepta el guion del teclado', () => {
+    expect(parseMoney('-$45.000')?.amountMinor).toBe(-45_000);
+  });
+
+  it('acepta el menos tipografico que devuelve format', () => {
+    expect(parseMoney('−$45.000')?.amountMinor).toBe(-45_000);
+  });
+
+  it('ida y vuelta con format, que es de donde sale el texto pegado', () => {
+    const original = money(-45_000, 'CLP');
+    expect(parseMoney(format(original))?.amountMinor).toBe(original.amountMinor);
   });
 });

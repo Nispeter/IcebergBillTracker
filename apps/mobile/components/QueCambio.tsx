@@ -92,10 +92,7 @@ export function QueCambio(
                 {/* El color sale de si conviene, no del signo, igual que las
                     cifras del Resumen. En gasto, subir nunca conviene. */}
                 <Text style={[styles.cambio, { color: subio ? theme.vencidoTexto : theme.ingresoTexto }]}>
-                  {/* El signo se arma aca y no con `formatSigned`, que usa el
-                      guion ASCII: al lado de un `−` en monoespaciada se ve como
-                      otro caracter. */}
-                  {subio ? '+' : '−'}{money.format(money.abs(fila.delta))}
+                  {money.formatSigned(fila.delta)}
                 </Text>
               </>
             );

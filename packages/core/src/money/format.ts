@@ -11,8 +11,21 @@ import { money, type CurrencyCode, type Money } from './money';
 /**
  * Intl con es-CL pone el signo despues del simbolo (`$-45.000`), que se lee mal
  * en una columna de cifras. Se formatea el valor absoluto y el signo se antepone
- * a mano para obtener `-$45.000`.
+ * a mano para obtener `−$45.000`.
  */
+
+/**
+ * El menos de verdad (U+2212), no el guion del teclado.
+ *
+ * En monoespaciada la diferencia se ve: el guion es mas corto y va mas alto, y
+ * en una columna de montos se nota que unos numeros estan pegados a un signo
+ * distinto que otros. Estas funciones son de **presentacion** —ya ponen el `$`
+ * y los separadores de miles— asi que el signo tambien es cosa suya.
+ *
+ * Si alguna vez hay que escribir montos a un archivo (el CSV de F4), eso **no**
+ * pasa por aca: va el entero crudo, que es lo que otro programa sabe leer.
+ */
+const MENOS = '\u2212';
 const currencyFormatters = new Map<CurrencyCode, Intl.NumberFormat>();
 const plainFormatters = new Map<CurrencyCode, Intl.NumberFormat>();
 
@@ -38,20 +51,20 @@ function plainFormatter(currency: CurrencyCode): Intl.NumberFormat {
   return formatter;
 }
 
-/** `$45.000`, `-$45.000`, `$0`. */
+/** `$45.000`, `−$45.000`, `$0`. */
 export function format(value: Money): string {
   const body = currencyFormatter(value.currency).format(Math.abs(value.amountMinor));
-  return value.amountMinor < 0 ? `-${body}` : body;
+  return value.amountMinor < 0 ? `${MENOS}${body}` : body;
 }
 
 /**
- * Igual que `format` pero siempre con signo explicito: `+$45.000` / `-$45.000`.
+ * Igual que `format` pero siempre con signo explicito: `+$45.000` / `−$45.000`.
  * Para deltas contra el periodo anterior, donde el `+` es informacion.
  */
 export function formatSigned(value: Money): string {
   if (value.amountMinor === 0) return format(value);
   const body = currencyFormatter(value.currency).format(Math.abs(value.amountMinor));
-  return value.amountMinor < 0 ? `-${body}` : `+${body}`;
+  return value.amountMinor < 0 ? `${MENOS}${body}` : `+${body}`;
 }
 
 /**
@@ -64,7 +77,7 @@ export function formatNumber(value: Money): string {
     .filter((part) => part.type === 'integer' || part.type === 'group' || part.type === 'decimal' || part.type === 'fraction')
     .map((part) => part.value)
     .join('');
-  return value.amountMinor < 0 ? `-${body}` : body;
+  return value.amountMinor < 0 ? `${MENOS}${body}` : body;
 }
 
 /**
@@ -74,13 +87,18 @@ export function formatNumber(value: Money): string {
  * medio escribir. Rechaza decimales a proposito: CLP tiene exponente 0, y
  * aceptar `1.234,56` obligaria a redondear en silencio un dato que el usuario
  * cree exacto.
+ *
+ * Acepta los **dos** signos de resta: el guion del teclado, que es lo que
+ * cualquiera escribe, y el menos tipografico que devuelve `format`. Si solo
+ * aceptara uno, copiar una cifra de la pantalla y pegarla en un campo daria
+ * `null`.
  */
 export function parseMoney(input: string, currency: CurrencyCode = 'CLP'): Money | null {
   const trimmed = input.trim();
   if (trimmed === '') return null;
 
-  const signMatch = /^([+-])\s*/.exec(trimmed);
-  const sign = signMatch?.[1] === '-' ? -1 : 1;
+  const signMatch = /^([+\-\u2212])\s*/.exec(trimmed);
+  const sign = signMatch?.[1] === '+' || signMatch === null ? 1 : -1;
   const rest = signMatch ? trimmed.slice(signMatch[0].length) : trimmed;
 
   // \s no cubre el espacio duro que Intl y varios teclados insertan.
