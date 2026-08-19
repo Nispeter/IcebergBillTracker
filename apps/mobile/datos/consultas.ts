@@ -121,6 +121,7 @@ export function useSaldoAlEmpezar(rango: dates.DateRange): money.Money {
 export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate) {
   const movimientos = useMovimientos();
   const claveRango = `${rango.kind}:${rango.start}:${rango.end}`;
+  const deRegla = useMovimientosDeRegla(rango);
 
   return useMemo(() => {
     const analizables: analytics.MovimientoAnalizable[] = movimientos.map((m) => ({
@@ -143,33 +144,73 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
       // que" lo decide el rango: el anterior de una semana es la semana pasada
       // completa, no siete dias atras.
       deriva: analytics.derivaPorCategoria(analizables, rango, dates.previousPeriod(rango)),
-      // El comprometido se aproxima por categorias hasta que F3 traiga las
-      // reglas de recurrencia.
       fijo: money.money(
-        analizables
+        movimientos
           .filter((m) => m.tipo === 'gasto'
-            && dates.containsDate(rango, m.ocurridoEn)
-            && m.categoriaId != null
-            && COMPROMETIDAS.has(m.categoriaId))
+            && dates.containsDate(rango, m.ocurridoEn as dates.PlainDate)
+            && esGastoComprometido(m, deRegla))
           .reduce((s, m) => s + m.montoMinor, 0),
         'CLP',
       ),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movimientos, claveRango, hoy]);
+  }, [movimientos, deRegla, claveRango, hoy]);
 }
 
 /**
- * Categorias que son compromiso fijo por naturaleza.
+ * Categorias que **suelen** ser compromiso fijo.
  *
- * Es una aproximacion hasta F3: cuando existan las reglas de recurrencia, el
- * "comprometido" se leera de la marca de cada movimiento y no de su categoria.
+ * Es el respaldo, no la verdad: la verdad es que el movimiento haya nacido de
+ * una regla. Se conserva porque sin el, un historial recien importado —o la
+ * semilla, que no trae reglas— mostraria el comprometido en cero y el iceberg
+ * entero bajo el agua. A medida que el usuario crea sus reglas, esta mitad va
+ * pesando menos sola.
  */
 const COMPROMETIDAS = new Set(['vivienda', 'servicios', 'deudas', 'ahorros', 'impuestos']);
 
 /** Si un gasto de esa categoria cuenta como compromiso fijo. */
 export function esComprometido(categoriaId: string | null): boolean {
   return categoriaId !== null && COMPROMETIDAS.has(categoriaId);
+}
+
+/**
+ * Si un gasto es comprometido: **nacio de una regla**, o su categoria lo delata.
+ *
+ * El "o" es a proposito y es temporal por naturaleza. Nacer de una regla es la
+ * respuesta correcta y no admite discusion; la categoria es lo que salva a los
+ * movimientos que ya existian antes de que hubiera reglas.
+ */
+export function esGastoComprometido(
+  movimiento: Movimiento,
+  deRegla: ReadonlySet<string>,
+): boolean {
+  return deRegla.has(movimiento.id) || esComprometido(movimiento.categoriaId);
+}
+
+/**
+ * Los movimientos del rango que nacieron de una regla, por id.
+ *
+ * Se lee de las instancias: cuando se marca una cuenta como pagada se guarda
+ * ahi el id del movimiento que se creo. Es el enlace que permite dejar de
+ * adivinar el comprometido a partir de la categoria.
+ */
+export function useMovimientosDeRegla(rango: dates.DateRange): ReadonlySet<string> {
+  const { db, contexto } = useDatos();
+  const clave = `${rango.start}:${rango.end}`;
+  const consulta = useMemo(
+    () => consultaDeInstancias(db, contexto, rango),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [db, contexto, clave],
+  );
+  const { data } = useLiveQuery(consulta, [clave]);
+
+  return useMemo(() => {
+    const ids = new Set<string>();
+    for (const instancia of (data ?? []) as Instancia[]) {
+      if (instancia.movimientoId !== null) ids.add(instancia.movimientoId);
+    }
+    return ids;
+  }, [data]);
 }
 
 /**

@@ -19,8 +19,8 @@ import { Hoja } from '../../components/Hoja';
 import { Iceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
 import {
-  esComprometido, useAnalisisDeRango, useAnomalias, useDesgloseDelSaldo,
-  useMovimientosFiltrados, useSaldoInicial, type DesgloseDelSaldo,
+  esGastoComprometido, useAnalisisDeRango, useAnomalias, useDesgloseDelSaldo,
+  useMovimientosDeRegla, useMovimientosFiltrados, useSaldoInicial, type DesgloseDelSaldo,
 } from '../../datos/consultas';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
@@ -41,13 +41,14 @@ export default function Resumen() {
   const recientes = delPeriodo.slice(0, 4);
 
   const anomalias = useAnomalias();
+  const deRegla = useMovimientosDeRegla(rango);
   const [cifra, setCifra] = useState<Cifra | null>(null);
 
   const variable = money.subtract(a.resumen.gasto, a.fijo);
   const share = money.ratio(a.fijo, a.resumen.gasto) ?? 0;
 
   const detalle = cifra === null ? null
-    : detalleDe(cifra, { delPeriodo, resumen: a.resumen, fijo: a.fijo, variable, desglose });
+    : detalleDe(cifra, { delPeriodo, resumen: a.resumen, fijo: a.fijo, variable, desglose, deRegla });
 
   return (
     <Pantalla>
@@ -168,9 +169,10 @@ function detalleDe(
     fijo: money.Money;
     variable: money.Money;
     desglose: DesgloseDelSaldo;
+    deRegla: ReadonlySet<string>;
   },
 ): Detalle {
-  const { delPeriodo, resumen, fijo, variable, desglose } = datos;
+  const { delPeriodo, resumen, fijo, variable, desglose, deRegla } = datos;
   const mayorPrimero = (lista: readonly Movimiento[]) =>
     [...lista].sort((x, y) => y.montoMinor - x.montoMinor);
   const gastos = delPeriodo.filter((m) => m.tipo === 'gasto');
@@ -202,16 +204,16 @@ function detalleDe(
         ],
       };
     case 'comprometido': {
-      const lista = gastos.filter((m) => esComprometido(m.categoriaId));
+      const lista = gastos.filter((m) => esGastoComprometido(m, deRegla));
       return {
         total: fijo,
-        formula: 'Gastos en vivienda, servicios, deudas, ahorros e impuestos. Hasta que '
-          + 'existan las reglas de recurrencia se deduce de la categoría, no del movimiento.',
+        formula: 'Lo que llega igual: todo gasto que nació de una cuenta periódica, más '
+          + 'los de vivienda, servicios, deudas, ahorros e impuestos que todavía no tienen regla.',
         movimientos: mayorPrimero(lista),
       };
     }
     case 'variable': {
-      const lista = gastos.filter((m) => !esComprometido(m.categoriaId));
+      const lista = gastos.filter((m) => !esGastoComprometido(m, deRegla));
       return {
         total: variable,
         formula: 'Todo el gasto que no es un compromiso fijo: lo que decides tú, uno por uno.',
