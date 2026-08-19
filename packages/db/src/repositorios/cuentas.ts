@@ -52,8 +52,13 @@ export function obtenerCuenta(db: BaseDeDatos, contexto: Contexto, id: string): 
   return filas[0] ?? null;
 }
 
+/** La consulta sin ejecutar, para `useLiveQuery`. Ver `consultaDeMovimientos`. */
+export function consultaDeCuentas(db: BaseDeDatos, contexto: Contexto) {
+  return db.select().from(cuentas).where(vivas(contexto)).orderBy(asc(cuentas.nombre));
+}
+
 export function listarCuentas(db: BaseDeDatos, contexto: Contexto): Cuenta[] {
-  return db.select().from(cuentas).where(vivas(contexto)).orderBy(asc(cuentas.nombre)).all();
+  return consultaDeCuentas(db, contexto).all() as Cuenta[];
 }
 
 export function editarCuenta(

@@ -109,11 +109,19 @@ export function obtenerMovimiento(
   return filas[0] ?? null;
 }
 
-export function listarMovimientos(
+/**
+ * La consulta **sin ejecutar**.
+ *
+ * Se expone aparte porque `useLiveQuery` de Drizzle necesita el constructor de
+ * consulta, no el resultado: se queda escuchando los cambios de la base y la
+ * vuelve a correr sola. Las pantallas usan esta; los tests usan
+ * `listarMovimientos`, que la ejecuta de una.
+ */
+export function consultaDeMovimientos(
   db: BaseDeDatos,
   contexto: Contexto,
   filtro: FiltroDeMovimientos = {},
-): Movimiento[] {
+) {
   const condiciones: SQL[] = [];
   if (filtro.cuentaId) condiciones.push(eq(movimientos.cuentaId, filtro.cuentaId));
   if (filtro.tipo) condiciones.push(eq(movimientos.tipo, filtro.tipo));
@@ -121,13 +129,21 @@ export function listarMovimientos(
   if (filtro.desde) condiciones.push(gte(movimientos.ocurridoEn, filtro.desde));
   if (filtro.hasta) condiciones.push(lte(movimientos.ocurridoEn, filtro.hasta));
 
-  const consulta = db.select().from(movimientos)
+  const base = db.select().from(movimientos)
     .where(vivos(contexto, condiciones))
     // Mas nuevo primero. El id desempata dentro del mismo dia, y como es ULID
     // eso equivale a orden de creacion.
     .orderBy(desc(movimientos.ocurridoEn), desc(movimientos.id));
 
-  return filtro.limite === undefined ? consulta.all() : consulta.limit(filtro.limite).all();
+  return filtro.limite === undefined ? base : base.limit(filtro.limite);
+}
+
+export function listarMovimientos(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  filtro: FiltroDeMovimientos = {},
+): Movimiento[] {
+  return consultaDeMovimientos(db, contexto, filtro).all() as Movimiento[];
 }
 
 /** Igual que `listarMovimientos` pero del mas viejo al mas nuevo. */
