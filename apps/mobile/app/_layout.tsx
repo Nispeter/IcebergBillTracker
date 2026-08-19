@@ -1,8 +1,11 @@
 import { fontSizes, fonts, pesos, spacing } from '@iceberg/ui';
 import { Stack } from 'expo-router';
+import type { ReactNode } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ProveedorDeDatos } from '../datos/BaseDeDatos';
+import { useFechaDeCorte } from '../datos/consultas';
+import { ProveedorDePeriodo } from '../datos/periodo';
 import { ProveedorDeTema, useTema } from '../datos/tema';
 
 export default function RootLayout() {
@@ -13,6 +16,14 @@ export default function RootLayout() {
       <Contenido />
     </ProveedorDeTema>
   );
+}
+
+/**
+ * Va aparte porque `useFechaDeCorte` necesita la base ya abierta: dentro del
+ * proveedor de datos, no fuera.
+ */
+function ConPeriodo({ children }: { children: ReactNode }) {
+  return <ProveedorDePeriodo corte={useFechaDeCorte()}>{children}</ProveedorDePeriodo>;
 }
 
 function Contenido() {
@@ -53,12 +64,13 @@ function Contenido() {
           </View>
         )}
       >
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="movimientos" />
-          <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />
-        </Stack>
+        <ConPeriodo>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />
+          </Stack>
+        </ConPeriodo>
       </ProveedorDeDatos>
     </GestureHandlerRootView>
   );
