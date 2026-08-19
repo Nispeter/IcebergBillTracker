@@ -79,6 +79,20 @@ export const movimientos = sqliteTable('movimientos', {
   index('mov_categoria_idx').on(tabla.categoriaId),
 ]);
 
+/**
+ * Ajustes locales del dispositivo, como clave-valor.
+ *
+ * **No lleva columnas de sync y no se sincroniza**: guarda justamente lo que
+ * distingue a este aparato de los otros —su id de dispositivo— y el hogar al que
+ * esta apuntando. Copiar eso a otro telefono seria un error, no una feature.
+ */
+export const ajustes = sqliteTable('ajustes', {
+  clave: text('clave').primaryKey(),
+  valor: text('valor').notNull(),
+});
+
+export type Ajuste = typeof ajustes.$inferSelect;
+
 export type Cuenta = typeof cuentas.$inferSelect;
 export type CuentaInsert = typeof cuentas.$inferInsert;
 export type Movimiento = typeof movimientos.$inferSelect;
