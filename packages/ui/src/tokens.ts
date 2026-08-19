@@ -188,13 +188,21 @@ export const spacing = {
  * antes que de folleto, y como es monoespaciada las columnas de montos quedan
  * alineadas digito a digito sin esfuerzo.
  *
- * ## Ojo con Android
+ * ## Ojo: la pila solo funciona en web
  *
- * Consolas es **propietaria de Microsoft**: no se puede empaquetar en una app.
- * En web resuelve desde el sistema —perfecta en Windows, y en Mac o Linux cae a
- * la siguiente de la pila— pero en el build de Android **no va a existir**.
+ * El valor es una pila CSS con comas. **Eso solo lo entiende la web**, donde
+ * react-native-web lo pasa tal cual al navegador y el fallback funciona: Windows
+ * resuelve Consolas, Mac y Linux caen a la siguiente.
  *
- * Antes de F3 hay que empaquetar una sustituta libre. Candidatas, en orden:
+ * En Android y iOS, `fontFamily` espera **una sola familia**: el string completo
+ * se busca como si fuera un nombre, no se encuentra, y todo cae a la sans-serif
+ * del sistema. Ni siquiera aplica el `monospace` del final, asi que las columnas
+ * de montos dejan de cuadrar.
+ *
+ * Encima, Consolas es **propietaria de Microsoft** y no se puede empaquetar.
+ *
+ * **Antes de F3 hay que empaquetar una sustituta libre y elegir por plataforma**
+ * (`Platform.select`, o dos constantes y que la app arme el valor). Candidatas:
  * **Inconsolata** (Google Fonts, disenada explicitamente a partir de Consolas) o
  * **Cascadia Mono** (la sucesora de Microsoft, con licencia SIL OFL).
  *
