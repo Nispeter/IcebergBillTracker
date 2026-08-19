@@ -36,11 +36,25 @@ export class HlcError extends Error {
  */
 const MAX_COUNTER = 99_999;
 
+/**
+ * Cuanto se acepta que el reloj de un dispositivo remoto vaya adelantado.
+ *
+ * Sin este tope, **un solo** dispositivo con la fecha mal puesta —el ano 2099,
+ * por decir— envenena el HLC de todos los demas para siempre: al fusionar, cada
+ * uno adopta ese milisegundo y ya nunca vuelve atras, asi que las ediciones de
+ * los relojes correctos no pueden volver a ganar. Es un fallo permanente y
+ * silencioso, y por eso se prefiere lanzar antes que absorberlo.
+ */
+export const MAX_DERIVA_MS = 5 * 60 * 1000;
+
 /** 15 digitos alcanzan hasta el ano 33658; el padding es lo que hace ordenable el texto. */
 const MILLIS_DIGITS = 15;
 const COUNTER_DIGITS = 5;
 
-const FORMATO = /^(\d{15})-(\d{5})-(.+)$/;
+// El nodeId no puede tener guiones —lo exige `assertNodeId`— asi que el patron
+// tambien los rechaza. Si aceptara `(.+)`, un texto con guion parsearia bien y
+// reventaria recien al volver a serializarlo.
+const FORMATO = /^(\d{15})-(\d{5})-([^-]+)$/;
 
 function assertNodeId(nodeId: string): void {
   if (nodeId.length === 0) throw new HlcError('nodeId vacio');
@@ -79,6 +93,14 @@ export function hlcNow(previo: Hlc | null, nodeId: string, wallClock: number): H
  */
 export function hlcReceive(local: Hlc | null, remoto: Hlc, nodeId: string, wallClock: number): Hlc {
   assertNodeId(nodeId);
+
+  if (remoto.millis - wallClock > MAX_DERIVA_MS) {
+    throw new HlcError(
+      `el reloj remoto va ${Math.round((remoto.millis - wallClock) / 1000)}s adelantado, `
+      + `mas del maximo de ${MAX_DERIVA_MS / 1000}s`,
+    );
+  }
+
   const propio = hlcNow(local, nodeId, wallClock);
 
   if (remoto.millis > propio.millis) {

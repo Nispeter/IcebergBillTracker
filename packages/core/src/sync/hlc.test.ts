@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  HlcError, hlcCompare, hlcNow, hlcParse, hlcReceive, hlcToString, type Hlc,
+  HlcError, MAX_DERIVA_MS, hlcCompare, hlcNow, hlcParse, hlcReceive, hlcToString, type Hlc,
 } from './hlc';
 
 const T0 = 1_756_000_000_000;
@@ -76,6 +76,20 @@ describe('hlcReceive', () => {
     expect(fusionado.counter).toBe(8);
   });
 
+  it('rechaza un remoto con el reloj demasiado adelantado', () => {
+    // Un solo dispositivo con la fecha mal puesta envenenaria el HLC de todos
+    // para siempre. Mejor fallar ruidoso que absorberlo.
+    const local = hlcNow(null, 'tel1', T0);
+    const delFuturo: Hlc = { millis: T0 + MAX_DERIVA_MS + 1, counter: 0, nodeId: 'tel2' };
+    expect(() => hlcReceive(local, delFuturo, 'tel1', T0)).toThrow(HlcError);
+  });
+
+  it('acepta una deriva dentro del tope', () => {
+    const local = hlcNow(null, 'tel1', T0);
+    const apenas: Hlc = { millis: T0 + MAX_DERIVA_MS, counter: 0, nodeId: 'tel2' };
+    expect(hlcReceive(local, apenas, 'tel1', T0).millis).toBe(T0 + MAX_DERIVA_MS);
+  });
+
   it('ignora un remoto viejo y solo avanza lo propio', () => {
     const local = hlcNow(null, 'tel1', T0);
     const remoto: Hlc = { millis: T0 - 50_000, counter: 0, nodeId: 'tel2' };
@@ -115,6 +129,8 @@ describe('texto', () => {
     expect(hlcParse('')).toBeNull();
     expect(hlcParse('2026-08-19T00:00:00Z')).toBeNull();
     expect(hlcParse('123-45-tel1')).toBeNull();
+    // Un nodeId con guion romperia al volver a serializar: se rechaza al entrar.
+    expect(hlcParse('001756000000000-00000-tel-1')).toBeNull();
   });
 });
 
