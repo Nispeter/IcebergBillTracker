@@ -205,7 +205,7 @@ describe('recurrentes', () => {
   });
 
   it('el permiso de circulacion es una vez al ano, no un gasto fijo mensual', () => {
-    const permisos = dataset.transactions.filter((tx) => tx.name === 'Permiso de circulacion');
+    const permisos = dataset.transactions.filter((tx) => tx.name === 'Permiso de circulación');
     expect(permisos).toHaveLength(2);
     for (const permiso of permisos) expect(dates.month(permiso.occurredAt)).toBe(3);
   });

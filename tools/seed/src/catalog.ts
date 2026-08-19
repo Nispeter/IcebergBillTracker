@@ -79,7 +79,7 @@ export const RECURRENTES: readonly RecurringSpec[] = [
   { name: 'Essbio', category: 'servicios', type: 'gasto', dayOfMonth: 14, center: 18_000, spread: 3_000 },
   { name: 'Lipigas', category: 'servicios', type: 'gasto', dayOfMonth: 18, center: 16_000, spread: 4_000, seasonal: INVIERNO },
   { name: 'VTR Internet', category: 'servicios', type: 'gasto', dayOfMonth: 10, center: 25_990, spread: 0 },
-  { name: 'Entel Movil', category: 'servicios', type: 'gasto', dayOfMonth: 22, center: 12_990, spread: 0 },
+  { name: 'Entel Móvil', category: 'servicios', type: 'gasto', dayOfMonth: 22, center: 12_990, spread: 0 },
   { name: 'Netflix', category: 'servicios', type: 'gasto', dayOfMonth: 8, center: 9_900, spread: 0 },
   { name: 'Spotify', category: 'servicios', type: 'gasto', dayOfMonth: 16, center: 5_900, spread: 0 },
 
@@ -90,10 +90,10 @@ export const RECURRENTES: readonly RecurringSpec[] = [
   { name: 'Aporte fondo mutuo', category: 'ahorros', type: 'gasto', dayOfMonth: 30, center: 150_000, spread: 0 },
 
   // Deudas y creditos
-  { name: 'Cuota credito de consumo', category: 'deudas', type: 'gasto', dayOfMonth: 15, center: 95_000, spread: 0 },
+  { name: 'Cuota crédito de consumo', category: 'deudas', type: 'gasto', dayOfMonth: 15, center: 95_000, spread: 0 },
 
   // Impuestos — no son mensuales
-  { name: 'Permiso de circulacion', category: 'impuestos', type: 'gasto', dayOfMonth: 20, center: 85_000, spread: 12_000, months: [3] },
+  { name: 'Permiso de circulación', category: 'impuestos', type: 'gasto', dayOfMonth: 20, center: 85_000, spread: 12_000, months: [3] },
   { name: 'Contribuciones', category: 'impuestos', type: 'gasto', dayOfMonth: 28, center: 62_000, spread: 5_000, months: [4, 6, 9, 11] },
 ];
 
@@ -110,7 +110,7 @@ export const VARIABLES: readonly VariableSpec[] = [
   },
   {
     category: 'comida',
-    merchants: ['Kazumi Gastro', 'El Refugio', 'La Picada', 'Cafe Colonia', 'Fuente Alemana'],
+    merchants: ['Kazumi Gastro', 'El Refugio', 'La Picada', 'Café Colonia', 'Fuente Alemana'],
     type: 'gasto', perMonth: [1, 4], center: 20_000, spread: 9_000, weekendBias: true, seasonal: FIESTAS,
   },
   {
@@ -140,22 +140,22 @@ export const VARIABLES: readonly VariableSpec[] = [
   },
   {
     category: 'familia',
-    merchants: ['Colegio San Pedro', 'Veterinaria Andalue', 'Aporte a mama', 'Cumple sobrino'],
+    merchants: ['Colegio San Pedro', 'Veterinaria Andalué', 'Aporte a mamá', 'Cumpleaños sobrino'],
     type: 'gasto', perMonth: [0, 3], center: 25_000, spread: 15_000, seasonal: FIESTAS,
   },
   {
     category: 'regalos',
-    merchants: ['Regalo cumpleanos', 'Techo Chile', 'Colecta bomberos', 'Regalo aniversario'],
+    merchants: ['Regalo de cumpleaños', 'Techo Chile', 'Colecta bomberos', 'Regalo aniversario'],
     type: 'gasto', perMonth: [0, 2], center: 22_000, spread: 12_000, seasonal: FIESTAS,
   },
   {
     category: 'deudas',
-    merchants: ['Pago tarjeta de credito', 'Avance en cuotas'],
+    merchants: ['Pago tarjeta de crédito', 'Avance en cuotas'],
     type: 'gasto', perMonth: [0, 1], center: 45_000, spread: 25_000,
   },
   {
     category: 'trabajo',
-    merchants: ['Coworking Bio Bio', 'Dominio y hosting', 'Insumos oficina', 'Notaria'],
+    merchants: ['Coworking Biobío', 'Dominio y hosting', 'Insumos oficina', 'Notaría'],
     type: 'gasto', perMonth: [0, 2], center: 18_000, spread: 10_000,
   },
 ];
