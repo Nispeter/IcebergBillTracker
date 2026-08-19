@@ -31,6 +31,15 @@ export type CategoryId =
 export interface Category {
   readonly id: CategoryId;
   readonly nombre: string;
+  /**
+   * Version de una palabra, para listas densas.
+   *
+   * Existe porque en la tabla de gasto por categoria "Impuestos y obligaciones
+   * legales" se cortaba en "Impuestos y ob…", que es peor que no mostrar nada:
+   * la elipsis ocupa lugar y no informa. En el selector y en el detalle se usa
+   * `nombre` completo.
+   */
+  readonly nombreCorto: string;
   /** Que entra y que no. Alimenta la ayuda del selector y las reglas de F4. */
   readonly descripcion: string;
 }
@@ -39,61 +48,73 @@ export const CATEGORIES: readonly Category[] = [
   {
     id: 'vivienda',
     nombre: 'Vivienda',
+    nombreCorto: 'Vivienda',
     descripcion: 'Arriendo o dividendo, gastos comunes, contribuciones, reparaciones.',
   },
   {
     id: 'servicios',
     nombre: 'Servicios',
+    nombreCorto: 'Servicios',
     descripcion: 'Luz, agua, gas, internet, celular y suscripciones de streaming.',
   },
   {
     id: 'comida',
     nombre: 'Comida',
-    descripcion: 'Supermercado, feria, delivery, restaurantes y cafe.',
+    nombreCorto: 'Comida',
+    descripcion: 'Supermercado, feria, delivery, restaurantes y café.',
   },
   {
     id: 'transporte',
     nombre: 'Transporte',
-    descripcion: 'Bencina, peajes, transporte publico, apps de viaje, mantencion.',
+    nombreCorto: 'Transporte',
+    descripcion: 'Bencina, peajes, transporte público, apps de viaje, mantención.',
   },
   {
     id: 'salud',
     nombre: 'Salud',
-    descripcion: 'Consultas, examenes, farmacia, seguros y planes de salud.',
+    nombreCorto: 'Salud',
+    descripcion: 'Consultas, exámenes, farmacia, seguros y planes de salud.',
   },
   {
     id: 'personales',
     nombre: 'Personales',
-    descripcion: 'Ropa, cuidado personal, tecnologia, ocio, hobbies y educacion propia.',
+    nombreCorto: 'Personales',
+    descripcion: 'Ropa, cuidado personal, tecnología, ocio, hobbies y educación propia.',
   },
   {
     id: 'familia',
     nombre: 'Familia',
+    nombreCorto: 'Familia',
     descripcion: 'Hijos, colegio, mascotas y aportes a familiares.',
   },
   {
     id: 'regalos',
     nombre: 'Regalos y donaciones',
+    nombreCorto: 'Regalos',
     descripcion: 'Regalos, celebraciones y aportes a causas u organizaciones.',
   },
   {
     id: 'ahorros',
     nombre: 'Ahorros e inversiones',
-    descripcion: 'Aportes a fondos, deposito a plazo, APV y cuentas de ahorro.',
+    nombreCorto: 'Ahorros',
+    descripcion: 'Aportes a fondos, depósito a plazo, APV y cuentas de ahorro.',
   },
   {
     id: 'deudas',
-    nombre: 'Deudas y creditos',
-    descripcion: 'Cuotas de credito, pago de tarjeta, intereses y linea de credito.',
+    nombre: 'Deudas y créditos',
+    nombreCorto: 'Deudas',
+    descripcion: 'Cuotas de crédito, pago de tarjeta, intereses y línea de crédito.',
   },
   {
     id: 'impuestos',
     nombre: 'Impuestos y obligaciones legales',
-    descripcion: 'Renta, permiso de circulacion, multas, tramites y patentes.',
+    nombreCorto: 'Impuestos',
+    descripcion: 'Renta, permiso de circulación, multas, trámites y patentes.',
   },
   {
     id: 'trabajo',
     nombre: 'Trabajo y negocio',
+    nombreCorto: 'Trabajo',
     descripcion: 'Insumos, herramientas, servicios y gastos del trabajo propio.',
   },
 ];
@@ -119,6 +140,12 @@ export function categoryById(id: string): Category | null {
 
 /** El nombre para mostrar, con un respaldo para ids desconocidos. */
 export function categoryName(id: string | undefined): string {
-  if (id === undefined) return 'Sin categoria';
+  if (id === undefined) return 'Sin categoría';
   return categoryById(id)?.nombre ?? id;
+}
+
+/** El nombre de una palabra, para listas densas donde el largo se corta. */
+export function categoryShortName(id: string | undefined): string {
+  if (id === undefined) return 'Sin categoría';
+  return categoryById(id)?.nombreCorto ?? id;
 }

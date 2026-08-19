@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CATEGORIES, CATEGORY_IDS, categoryById, categoryName, isCategoryId,
+  CATEGORIES, CATEGORY_IDS, categoryById, categoryName, categoryShortName, isCategoryId,
 } from './categories';
 
 describe('catalogo', () => {
@@ -20,11 +20,27 @@ describe('catalogo', () => {
     expect(new Set(nombres).size).toBe(nombres.length);
   });
 
-  it('cada categoria trae nombre y descripcion no vacios', () => {
+  it('cada categoria trae nombre, nombre corto y descripcion no vacios', () => {
     for (const categoria of CATEGORIES) {
       expect(categoria.nombre.length, categoria.id).toBeGreaterThan(0);
+      expect(categoria.nombreCorto.length, categoria.id).toBeGreaterThan(0);
       expect(categoria.descripcion.length, categoria.id).toBeGreaterThan(0);
     }
+  });
+
+  it('el nombre corto entra en una lista densa: una palabra, hasta 12 caracteres', () => {
+    // El limite sale de medir la columna real de la tabla de gasto por
+    // categoria. Si un nombre corto lo pasa, se corta con elipsis y deja de
+    // informar, que es justo lo que este campo vino a evitar.
+    for (const categoria of CATEGORIES) {
+      expect(categoria.nombreCorto.length, categoria.id).toBeLessThanOrEqual(12);
+      expect(categoria.nombreCorto, categoria.id).not.toContain(' ');
+    }
+  });
+
+  it('los nombres cortos siguen siendo unicos entre si', () => {
+    const cortos = CATEGORIES.map((categoria) => categoria.nombreCorto);
+    expect(new Set(cortos).size).toBe(cortos.length);
   });
 
   it('los ids son slugs en minuscula, aptos para guardar en la base', () => {
@@ -58,9 +74,16 @@ describe('consultas', () => {
     expect(isCategoryId('')).toBe(false);
   });
 
+  it('categoryShortName resuelve, y tiene el mismo respaldo', () => {
+    expect(categoryShortName('regalos')).toBe('Regalos');
+    expect(categoryShortName('impuestos')).toBe('Impuestos');
+    expect(categoryShortName(undefined)).toBe('Sin categoría');
+    expect(categoryShortName('criptomonedas')).toBe('criptomonedas');
+  });
+
   it('categoryName resuelve, y tiene respaldo para lo desconocido', () => {
     expect(categoryName('regalos')).toBe('Regalos y donaciones');
-    expect(categoryName(undefined)).toBe('Sin categoria');
+    expect(categoryName(undefined)).toBe('Sin categoría');
     expect(categoryName('criptomonedas')).toBe('criptomonedas');
   });
 });
