@@ -183,6 +183,30 @@ export const instancias = sqliteTable('instancias', {
 ]);
 
 /**
+ * Reglas propias de categorizacion: "si dice X, es comida".
+ *
+ * El catalogo de comercios que trae la app reconoce el 60 % de las filas que
+ * tienen un comercio; el resto son negocios chicos —"COMERCIAL ALEXIS", "LA
+ * MAGIA DE ALICI"— que ningun catalogo generico va a conocer y que solo el
+ * dueno de la cuenta sabe clasificar.
+ *
+ * Se sincronizan: una regla escrita en un telefono le sirve al otro.
+ */
+export const reglasCategoria = sqliteTable('reglas_categoria', {
+  ...sincronizable,
+  /**
+   * Se busca como subcadena en la descripcion normalizada.
+   *
+   * Se guarda ya normalizado —minusculas, sin tildes, sin espacios de sobra—
+   * porque comparar contra un patron sin normalizar no calzaria nunca.
+   */
+  patron: text('patron').notNull(),
+  categoriaId: text('categoria_id').notNull(),
+}, (tabla) => [
+  index('reglas_cat_hogar_idx').on(tabla.householdId, tabla.deletedAt),
+]);
+
+/**
  * Ajustes locales del dispositivo, como clave-valor.
  *
  * **No lleva columnas de sync y no se sincroniza**: guarda justamente lo que
@@ -206,3 +230,5 @@ export type Instancia = typeof instancias.$inferSelect;
 export type InstanciaInsert = typeof instancias.$inferInsert;
 export type Lote = typeof lotes.$inferSelect;
 export type LoteInsert = typeof lotes.$inferInsert;
+export type ReglaCategoria = typeof reglasCategoria.$inferSelect;
+export type ReglaCategoriaInsert = typeof reglasCategoria.$inferInsert;

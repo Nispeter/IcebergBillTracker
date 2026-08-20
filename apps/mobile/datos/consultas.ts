@@ -19,9 +19,9 @@
 import { analytics, dates, money, recurrence } from '@iceberg/core';
 import {
   combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeLotes,
-  consultaDeMovimientos, consultaDeReglas, resumenDeMovimientos,
+  consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria, resumenDeMovimientos,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Movimiento,
-  type Regla, type ResumenDeFiltro, type Tempano,
+  type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
@@ -374,4 +374,12 @@ export function useLotes(): Lote[] {
   const consulta = useMemo(() => consultaDeLotes(db, contexto), [db, contexto]);
   const { data } = useLiveQuery(consulta, []);
   return (data ?? []) as Lote[];
+}
+
+/** Las reglas propias de categorizacion, reactivas. */
+export function useReglasDeCategoria(): ReglaCategoria[] {
+  const { db, contexto } = useDatos();
+  const consulta = useMemo(() => consultaDeReglasDeCategoria(db, contexto), [db, contexto]);
+  const { data } = useLiveQuery(consulta, []);
+  return (data ?? []) as ReglaCategoria[];
 }

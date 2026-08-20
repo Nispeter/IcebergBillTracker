@@ -21,6 +21,7 @@ import { columnasNuevas, type Contexto } from '../contexto';
 import { lotes, movimientos, type Lote, type Movimiento } from '../schema';
 import type { BaseDeDatos } from '../tipos';
 import { RepositorioError } from './movimientos';
+import { catalogoDe } from './reglasDeCategoria';
 
 export interface DatosDeImportacion {
   readonly cuentaId: string;
@@ -91,6 +92,9 @@ export function previsualizarImportacion(
   const yaEstan = clavesYaImportadas(
     db, contexto, datos.cuentaId, datos.movimientos.map((m) => m.clave),
   );
+  // El catalogo combinado, no solo el de la app: si el usuario escribio una
+  // regla para su almacen, lo que importe hoy tiene que llegar categorizado.
+  const catalogo = catalogoDe(db, contexto);
 
   const nuevos: MovimientoAImportar[] = [];
   let duplicados = 0;
@@ -105,7 +109,9 @@ export function previsualizarImportacion(
       montoMinor: movimiento.montoMinor,
       tipo: movimiento.tipo,
       // Solo los gastos llevan categoria: un sueldo no es un tipo de gasto.
-      categoriaId: movimiento.tipo === 'gasto' ? rules.categorizar(movimiento.descripcion) : null,
+      categoriaId: movimiento.tipo === 'gasto'
+        ? rules.categorizar(movimiento.descripcion, catalogo)
+        : null,
       clave: movimiento.clave,
     });
   }

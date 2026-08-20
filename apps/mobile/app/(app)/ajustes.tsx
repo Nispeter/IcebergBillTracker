@@ -178,6 +178,16 @@ export default function Ajustes() {
           </View>
         ))}
 
+        <Link href="/reglas-categoria" asChild>
+          <Pressable
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel="Reglas de categoría"
+          >
+            <Text style={styles.botonTexto}>Reglas de categoría</Text>
+          </Pressable>
+        </Link>
+
         <Seccion styles={styles} titulo="Empezar de cero" />
         {vacia ? (
           <>
