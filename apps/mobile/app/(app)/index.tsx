@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Ayuda } from '../../components/Ayuda';
+import { Pinguino } from '../../components/Pinguino';
 import { DetalleDeCifra, type Detalle } from '../../components/DetalleDeCifra';
 import { Hoja } from '../../components/Hoja';
 import { Iceberg } from '../../components/Iceberg';
@@ -103,7 +104,12 @@ export default function Resumen() {
           <Ayuda theme={theme} texto={EXPLICACION_ANOMALIA} />
         </View>
         {recientes.length === 0
-          ? <Text style={styles.sinMovimientos}>Sin movimientos en este período.</Text>
+          ? (
+            <View style={styles.vacio}>
+              <Pinguino theme={theme} tamano={40} estado="dormido" />
+              <Text style={styles.sinMovimientos}>Sin movimientos en este período.</Text>
+            </View>
+          )
           : recientes.map((tx) => (
             <FilaMovimiento key={tx.id} tx={tx} theme={theme} anomala={anomalias.has(tx.id)} />
           ))}
@@ -332,6 +338,7 @@ function crearEstilos(theme: Theme) {
     // Discreto a proposito: no compite con los movimientos que tiene encima.
     verTodos: { marginTop: spacing.md, alignItems: 'flex-end' },
     verTodosTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
+    vacio: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
     sinMovimientos: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }

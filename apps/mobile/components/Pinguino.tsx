@@ -22,10 +22,28 @@
  * **Sus colores son fijos, no se dan vuelta con el tema.** El iceberg sí se
  * invierte y funciona; acá invertir dejaría las pupilas claras sobre blanco
  * oscuro y la cara deja de leerse. Por eso tiene sus propios tokens.
+ *
+ * **Los estados cambian solo los ojos.** A 20 px cualquier otra cosa —una pose,
+ * un objeto en la mano— es barro. Los ojos son lo único que sobrevive, y
+ * alcanzan: dos arcos hacia abajo se leen como dormido y dos cejas inclinadas
+ * como preocupado, sin que haya que explicarlo.
+ *
+ * Se usan donde el pingüino es grande: pantallas vacías y avisos. En la barra
+ * lateral va siempre `normal`, porque a ese tamaño un estado no se distingue y
+ * cambiar el logo según los datos sería confuso.
  */
 
 import type { Theme } from '@iceberg/ui';
 import Svg, { Circle, Path } from 'react-native-svg';
+
+/**
+ * En qué anda el pingüino.
+ *
+ * - `normal`: lo de siempre.
+ * - `dormido`: no hay nada que mirar. Para pantallas vacías.
+ * - `alerta`: hay algo que resolver hoy. Para vencidos y avisos.
+ */
+export type EstadoDelPinguino = 'normal' | 'dormido' | 'alerta';
 
 const ANCHO = 64;
 const ALTO = 72;
@@ -49,11 +67,31 @@ const ALETA_DERECHA = 'M51,27 C61,33 65,49 61,60 C59,65 53,64 52,57 C51,48 51,36
 const PANZA = 'M32,16 C40,16 45,23 46,31 C48,37 49,42 49,48 C49,58 42,65 32,65'
   + ' C22,65 15,58 15,48 C15,42 16,37 18,31 C19,23 24,16 32,16 Z';
 
+/** Ojos cerrados: dos arcos con la curva hacia abajo. */
+const OJO_DORMIDO_IZQUIERDO = 'M21,27 C23,30 27,30 29,27';
+const OJO_DORMIDO_DERECHO = 'M35,27 C37,30 41,30 43,27';
+
+/** Cejas inclinadas hacia adentro: es lo que se lee como preocupación. */
+const CEJA_IZQUIERDA = 'M20,20 L30,23';
+const CEJA_DERECHA = 'M44,20 L34,23';
+
+/** Grosor de los trazos, en unidades del viewBox: se escala con el dibujo. */
+const TRAZO = 2.5;
+
 /** Pico: redondeado y chico, entre los ojos y un poco más abajo. */
 const PICO = 'M32,32 C36,32 40,35 40,38 C40,42 36,45 32,45 C28,45 24,42 24,38 C24,35 28,32 32,32 Z';
 
-export function Pinguino({ theme, tamano = 20 }: { theme: Theme; tamano?: number }) {
+export function Pinguino(
+  { theme, tamano = 20, estado = 'normal' }:
+  { theme: Theme; tamano?: number; estado?: EstadoDelPinguino },
+) {
   const alto = (tamano / ANCHO) * ALTO;
+  const linea = {
+    stroke: theme.pinguinoCuerpo,
+    strokeWidth: TRAZO,
+    strokeLinecap: 'round' as const,
+    fill: 'none',
+  };
 
   return (
     <Svg width={tamano} height={alto} viewBox={VIEWBOX}>
@@ -61,8 +99,26 @@ export function Pinguino({ theme, tamano = 20 }: { theme: Theme; tamano?: number
       <Path d={ALETA_DERECHA} fill={theme.pinguinoCuerpo} />
       <Path d={CUERPO} fill={theme.pinguinoCuerpo} />
       <Path d={PANZA} fill={theme.pinguinoPanza} />
-      <Circle cx={25} cy={27} r={3} fill={theme.pinguinoCuerpo} />
-      <Circle cx={39} cy={27} r={3} fill={theme.pinguinoCuerpo} />
+
+      {estado === 'dormido' ? (
+        <>
+          <Path d={OJO_DORMIDO_IZQUIERDO} {...linea} />
+          <Path d={OJO_DORMIDO_DERECHO} {...linea} />
+        </>
+      ) : (
+        <>
+          <Circle cx={25} cy={27} r={3} fill={theme.pinguinoCuerpo} />
+          <Circle cx={39} cy={27} r={3} fill={theme.pinguinoCuerpo} />
+        </>
+      )}
+
+      {estado === 'alerta' ? (
+        <>
+          <Path d={CEJA_IZQUIERDA} {...linea} />
+          <Path d={CEJA_DERECHA} {...linea} />
+        </>
+      ) : null}
+
       <Path d={PICO} fill={theme.acento} />
     </Svg>
   );

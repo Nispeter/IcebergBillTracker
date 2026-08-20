@@ -25,6 +25,7 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
+import { Pinguino } from '../../components/Pinguino';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { useCandidatasARegla, useTempanos } from '../../datos/consultas';
@@ -67,16 +68,22 @@ export default function Tempanos() {
         </View>
 
         {vencidos.length > 0 ? (
-          <Text style={styles.aviso}>
+          <View style={styles.filaAviso}>
+            <Pinguino theme={theme} tamano={22} estado="alerta" />
+            <Text style={styles.aviso}>
             {vencidos.length === 1 ? '1 cuenta vencida' : `${vencidos.length} cuentas vencidas`}
-            {' sin resolver.'}
-          </Text>
+              {' sin resolver.'}
+            </Text>
+          </View>
         ) : null}
 
         {tempanos.length === 0 ? (
-          <Text style={styles.vacioTexto}>
-            No hay cuentas periódicas en este período.
-          </Text>
+          <View style={styles.vacio}>
+            <Pinguino theme={theme} tamano={40} estado="dormido" />
+            <Text style={styles.vacioTexto}>
+              No hay cuentas periódicas en este período.
+            </Text>
+          </View>
         ) : (
           tempanos.map((tempano) => (
             <Fila
@@ -327,6 +334,8 @@ function crearEstilos(theme: Theme) {
     accion: { ...boton, borderWidth: elevation.hairlineWidth, borderColor: theme.hairline },
     accionPagar: { ...boton, backgroundColor: theme.acento },
 
+    vacio: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
+    filaAviso: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
     vacioTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio, paddingVertical: spacing.lg },
 
     regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 20 },
