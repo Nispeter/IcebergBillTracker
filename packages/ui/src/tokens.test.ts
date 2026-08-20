@@ -140,6 +140,18 @@ describe('contraste', () => {
     }
   });
 
+  it('la punta del iceberg se ve sobre los dos fondos', () => {
+    // El bug que motiva el test: la punta salia de `gasto`, que es un rol de
+    // texto y se invierte con el tema, y en el tema claro quedaba negra.
+    for (const [name, theme] of entries) {
+      expect(deltaE(theme.hieloSobreAgua, theme.fondo), `${name}.hieloSobreAgua sobre fondo`)
+        .toBeGreaterThanOrEqual(15);
+      // La linea de agua la cruza por el medio y tiene que verse encima.
+      expect(deltaE(theme.hieloSobreAgua, theme.acento), `${name}: hielo contra la linea de agua`)
+        .toBeGreaterThanOrEqual(15);
+    }
+  });
+
   it('el pinguino es igual en los dos temas', () => {
     expect(dark.pinguinoCuerpo).toBe(light.pinguinoCuerpo);
     expect(dark.pinguinoPanza).toBe(light.pinguinoPanza);

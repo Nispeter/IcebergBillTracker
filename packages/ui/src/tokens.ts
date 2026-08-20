@@ -107,6 +107,22 @@ export interface Theme {
   readonly pinguinoCuerpo: string;
   /** La cara y la panza del pinguino. Fija, por lo mismo. */
   readonly pinguinoPanza: string;
+  /**
+   * El hielo que asoma sobre el agua.
+   *
+   * Tiene rol propio porque **no puede salir de `gasto`**, que es lo que usaba
+   * antes. `gasto` es un color de texto y de barra, y como tal se invierte con
+   * el tema: claro sobre la noche polar, casi negro sobre el deshielo. En una
+   * barra eso esta bien; en un iceberg deja la punta pintada de negro, que es
+   * exactamente lo contrario de lo que es el hielo. Se noto recien al agrandar
+   * el dibujo, y llevaba ahi desde el primer boceto.
+   *
+   * Tampoco puede ser el mismo en los dos temas: el blanco hielo que funciona
+   * de noche es el color del fondo claro, y ahi la punta desapareceria. Cambia
+   * de valor pero no de idea: siempre el hielo mas claro que se despegue del
+   * fondo que tenga detras.
+   */
+  readonly hieloSobreAgua: string;
   /** Relleno del ingreso: areas y barras de grafico. */
   readonly ingreso: string;
   /** El ingreso cuando es un monto escrito. */
@@ -131,6 +147,9 @@ export const light: Theme = {
   sobreAcento: palette.tintaProfunda,
   pinguinoCuerpo: palette.profundidad,
   pinguinoPanza: palette.hielo,
+  // Sobre el fondo hielo, el blanco desapareceria: va la niebla azul, que se
+  // lee como nieve en sombra.
+  hieloSobreAgua: palette.nieblaAzul,
   ingreso: palette.aurora,
   ingresoTexto: palette.auroraProfunda,
   gasto: palette.tintaProfunda,
@@ -157,6 +176,7 @@ export const dark: Theme = {
   sobreAcento: palette.tintaProfunda,
   pinguinoCuerpo: palette.profundidad,
   pinguinoPanza: palette.hielo,
+  hieloSobreAgua: palette.hielo,
   ingreso: palette.aurora,
   ingresoTexto: palette.aurora,
   gasto: palette.tintaClara,

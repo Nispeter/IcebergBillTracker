@@ -69,8 +69,11 @@ export function Iceberg({ shareComprometido, theme, agua, profundidad, alto = 20
           <Path d={RUTA} fill="url(#profundidadAgua)" />
         </G>
 
+        {/* `hieloSobreAgua` y no `gasto`: `gasto` es un color de texto y se
+            invierte con el tema, asi que en el tema claro dejaba la punta del
+            iceberg pintada de negro. */}
         <G clipPath="url(#sobreElAgua)">
-          <Path d={RUTA} fill={theme.gasto} />
+          <Path d={RUTA} fill={theme.hieloSobreAgua} />
         </G>
 
         {/* La linea de agua cruza entera, no solo el ancho del hielo: es el
