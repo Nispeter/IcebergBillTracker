@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MapeoDeColumnas } from '../components/MapeoDeColumnas';
 import { useDatos } from '../datos/BaseDeDatos';
 import { elegirCartola } from '../datos/archivo';
 import { volver } from '../datos/navegacion';
@@ -31,6 +32,12 @@ interface Leido {
   readonly previa: Previsualizacion;
 }
 
+/** El archivo elegido, guardado para poder releerlo con otro mapeo. */
+interface Archivo {
+  readonly nombre: string;
+  readonly matriz: csv.Matriz;
+}
+
 export default function Importar() {
   const { nombre: tema, theme } = useTema();
   const styles = crearEstilos(theme);
@@ -38,41 +45,59 @@ export default function Importar() {
   const router = useRouter();
 
   const [leyendo, setLeyendo] = useState(false);
+  const [archivo, setArchivo] = useState<Archivo | null>(null);
   const [leido, setLeido] = useState<Leido | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ajustando, setAjustando] = useState(false);
+
+  /**
+   * Lee la matriz con el mapeo dado, o con el detectado si no viene ninguno.
+   *
+   * Se guarda la matriz entera para poder releerla: si la deteccion falla, la
+   * alternativa seria pedir el archivo de nuevo.
+   */
+  function interpretar(elArchivo: Archivo, mapeo?: csv.MapeoDeColumnas) {
+    const resultado = csv.parsearCartola(elArchivo.matriz, mapeo);
+    if (!resultado.ok) {
+      setError(resultado.motivo);
+      setLeido(null);
+      // Si no se pudo leer sola, se abre el mapeo a mano en vez de dejar al
+      // usuario con un error y nada que hacer.
+      setAjustando(true);
+      return;
+    }
+
+    const cuenta = listarCuentas(db, contexto)[0];
+    if (!cuenta) {
+      setError('No hay ninguna cuenta creada todavía.');
+      return;
+    }
+
+    setError(null);
+    setAjustando(false);
+    setLeido({
+      nombre: elArchivo.nombre,
+      cartola: resultado.cartola,
+      previa: previsualizarImportacion(db, contexto, {
+        cuentaId: cuenta.id,
+        archivo: elArchivo.nombre,
+        movimientos: resultado.cartola.movimientos,
+      }),
+    });
+  }
 
   async function elegir() {
     setError(null);
     setLeyendo(true);
     try {
-      const archivo = await elegirCartola();
-      if (archivo === null) return;
-
-      const resultado = csv.parsearCartola(archivo.matriz);
-      if (!resultado.ok) {
-        setError(resultado.motivo);
-        setLeido(null);
-        return;
-      }
-
-      const cuenta = listarCuentas(db, contexto)[0];
-      if (!cuenta) {
-        setError('No hay ninguna cuenta creada todavía.');
-        return;
-      }
-
-      setLeido({
-        nombre: archivo.nombre,
-        cartola: resultado.cartola,
-        previa: previsualizarImportacion(db, contexto, {
-          cuentaId: cuenta.id,
-          archivo: archivo.nombre,
-          movimientos: resultado.cartola.movimientos,
-        }),
-      });
+      const elegido = await elegirCartola();
+      if (elegido === null) return;
+      setArchivo(elegido);
+      interpretar(elegido);
     } catch (e) {
       setError((e as Error).message);
       setLeido(null);
+      setArchivo(null);
     } finally {
       setLeyendo(false);
     }
@@ -123,9 +148,34 @@ export default function Importar() {
 
         {error !== null ? <Text style={styles.error}>{error}</Text> : null}
 
-        {leido !== null ? <Previa leido={leido} styles={styles} theme={theme} /> : null}
+        {ajustando && archivo !== null ? (
+          <MapeoDeColumnas
+            matriz={archivo.matriz}
+            inicial={csv.detectarMapeo(archivo.matriz)}
+            theme={theme}
+            onAplicar={(mapeo) => interpretar(archivo, mapeo)}
+            onCancelar={() => setAjustando(false)}
+          />
+        ) : null}
 
-        {leido !== null && leido.previa.nuevos.length > 0 ? (
+        {!ajustando && leido !== null ? (
+          <Previa leido={leido} styles={styles} theme={theme} />
+        ) : null}
+
+        {!ajustando && archivo !== null ? (
+          <Pressable
+            onPress={() => setAjustando(true)}
+            style={styles.ajustar}
+            accessibilityRole="button"
+            accessibilityLabel="Ajustar columnas a mano"
+          >
+            <Text style={styles.ajustarTexto}>
+              ¿Las columnas no calzan? Ajustarlas a mano
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {!ajustando && leido !== null && leido.previa.nuevos.length > 0 ? (
           <Pressable
             onPress={importar}
             style={styles.importar}
@@ -139,7 +189,7 @@ export default function Importar() {
           </Pressable>
         ) : null}
 
-        {leido !== null && leido.previa.nuevos.length === 0 ? (
+        {!ajustando && leido !== null && leido.previa.nuevos.length === 0 ? (
           <Text style={styles.ayuda}>
             Todos los movimientos de este archivo ya están importados. No hay nada que hacer.
           </Text>
@@ -271,5 +321,8 @@ function crearEstilos(theme: Theme) {
     },
     importarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
     error: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, lineHeight: 20, color: theme.vencidoTexto },
+    // Discreto: solo hace falta cuando la deteccion no acerto, que es raro.
+    ajustar: { alignItems: 'center', paddingVertical: spacing.xs },
+    ajustarTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.acentoTexto },
   });
 }
