@@ -39,9 +39,30 @@ export interface IcebergProps {
   readonly agua: string;
   readonly profundidad: string;
   readonly alto?: number;
+  /**
+   * Si el dibujo pinta su propia linea de agua.
+   *
+   * En falso la omite para que la pantalla dibuje una **a todo el ancho**, con
+   * `alturaDeLineaDeAgua` para saber donde. Es la diferencia entre un iceberg
+   * metido en una caja y un iceberg flotando en la pantalla.
+   */
+  readonly dibujarLinea?: boolean;
 }
 
-export function Iceberg({ shareComprometido, theme, agua, profundidad, alto = 200 }: IcebergProps) {
+/**
+ * A que altura cae la linea de agua dentro de un iceberg de `alto` pixeles.
+ *
+ * La pantalla la necesita para alinear su propia linea con la del dibujo. El
+ * calculo del area vive en `waterlineForShare`; aca solo se pasa de las
+ * unidades del `viewBox` a pixeles.
+ */
+export function alturaDeLineaDeAgua(shareComprometido: number, alto: number): number {
+  return (waterlineForShare(SILUETA, shareComprometido) / ALTO) * alto;
+}
+
+export function Iceberg(
+  { shareComprometido, theme, agua, profundidad, alto = 200, dibujarLinea = true }: IcebergProps,
+) {
   const linea = waterlineForShare(SILUETA, shareComprometido);
   const ancho = alto * (ANCHO / ALTO);
 
@@ -77,15 +98,18 @@ export function Iceberg({ shareComprometido, theme, agua, profundidad, alto = 20
         </G>
 
         {/* La linea de agua cruza entera, no solo el ancho del hielo: es el
-            nivel del mar, no un borde de la figura. */}
-        <Line
-          x1={0}
-          y1={linea}
-          x2={ANCHO}
-          y2={linea}
-          stroke={theme.acento}
-          strokeWidth={2}
-        />
+            nivel del mar, no un borde de la figura. Cuando la dibuja la
+            pantalla, aca se omite para no pintarla dos veces. */}
+        {dibujarLinea ? (
+          <Line
+            x1={0}
+            y1={linea}
+            x2={ANCHO}
+            y2={linea}
+            stroke={theme.acento}
+            strokeWidth={2}
+          />
+        ) : null}
       </Svg>
     </View>
   );

@@ -68,6 +68,16 @@ const palette = {
   cieloPalido: '#8AB4F8',
   nieblaAzul: '#B9C7D6',
 
+  /**
+   * Los dos extremos de la profundidad, para el prototipo "Hielo".
+   *
+   * La idea es que la pantalla **sea** el agua y se haga mas honda hacia abajo,
+   * en vez de que el iceberg sea un dibujo dentro de una caja. Por eso son dos
+   * valores por tema y no uno: arriba la superficie, abajo el abismo.
+   */
+  abismo: '#070E18',
+  deshieloProfundo: '#DDE9F2',
+
   /** El unico rojo del sistema. Solo para vencido. */
   vencido: '#D9534F',
   vencidoProfundo: '#D2322D',
@@ -123,6 +133,17 @@ export interface Theme {
    * fondo que tenga detras.
    */
   readonly hieloSobreAgua: string;
+  /**
+   * El agua junto a la superficie: el tope del degradado de la pantalla.
+   *
+   * Va con `aguaProfunda`. Los dos existen para que el fondo tenga profundidad
+   * en vez de ser un color plano: mas arriba mas claro, mas abajo mas hondo. Es
+   * la misma idea que ordena la serie de graficos --por profundidad de agua, no
+   * por matiz-- llevada al fondo de la pantalla.
+   */
+  readonly aguaSuperficie: string;
+  /** El agua honda: el pie del degradado. */
+  readonly aguaProfunda: string;
   /** Relleno del ingreso: areas y barras de grafico. */
   readonly ingreso: string;
   /** El ingreso cuando es un monto escrito. */
@@ -150,6 +171,8 @@ export const light: Theme = {
   // Sobre el fondo hielo, el blanco desapareceria: va la niebla azul, que se
   // lee como nieve en sombra.
   hieloSobreAgua: palette.nieblaAzul,
+  aguaSuperficie: palette.blanco,
+  aguaProfunda: palette.deshieloProfundo,
   ingreso: palette.aurora,
   ingresoTexto: palette.auroraProfunda,
   gasto: palette.tintaProfunda,
@@ -177,6 +200,8 @@ export const dark: Theme = {
   pinguinoCuerpo: palette.profundidad,
   pinguinoPanza: palette.hielo,
   hieloSobreAgua: palette.hielo,
+  aguaSuperficie: palette.superficieNoche,
+  aguaProfunda: palette.abismo,
   ingreso: palette.aurora,
   ingresoTexto: palette.aurora,
   gasto: palette.tintaClara,
@@ -274,12 +299,30 @@ export const AIRE_PARA_EL_FLOTANTE = 76;
  */
 const PILA_CONSOLAS = 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace';
 
+/**
+ * La sans del sistema, para el prototipo "Hielo".
+ *
+ * Que `ui` y `mono` sean **la misma familia** deja toda la app en
+ * monoespaciada, y una interfaz entera en mono oscuro se lee como terminal:
+ * es uno de los rasgos que la hacen parecer generada. Separar el rol de texto
+ * del de cifras es el cambio que mas mueve la cara sin tocar el layout.
+ *
+ * Es la del sistema y no una empaquetada porque esto es un prototipo. Cuando se
+ * elija la definitiva --hay que empaquetar una igual, Consolas es propietaria--
+ * se cambia aca y listo.
+ */
+const PILA_SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 export const fonts = {
   ui: PILA_CONSOLAS,
   mono: PILA_CONSOLAS,
+  /** Texto que se lee como texto: etiquetas, frases, titulos. */
+  texto: PILA_SANS,
 } as const;
 
 export const pesos = {
+  /** Para cifras muy grandes, donde el regular pesa demasiado. */
+  ligero: '300',
   regular: '400',
   medium: '500',
   semibold: '600',
