@@ -19,6 +19,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
+import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useDesplazamiento } from '../../datos/desplazamiento';
@@ -429,7 +430,7 @@ export default function Ajustes() {
           ayuda={'El rango que están mirando todas las pantallas. Se cambia desde la barra '
             + 'de arriba, no desde aquí: acá solo se ve cuál está puesto.'}
         />
-        <Panel styles={styles}>
+        <Panel theme={theme}>
           <Dato
             styles={styles}
             etiqueta="Tipo"
@@ -440,7 +441,7 @@ export default function Ajustes() {
         </Panel>
 
         <Seccion styles={styles} theme={theme} titulo="Datos" />
-        <Panel styles={styles}>
+        <Panel theme={theme}>
           <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
           <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
           <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
@@ -457,7 +458,7 @@ export default function Ajustes() {
           ayuda={'Se crean una sola vez y no cambian. Cada movimiento guarda desde qué '
             + 'dispositivo se escribió, que es lo que hace posible el modo hogar.'}
         />
-        <Panel styles={styles}>
+        <Panel theme={theme}>
           <Dato styles={styles} etiqueta="Dispositivo" valor={identidad.dispositivo ?? '—'} mono />
           <Dato styles={styles} etiqueta="Hogar" valor={identidad.hogar ?? '—'} mono />
           <Dato styles={styles} etiqueta="Miembro" valor={identidad.miembro ?? '—'} mono />
@@ -494,26 +495,6 @@ function Seccion(
   // La regla horizontal se fue: once secciones eran once lineas que solo decian
   // donde empieza cada una, nunca donde termina. Ver `components/Titulo.tsx`.
   return <Titulo texto={titulo} ayuda={ayuda} theme={theme} estilo={styles.seccion} />;
-}
-
-/**
- * Un grupo de datos de solo lectura, hundido.
- *
- * Las filas de Periodo, Datos y Este dispositivo llevaban un subrayado cada una:
- * nueve lineas horizontales para separar cosas que **ya** estan separadas por
- * ser dos columnas alineadas. Y no eran ni afordancia, porque no se tocan.
- *
- * El panel hace el trabajo que hacian mal: agrupa, y ademas dice donde termina
- * el grupo, que es justo lo que una regla de seccion no puede decir. Se hunde en
- * vez de levantarse --ver `superficieHonda`-- porque sobre la noche polar una
- * sombra es invisible y la profundidad se hace con luz.
- *
- * **No es un stack de tarjetas iguales**: las secciones que son solo botones no
- * llevan panel. Un recuadro alrededor de dos botones es una caja por nada. La
- * regla es que el panel agrupa datos, y las acciones viven sueltas en la pagina.
- */
-function Panel({ styles, children }: { styles: Estilos; children: ReactNode }) {
-  return <View style={styles.panel}>{children}</View>;
 }
 
 function Dato(
@@ -560,12 +541,6 @@ function crearEstilos(theme: Theme) {
       fontWeight: pesos.medium,
       fontSize: fontSizes.xs,
       color: theme.vencidoTexto,
-    },
-    panel: {
-      backgroundColor: theme.superficieHonda,
-      borderRadius: radii.md,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
     },
     etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
     valor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },

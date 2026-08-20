@@ -16,6 +16,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendario } from '../../components/Calendario';
 import { Ayuda } from '../../components/Ayuda';
 import { LineaDeSaldo } from '../../components/LineaDeSaldo';
+import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useDesplazamiento } from '../../datos/desplazamiento';
@@ -94,11 +95,13 @@ export default function DiaADia() {
         ))}
 
         <Titulo texto="Detalle" theme={theme} />
-        <Dato styles={styles} etiqueta="Día más caro"
-          valor={masCaro === null ? '—' : `${money.format(masCaro.gasto)}`} />
-        <Dato styles={styles} etiqueta="Racha sin gastar"
-          valor={racha === 0 ? 'ninguna' : `${racha} ${racha === 1 ? 'día' : 'días'}`} />
-        <Dato styles={styles} etiqueta="Promedio diario" valor={money.format(a.ritmo.promedioDiario)} />
+        <Panel theme={theme}>
+          <Dato styles={styles} etiqueta="Día más caro"
+            valor={masCaro === null ? '—' : `${money.format(masCaro.gasto)}`} />
+          <Dato styles={styles} etiqueta="Racha sin gastar"
+            valor={racha === 0 ? 'ninguna' : `${racha} ${racha === 1 ? 'día' : 'días'}`} />
+          <Dato styles={styles} etiqueta="Promedio diario" valor={money.format(a.ritmo.promedioDiario)} />
+        </Panel>
       </ScrollView>
     </Pantalla>
   );
@@ -136,14 +139,10 @@ function crearEstilos(theme: Theme) {
     montoDia: { width: 62, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.xs },
 
-    dato: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingVertical: spacing.sm,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-    },
-    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    // Sin subrayado: el panel agrupa, y dos columnas alineadas ya se leen como
+    // tabla. La etiqueta va en el gris que se lee sobre el fondo hundido.
+    dato: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
     datoValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
   });
 }

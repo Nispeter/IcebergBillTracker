@@ -8,8 +8,15 @@
  * **Los ejes se agregaron despues y hacian falta.** Sin ellos la curva mostraba
  * la forma y no la escala: la misma silueta puede ser un mes que se movio entre
  * $700.000 y $760.000 o uno que se hundio a numeros rojos, y no habia como
- * distinguirlos. Ahora el eje vertical marca el techo, el piso y el cero cuando
+ * distinguirlos. El eje vertical marca el techo, el piso y el cero cuando
  * corresponde, y el horizontal el primer y el ultimo dia.
+ *
+ * **Las cifras del eje van adentro, no en una canaleta.** La primera version les
+ * reservaba 56px a la izquierda, y eso corria el dibujo entero hacia la derecha:
+ * el grafico empezaba 56px mas adentro que el titulo de la seccion y que el pie
+ * de "Mas bajo", asi que la pantalla se veia desalineada y la culpa parecia del
+ * pie. Escritas dentro del margen de aire que el trazo ya dejaba arriba y abajo
+ * no cuestan ancho, y la curva usa la pantalla completa.
  *
  * En `react-native-svg` y no en Victory Native XL, que depende de Skia, y Skia
  * en web necesita CanvasKit por WASM. Una linea son dos `path`; no vale la pena
@@ -34,10 +41,12 @@ import Svg, { Circle, Line, Path, Text as TextoSvg } from 'react-native-svg';
  * lo que la linea tiene que mostrar-- quedaba comprimida hasta ser un garabato.
  */
 const ALTO = 180;
-/** Aire arriba y abajo para que la linea no toque los bordes ni se corte el punto. */
-const MARGEN = 12;
-/** Ancho reservado a la izquierda para las cifras del eje vertical. */
-const EJE = 56;
+/**
+ * Aire arriba y abajo. Sirve para dos cosas: que el trazo no toque los bordes ni
+ * se corte el punto, y que las cifras del eje tengan donde escribirse sin
+ * pisar la curva.
+ */
+const MARGEN = 18;
 
 /** Como se escribe un monto en un eje: corto, porque compite con la curva. */
 function abreviar(minor: number): string {
@@ -65,12 +74,11 @@ export function LineaDeSaldo(
   // seria cero y todos los puntos caerian en NaN.
   const alcance = maximo - minimo || 1;
 
-  const anchoTrazo = Math.max(ancho - EJE, 1);
-  const x = (indice: number) => EJE + (indice / (serie.length - 1)) * anchoTrazo;
+  const x = (indice: number) => (indice / (serie.length - 1)) * Math.max(ancho, 1);
   const y = (valor: number) => MARGEN + (1 - (valor - minimo) / alcance) * (ALTO - MARGEN * 2);
 
   const trazo = valores.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(v)}`).join(' ');
-  const relleno = `${trazo} L${ancho},${ALTO} L${EJE},${ALTO} Z`;
+  const relleno = `${trazo} L${ancho},${ALTO} L0,${ALTO} Z`;
 
   const indiceMinimo = valores.indexOf(minimo);
   const fondo = serie[indiceMinimo]!;
@@ -89,7 +97,7 @@ export function LineaDeSaldo(
             {marcas.map((valor) => (
               <Line
                 key={valor}
-                x1={EJE}
+                x1={0}
                 y1={y(valor)}
                 x2={ancho}
                 y2={y(valor)}
@@ -98,12 +106,15 @@ export function LineaDeSaldo(
                 strokeDasharray={valor === 0 ? '3 3' : undefined}
               />
             ))}
+            {/* Cada cifra **encima** de su guia si es el techo o el cero, y
+                **debajo** si es el piso: asi las tres caen en el aire de los
+                margenes y ninguna queda escrita sobre el trazo. */}
             {marcas.map((valor) => (
               <TextoSvg
                 key={`t${valor}`}
-                x={EJE - 6}
-                y={y(valor) + 3}
-                textAnchor="end"
+                x={0}
+                y={valor === minimo ? y(valor) + 13 : y(valor) - 5}
+                textAnchor="start"
                 fontSize={9}
                 fontFamily={fonts.mono}
                 fill={valor === 0 ? theme.vencidoTexto : theme.silencio}
@@ -146,14 +157,9 @@ export function LineaDeSaldo(
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     lienzo: { height: ALTO, width: '100%' },
-    ejeX: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginLeft: EJE,
-      paddingTop: 2,
-      borderTopWidth: elevation.hairlineWidth,
-      borderTopColor: theme.hairline,
-    },
+    // Sin `marginLeft` y sin regla: el trazo ya llega a los dos bordes, asi que
+    // las fechas se alinean solas con el y con el resto de la pantalla.
+    ejeX: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.xs },
     fecha: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 9, color: theme.silencio },
     pie: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm },
     dato: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },

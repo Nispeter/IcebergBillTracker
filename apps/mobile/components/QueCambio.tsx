@@ -20,6 +20,7 @@
 import { analytics, categories, money } from '@iceberg/core';
 import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
+import { Panel } from './Panel';
 import { Titulo } from './Titulo';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
@@ -65,7 +66,7 @@ export function QueCambio(
       {filas.length === 0 ? (
         <Text style={styles.vacio}>Sin cambios contra el período anterior.</Text>
       ) : (
-        <>
+        <Panel theme={theme}>
           <View style={styles.cabecera}>
             <View style={styles.hueco} />
             <View style={styles.relleno} />
@@ -123,7 +124,7 @@ export function QueCambio(
               </View>
             );
           })}
-        </>
+        </Panel>
       )}
     </View>
   );
@@ -148,7 +149,9 @@ function crearEstilos(theme: Theme) {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: 10,
-      color: theme.silencio,
+      // Va sobre el fondo hundido del panel, donde el gris de siempre no llega
+      // a AA en el tema claro.
+      color: theme.silencioHondo,
     },
 
     // Sin subrayado: lo tocable lo dice el `>`, igual que en la leyenda de la

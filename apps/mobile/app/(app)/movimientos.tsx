@@ -31,10 +31,29 @@ import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../..
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
-/** Cuantos se traen de la base por tanda. */
-const POR_PAGINA = 40;
+/**
+ * Cuantos se traen por tanda, a eleccion.
+ *
+ * El tamaño de tanda no es una constante del programa sino una preferencia: en
+ * un mes tranquilo cuarenta son todos y el boton de "ver mas" nunca aparece; en
+ * uno cargado, alguien que busca un movimiento viejo prefiere traer cien de una
+ * y desplazar, y alguien con el telefono justo prefiere veinticinco.
+ *
+ * `null` es "todos": el limite no se aplica y la consulta trae el filtro
+ * entero. Se sostiene porque la lista es virtual --`FlatList` solo dibuja lo
+ * que se ve-- y porque las cifras del encabezado nunca salieron de las filas,
+ * sino de un `SUM` aparte.
+ */
+const TAMANOS: readonly { valor: number | null; etiqueta: string }[] = [
+  { valor: 25, etiqueta: '25 por tanda' },
+  { valor: 40, etiqueta: '40 por tanda' },
+  { valor: 100, etiqueta: '100 por tanda' },
+  { valor: null, etiqueta: 'Todos de una vez' },
+];
 
-type Desplegable = 'tipo' | 'categoria' | null;
+const POR_PAGINA_INICIAL = 40;
+
+type Desplegable = 'tipo' | 'categoria' | 'tanda' | null;
 
 export default function Movimientos() {
   const { theme } = useTema();
@@ -51,6 +70,7 @@ export default function Movimientos() {
   );
   const [abierto, setAbierto] = useState<Desplegable>(null);
   const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState<number | null>(POR_PAGINA_INICIAL);
 
   const filtro = useMemo<FiltroDeMovimientos>(
     () => ({
@@ -63,7 +83,14 @@ export default function Movimientos() {
     [tipo, categoriaId, rango.start, rango.end, params.dia],
   );
 
-  const movimientos = useMovimientosFiltrados({ ...filtro, limite: pagina * POR_PAGINA });
+  const movimientos = useMovimientosFiltrados(
+    // Sin `limite` la consulta no aplica `LIMIT`, que es justo lo que se quiere
+    // en "todos de una vez".
+    useMemo(
+      () => (porPagina === null ? filtro : { ...filtro, limite: pagina * porPagina }),
+      [filtro, pagina, porPagina],
+    ),
+  );
   const resumen = useResumenDeFiltro(filtro);
   const anomalias = useAnomalias();
   const hayMas = movimientos.length < resumen.cantidad;
@@ -71,6 +98,13 @@ export default function Movimientos() {
   /** Cambiar de filtro vuelve a la primera pagina: si no, se veria un tramo suelto. */
   const cambiarFiltro = useCallback((accion: () => void) => {
     accion();
+    setPagina(1);
+    setAbierto(null);
+  }, []);
+
+  /** Cambiar de tanda vuelve al principio, igual que cambiar de filtro. */
+  const cambiarTanda = useCallback((valor: number | null) => {
+    setPorPagina(valor);
     setPagina(1);
     setAbierto(null);
   }, []);
@@ -126,9 +160,27 @@ export default function Movimientos() {
               onPress={() => setAbierto(abierto === 'categoria' ? null : 'categoria')}
               accesible="Filtrar por categoría"
             />
+            {/* Va con los filtros y no al pie de la lista: es una preferencia de
+                como se ve el listado, igual que ellos, y al pie habria que
+                desplazar hasta el final para cambiarla. */}
+            <ChipDisparador
+              theme={theme}
+              etiqueta={porPagina === null ? 'Todos' : String(porPagina)}
+              abierto={abierto === 'tanda'}
+              activo={porPagina !== POR_PAGINA_INICIAL}
+              onPress={() => setAbierto(abierto === 'tanda' ? null : 'tanda')}
+              accesible="Cuántos movimientos traer por tanda"
+            />
           </View>
         )}
-        panel={abierto === 'tipo' ? (
+        panel={abierto === 'tanda' ? (
+          <ListaDeOpciones
+            theme={theme}
+            opciones={TAMANOS}
+            seleccionado={porPagina}
+            onElegir={cambiarTanda}
+          />
+        ) : abierto === 'tipo' ? (
           <ListaDeOpciones
             theme={theme}
             opciones={opcionesDeTipo}
