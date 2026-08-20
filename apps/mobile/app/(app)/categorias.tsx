@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarraSegmentada } from '../../components/BarraSegmentada';
+import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { QueCambio } from '../../components/QueCambio';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
@@ -41,6 +42,16 @@ export default function Categorias() {
   return (
     <Pantalla>
       <ScrollView contentContainerStyle={styles.contenido}>
+        <View style={styles.reglaTorta}>
+          <Text style={styles.reglaTitulo}>En qué se fue</Text>
+          <View style={styles.reglaLinea} />
+          <Ayuda
+            theme={theme}
+            texto={'Las cinco categorías más grandes llevan color propio; el resto se '
+              + 'junta en "Otras" porque doce porciones no se distinguen. Los porcentajes '
+              + 'son sobre el gasto del período, no sobre el total del año.'}
+          />
+        </View>
         <TortaDeCategorias
           porciones={a.porCategoria}
           theme={theme}
@@ -65,6 +76,12 @@ export default function Categorias() {
             <View style={styles.regla}>
               <Text style={styles.reglaTitulo}>Todas</Text>
               <View style={styles.reglaLinea} />
+              <Ayuda
+                theme={theme}
+                texto={'Cada barra es una categoría del período, de mayor a menor. Tocar '
+                  + 'una lleva al listado filtrado por ella. Las muescas son de un mismo '
+                  + 'tamaño, así que dos barras se comparan contándolas.'}
+              />
             </View>
 
             {a.porCategoria.map(({ categoriaId, total }) => {
@@ -106,7 +123,8 @@ function crearEstilos(theme: Theme) {
       width: '100%',
       alignSelf: 'center',
     },
-    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs },
+    reglaTorta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md, zIndex: 20 },
+    regla: { zIndex: 20, flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs },
     reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 

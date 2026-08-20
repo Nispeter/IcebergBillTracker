@@ -70,6 +70,12 @@ export default function DiaADia() {
         <View style={styles.regla}>
           <Text style={styles.reglaTitulo}>Por día de la semana</Text>
           <View style={styles.reglaLinea} />
+          <Ayuda
+            theme={theme}
+            texto={'Promedio por vez que cayó ese día dentro del período. Un mes tiene '
+              + 'cuatro o cinco de cada uno, así que sumar sin promediar haría ganar '
+              + 'siempre al día que se repitió más veces.'}
+          />
         </View>
 
         {porDiaDeSemana.map((fila) => (
@@ -87,7 +93,6 @@ export default function DiaADia() {
             <Text style={styles.montoDia}>{money.formatNumber(fila.promedio)}</Text>
           </View>
         ))}
-        <Text style={styles.nota}>Promedio por vez que cayó ese día en el período.</Text>
 
         <View style={styles.regla}>
           <Text style={styles.reglaTitulo}>Detalle</Text>

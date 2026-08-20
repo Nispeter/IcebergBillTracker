@@ -16,6 +16,7 @@ import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
+import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
@@ -125,7 +126,7 @@ export default function Ajustes() {
   return (
     <Pantalla sinPeriodo>
       <ScrollView contentContainerStyle={styles.contenido}>
-        <Seccion styles={styles} titulo="Apariencia" />
+        <Seccion styles={styles} theme={theme} titulo="Apariencia" />
         <View style={styles.fila}>
           <Text style={styles.etiqueta}>Tema</Text>
           <Pressable
@@ -138,11 +139,13 @@ export default function Ajustes() {
           </Pressable>
         </View>
 
-        <Seccion styles={styles} titulo="Quién escribe" />
-        <Text style={styles.notaImportar}>
-          Cada movimiento guarda quién lo escribió. Ponerle nombre a este teléfono hace que
-          al sincronizar se pueda ver de quién viene cada versión.
-        </Text>
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Quién escribe"
+          ayuda={'Cada movimiento guarda quién lo escribió. Ponerle nombre a este teléfono '
+            + 'hace que al sincronizar se pueda ver de quién viene cada versión.'}
+        />
         {miembros.map((miembro: Miembro) => {
           const soyYo = miembro.id === identidadDelMiembro;
           return (
@@ -185,12 +188,14 @@ export default function Ajustes() {
           </>
         )}
 
-        <Seccion styles={styles} titulo="Frase de cifrado" />
-        <Text style={styles.notaImportar}>
-          Si escribes una, el archivo que exportes queda cifrado y sin ella no se puede
-          abrir —ni por ti—. Se usa también para abrir archivos cifrados. No se guarda en
-          ninguna parte.
-        </Text>
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Frase de cifrado"
+          ayuda={'Si escribes una, el archivo que exportes queda cifrado y sin ella no se '
+            + 'puede abrir, ni por ti. Se usa también para abrir archivos cifrados. '
+            + 'No se guarda en ninguna parte.'}
+        />
         <TextInput
           value={frase}
           onChangeText={setFrase}
@@ -208,11 +213,13 @@ export default function Ajustes() {
           </Text>
         )}
 
-        <Seccion styles={styles} titulo="Sincronizar" />
-        <Text style={styles.notaImportar}>
-          Trae el respaldo del otro dispositivo sin borrar lo tuyo. Lo que esté en los dos
-          se resuelve por fecha de edición, y aquí se ve qué versión quedó.
-        </Text>
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Sincronizar"
+          ayuda={'Trae el respaldo del otro dispositivo sin borrar lo tuyo. Lo que esté en '
+            + 'los dos se resuelve por fecha de edición, y aquí se ve qué versión quedó.'}
+        />
         <Pressable
           onPress={fusionar}
           style={styles.botonSecundario}
@@ -242,11 +249,13 @@ export default function Ajustes() {
           </View>
         )}
 
-        <Seccion styles={styles} titulo="Cuentas" />
-        <Text style={styles.notaImportar}>
-          El saldo inicial es cuánto había antes del primer movimiento. Sin él, el saldo
-          de la app no cuadra con el del banco.
-        </Text>
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Cuentas"
+          ayuda={'El saldo inicial es cuánto había antes del primer movimiento que '
+            + 'registres. Sin él, el saldo de la app no cuadra con el del banco.'}
+        />
         {cuentas.map((cuenta) => (
           <Link key={cuenta.id} href={{ pathname: '/cuenta/[id]', params: { id: cuenta.id } }} asChild>
             <Pressable
@@ -275,10 +284,13 @@ export default function Ajustes() {
           </Pressable>
         </Link>
 
-        <Seccion styles={styles} titulo="Respaldo" />
-        <Text style={styles.notaImportar}>
-          Todo lo tuyo en un archivo. Restaurar reemplaza lo que haya: no mezcla.
-        </Text>
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Respaldo"
+          ayuda={'Todo lo tuyo en un archivo. Restaurar reemplaza lo que haya: no mezcla. '
+            + 'Para juntar dos dispositivos sin perder nada, usa Sincronizar.'}
+        />
         <View style={styles.acciones}>
           <Pressable
             onPress={exportar}
@@ -300,11 +312,13 @@ export default function Ajustes() {
           </Pressable>
         </View>
 
-        <Seccion styles={styles} titulo="Importar" />
-        <Text style={styles.notaImportar}>
-          Trae los movimientos del .xls que descargas del banco. Reimportar el mismo
-          archivo no duplica nada, y cada importación se puede deshacer entera.
-        </Text>
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Importar"
+          ayuda={'Trae los movimientos del .xls que descargas del banco. Reimportar el '
+            + 'mismo archivo no duplica nada, y cada importación se puede deshacer entera.'}
+        />
         <Link href="/importar" asChild>
           <Pressable
             style={styles.botonPrincipal}
@@ -347,7 +361,13 @@ export default function Ajustes() {
           </Pressable>
         </Link>
 
-        <Seccion styles={styles} titulo="Empezar de cero" />
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Empezar de cero"
+          ayuda={'Borra cuentas, movimientos, reglas e importaciones de este dispositivo. '
+            + 'No se puede deshacer: exporta un respaldo antes si hay algo que conservar.'}
+        />
         {vacia ? (
           <>
             <Text style={styles.notaImportar}>
@@ -368,10 +388,7 @@ export default function Ajustes() {
           </>
         ) : (
           <>
-            <Text style={styles.notaImportar}>
-              Borra cuentas, movimientos, reglas e importaciones. No se puede deshacer:
-              exporta un respaldo antes si hay algo que quieras conservar.
-            </Text>
+
             <Pressable
               onPress={() => {
                 if (confirmando !== 'borrar') {
@@ -400,7 +417,13 @@ export default function Ajustes() {
 
         {aviso === null ? null : <Text style={styles.aviso}>{aviso}</Text>}
 
-        <Seccion styles={styles} titulo="Período" />
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Período"
+          ayuda={'El rango que están mirando todas las pantallas. Se cambia desde la barra '
+            + 'de arriba, no desde aquí: acá solo se ve cuál está puesto.'}
+        />
         <Dato
           styles={styles}
           etiqueta="Tipo"
@@ -409,7 +432,7 @@ export default function Ajustes() {
         <Dato styles={styles} etiqueta="Desde" valor={periodo.rango.start} />
         <Dato styles={styles} etiqueta="Hasta" valor={periodo.rango.end} />
 
-        <Seccion styles={styles} titulo="Datos" />
+        <Seccion styles={styles} theme={theme} titulo="Datos" />
         <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
         <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
         <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
@@ -418,14 +441,17 @@ export default function Ajustes() {
           desde aquí cuando quieras verlos, y se borran igual de fácil.
         </Text>
 
-        <Seccion styles={styles} titulo="Este dispositivo" />
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Este dispositivo"
+          ayuda={'Se crean una sola vez y no cambian. Cada movimiento guarda desde qué '
+            + 'dispositivo se escribió, que es lo que hace posible el modo hogar.'}
+        />
         <Dato styles={styles} etiqueta="Dispositivo" valor={identidad.dispositivo ?? '—'} mono />
         <Dato styles={styles} etiqueta="Hogar" valor={identidad.hogar ?? '—'} mono />
         <Dato styles={styles} etiqueta="Miembro" valor={identidad.miembro ?? '—'} mono />
-        <Text style={styles.nota}>
-          Se crean una sola vez y no cambian: cada movimiento guarda desde qué dispositivo
-          se escribió, que es lo que hará posible el modo hogar.
-        </Text>
+
       </ScrollView>
     </Pantalla>
   );
@@ -442,11 +468,23 @@ const TIPOS_DE_CUENTA_LEGIBLES: Record<string, string> = {
 
 type Estilos = ReturnType<typeof crearEstilos>;
 
-function Seccion({ styles, titulo }: { styles: Estilos; titulo: string }) {
+/**
+ * El titulo de una seccion, con su explicacion detras de un `?`.
+ *
+ * Ajustes tenia diez parrafos explicativos, uno por seccion. Todos ciertos y
+ * todos ruido despues de la primera lectura: para quien ya sabe que hace
+ * "Respaldo", esas tres lineas son solo distancia hasta el boton. Detras del `?`
+ * siguen estando y no ocupan.
+ */
+function Seccion(
+  { styles, theme, titulo, ayuda }:
+  { styles: Estilos; theme: Theme; titulo: string; ayuda?: string },
+) {
   return (
     <View style={styles.regla}>
       <Text style={styles.reglaTitulo}>{titulo}</Text>
       <View style={styles.reglaLinea} />
+      {ayuda === undefined ? null : <Ayuda theme={theme} texto={ayuda} />}
     </View>
   );
 }
@@ -473,7 +511,7 @@ function crearEstilos(theme: Theme) {
       width: '100%',
       alignSelf: 'center',
     },
-    regla: {
+    regla: { zIndex: 20,
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.md,
