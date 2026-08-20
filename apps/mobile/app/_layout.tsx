@@ -74,6 +74,7 @@ function Contenido() {
             <Stack.Screen name="regla/nueva" options={{ presentation: 'modal' }} />
             <Stack.Screen name="regla/[id]" options={{ presentation: 'modal' }} />
             <Stack.Screen name="importar" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="cuenta/[id]" options={{ presentation: 'modal' }} />
           </Stack>
         </ConPeriodo>
       </ProveedorDeDatos>

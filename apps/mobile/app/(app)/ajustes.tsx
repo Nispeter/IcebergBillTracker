@@ -83,6 +83,39 @@ export default function Ajustes() {
           </Pressable>
         </View>
 
+        <Seccion styles={styles} titulo="Cuentas" />
+        <Text style={styles.notaImportar}>
+          El saldo inicial es cuánto había antes del primer movimiento. Sin él, el saldo
+          de la app no cuadra con el del banco.
+        </Text>
+        {cuentas.map((cuenta) => (
+          <Link key={cuenta.id} href={{ pathname: '/cuenta/[id]', params: { id: cuenta.id } }} asChild>
+            <Pressable
+              style={styles.cuenta}
+              accessibilityRole="button"
+              accessibilityLabel={`Editar la cuenta ${cuenta.nombre}`}
+            >
+              <View style={styles.loteTexto}>
+                <Text style={styles.loteArchivo} numberOfLines={1}>{cuenta.nombre}</Text>
+                <Text style={styles.loteDetalle}>
+                  {TIPOS_DE_CUENTA_LEGIBLES[cuenta.tipo]}
+                  {' · inicial '}{money.format(money.money(cuenta.saldoInicialMinor))}
+                </Text>
+              </View>
+              <Text style={styles.botonTexto}>Editar</Text>
+            </Pressable>
+          </Link>
+        ))}
+        <Link href={{ pathname: '/cuenta/[id]', params: { id: 'nueva' } }} asChild>
+          <Pressable
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel="Agregar una cuenta"
+          >
+            <Text style={styles.botonTexto}>Agregar cuenta</Text>
+          </Pressable>
+        </Link>
+
         <Seccion styles={styles} titulo="Respaldo" />
         <Text style={styles.notaImportar}>
           Todo lo tuyo en un archivo. Restaurar reemplaza lo que haya: no mezcla.
@@ -229,6 +262,15 @@ export default function Ajustes() {
   );
 }
 
+/** Como se lee cada tipo de cuenta en pantalla. */
+const TIPOS_DE_CUENTA_LEGIBLES: Record<string, string> = {
+  corriente: 'Corriente',
+  vista: 'Vista',
+  ahorro: 'Ahorro',
+  credito: 'Crédito',
+  efectivo: 'Efectivo',
+};
+
 type Estilos = ReturnType<typeof crearEstilos>;
 
 function Seccion({ styles, titulo }: { styles: Estilos; titulo: string }) {
@@ -321,6 +363,14 @@ function crearEstilos(theme: Theme) {
     loteDetalle: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     deshacerTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     acciones: { flexDirection: 'row', gap: spacing.sm },
+    cuenta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingVertical: spacing.sm,
+      borderBottomWidth: elevation.hairlineWidth,
+      borderBottomColor: theme.hairline,
+    },
     botonSecundario: {
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
