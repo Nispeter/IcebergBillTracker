@@ -234,24 +234,46 @@ export interface ResumenDeFiltro {
  *
  * El signo lo pone el `case`, porque los montos se guardan sin signo.
  */
-export function resumenDeMovimientos(
+/**
+ * La consulta de totales **sin ejecutar**, para `useLiveQuery`.
+ *
+ * Es la que hace que el saldo no dependa de traer las filas. Antes las pantallas
+ * cargaban los movimientos enteros solo para volver a sumarlos en memoria: con
+ * seiscientos daba igual, con cincuenta mil son cincuenta mil filas cruzando el
+ * puente a JavaScript cada vez que cambia una. SQLite ya sabe sumar.
+ *
+ * Las transferencias quedan fuera solas: ninguno de los dos `case` las cuenta.
+ */
+export function consultaDeResumen(
   db: BaseDeDatos,
   contexto: Contexto,
   filtro: FiltroDeMovimientos = {},
-): ResumenDeFiltro {
-  const filas = db.select({
+) {
+  return db.select({
     cantidad: sql<number>`count(*)`,
     ingreso: sql<number>`coalesce(sum(case when ${movimientos.tipo} = 'ingreso' then ${movimientos.montoMinor} else 0 end), 0)`,
     gasto: sql<number>`coalesce(sum(case when ${movimientos.tipo} = 'gasto' then ${movimientos.montoMinor} else 0 end), 0)`,
   })
     .from(movimientos)
-    .where(vivos(contexto, condicionesDe(filtro)))
-    .all();
+    .where(vivos(contexto, condicionesDe(filtro)));
+}
 
-  const fila = filas[0] ?? { cantidad: 0, ingreso: 0, gasto: 0 };
-  const ingreso = money.money(fila.ingreso, 'CLP');
-  const gasto = money.money(fila.gasto, 'CLP');
-  return { cantidad: fila.cantidad, ingreso, gasto, neto: money.subtract(ingreso, gasto) };
+/** Arma el resumen a partir de la fila que devuelve `consultaDeResumen`. */
+export function resumenDesde(
+  fila: { cantidad: number; ingreso: number; gasto: number } | undefined,
+): ResumenDeFiltro {
+  const valores = fila ?? { cantidad: 0, ingreso: 0, gasto: 0 };
+  const ingreso = money.money(valores.ingreso, 'CLP');
+  const gasto = money.money(valores.gasto, 'CLP');
+  return { cantidad: valores.cantidad, ingreso, gasto, neto: money.subtract(ingreso, gasto) };
+}
+
+export function resumenDeMovimientos(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  filtro: FiltroDeMovimientos = {},
+): ResumenDeFiltro {
+  return resumenDesde(consultaDeResumen(db, contexto, filtro).all()[0]);
 }
 
 /** Cuenta filas vivas, sin traerlas. Para paginado y para los tests. */

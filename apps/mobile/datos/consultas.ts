@@ -20,7 +20,7 @@ import { analytics, dates, money, recurrence } from '@iceberg/core';
 import {
   combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeLotes,
   consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
-  resumenDeMovimientos,
+  consultaDeResumen, resumenDesde,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
@@ -68,26 +68,24 @@ export interface DesgloseDelSaldo {
  * aparte, podria decir algo distinto de lo que muestra la cifra.
  */
 export function useDesgloseDelSaldo(saldoInicialMinor: number): DesgloseDelSaldo {
-  const movimientos = useMovimientos();
-  return useMemo(() => {
-    let ingresos = 0;
-    let gastos = 0;
-    for (const m of movimientos) {
-      // Una transferencia mueve plata **entre cuentas propias**: no entra ni
-      // sale del hogar, asi que no toca el saldo. Contarla como salida dejaba
-      // el saldo mas bajo que la suma real de las cuentas.
-      if (m.tipo === 'transferencia') continue;
-      if (m.tipo === 'ingreso') ingresos += m.montoMinor;
-      else gastos += m.montoMinor;
-    }
-    return {
-      saldo: money.money(saldoInicialMinor + ingresos - gastos, 'CLP'),
-      inicial: money.money(saldoInicialMinor, 'CLP'),
-      ingresos: money.money(ingresos, 'CLP'),
-      gastos: money.money(gastos, 'CLP'),
-    };
-  }, [movimientos, saldoInicialMinor]);
+  // Suma en SQL, sin traer las filas. Antes cargaba **todos** los movimientos
+  // solo para volver a sumarlos en memoria: con seiscientos daba igual, con
+  // cincuenta mil son cincuenta mil filas cruzando el puente cada vez que
+  // cambia una. Las transferencias las descarta la propia consulta.
+  const total = useResumenDeFiltro(SIN_FILTRO);
+
+  return useMemo(() => ({
+    saldo: money.money(
+      saldoInicialMinor + total.ingreso.amountMinor - total.gasto.amountMinor, 'CLP',
+    ),
+    inicial: money.money(saldoInicialMinor, 'CLP'),
+    ingresos: total.ingreso,
+    gastos: total.gasto,
+  }), [total, saldoInicialMinor]);
 }
+
+/** Constante para que el filtro vacio no sea un objeto nuevo en cada render. */
+const SIN_FILTRO: FiltroDeMovimientos = {};
 
 /**
  * El saldo justo antes de que empiece el rango.
@@ -245,10 +243,14 @@ export function useMovimientosFiltrados(filtro: FiltroDeMovimientos): Movimiento
  */
 export function useResumenDeFiltro(filtro: FiltroDeMovimientos): ResumenDeFiltro {
   const { db, contexto } = useDatos();
-  const movimientos = useMovimientos();
   const clave = JSON.stringify(filtro);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => resumenDeMovimientos(db, contexto, filtro), [db, contexto, clave, movimientos]);
+  const consulta = useMemo(
+    () => consultaDeResumen(db, contexto, filtro),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [db, contexto, clave],
+  );
+  const { data } = useLiveQuery(consulta, [clave]);
+  return resumenDesde(data?.[0]);
 }
 
 /** Las cuentas vivas del hogar. */
