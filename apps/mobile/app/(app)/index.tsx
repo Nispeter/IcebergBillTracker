@@ -21,6 +21,7 @@ import { DetalleDeCifra, type Detalle } from '../../components/DetalleDeCifra';
 import { Hoja } from '../../components/Hoja';
 import { Iceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
+import { useDesplazamiento } from '../../datos/desplazamiento';
 import {
   esGastoComprometido, useAnalisisDeRango, useAnomalias, useDesgloseDelSaldo,
   useMovimientosDeRegla, useMovimientosFiltrados, useSaldoInicial, type DesgloseDelSaldo,
@@ -30,6 +31,7 @@ import { useTema } from '../../datos/tema';
 
 export default function Resumen() {
   const { theme } = useTema();
+  const desplazamiento = useDesplazamiento();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { tipo, rango, corte } = usePeriodo();
 
@@ -55,7 +57,7 @@ export default function Resumen() {
 
   return (
     <Pantalla>
-      <ScrollView contentContainerStyle={styles.contenido}>
+      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
         <View style={styles.hero}>
           <View style={styles.heroFila}>
             <Text style={styles.heroSimbolo}>$</Text>
@@ -81,19 +83,24 @@ export default function Resumen() {
             onPress={() => setCifra('neto')} />
         </View>
 
+        {/* Encabezado propio, igual que el resto de las secciones: el dibujo
+            queda debajo del titulo en vez de al costado de su leyenda. */}
+        <View style={styles.regla}>
+          <Text style={styles.reglaTitulo}>Gasto del período</Text>
+          <View style={styles.reglaLinea} />
+          <Ayuda
+            theme={theme}
+            texto={'Comprometido llega igual: arriendo, cuentas, cuotas, impuestos. '
+              + 'Variable es lo que decides tú, y es sobre lo único que puedes actuar.'}
+          />
+        </View>
         <View style={styles.bloqueIceberg}>
-          <Iceberg shareComprometido={share} theme={theme} agua={charts[0]} profundidad={charts[1]} alto={190} />
-          <View style={styles.leyendas}>
-            {/* El `?` va con las leyendas porque es a ellas a las que explica. */}
-            <View style={styles.leyendasCabecera}>
-              <Text style={styles.leyendasTitulo}>Gasto del período</Text>
-              <Ayuda
-                theme={theme}
-                texto={'Comprometido llega igual: arriendo, cuentas, cuotas, impuestos. '
-                  + 'Variable es lo que decides tú, y es sobre lo único que puedes actuar.'}
-              />
-            </View>
-            <Leyenda styles={styles} color={theme.gasto} titulo="Comprometido" monto={money.format(a.fijo)}
+          <Iceberg shareComprometido={share} theme={theme} agua={charts[0]} profundidad={charts[1]} alto={230} />
+          <View style={styles.leyendasFila}>
+            {/* El color sale del dibujo, no de la paleta semantica: el area
+                sobre el agua es la comprometida, asi que el marcador tiene que
+                ser el mismo hielo o la leyenda deja de explicar la figura. */}
+            <Leyenda styles={styles} color={theme.hieloSobreAgua} titulo="Comprometido" monto={money.format(a.fijo)}
               onPress={() => setCifra('comprometido')} />
             <Leyenda styles={styles} color={charts[0]} titulo="Variable" monto={money.format(variable)}
               onPress={() => setCifra('variable')} />
@@ -289,8 +296,10 @@ function Leyenda(
       accessibilityRole="button"
       accessibilityLabel={`${titulo} ${monto}. De dónde sale este número`}
     >
-      <View style={[styles.leyendaBarra, { backgroundColor: color }]} />
-      <Text style={styles.leyendaTitulo}>{titulo}</Text>
+      <View style={styles.leyendaCabecera}>
+        <View style={[styles.leyendaBarra, { backgroundColor: color }]} />
+        <Text style={styles.leyendaTitulo}>{titulo}</Text>
+      </View>
       <Text style={styles.leyendaMonto}>{monto}</Text>
     </Pressable>
   );
@@ -312,28 +321,37 @@ function crearEstilos(theme: Theme) {
     heroCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 40, lineHeight: 44, color: theme.tinta, letterSpacing: -1 },
     heroPie: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
 
-    // Sin regla arriba: las tres celdas ya llevan su subrayado, y dos lineas
-    // horizontales a cuarenta pixeles una de otra encajonan sin separar nada.
     trio: { flexDirection: 'row', paddingTop: spacing.xs },
-    // Subrayadas: las tres abren su detalle.
-    celda: { flex: 1, gap: 1, paddingBottom: 4, marginRight: spacing.sm, borderBottomWidth: elevation.hairlineWidth, borderBottomColor: theme.hairline },
+    /**
+     * Sin subrayado.
+     *
+     * Las tres celdas abren su detalle al tocarlas, y el subrayado era la pista
+     * de eso. Pero tres lineas cortas a distinta altura que las de abajo no
+     * ordenaban nada: solo sumaban al rayado general. La etiqueta en
+     * versalitas, la cifra en mono y el delta ya se leen como una tabla de tres
+     * columnas sin ayuda, y el `i` del saldo de arriba --la cifra mas
+     * prominente de la pantalla-- es el que ensena que aca los numeros se tocan.
+     */
+    celda: { flex: 1, gap: 1, paddingBottom: 4, marginRight: spacing.sm },
     celdaEtiqueta: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
     celdaValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.tinta },
     delta: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10 },
     deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
 
-    bloqueIceberg: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
-    // Corridas del dibujo: pegadas al hielo se leian como parte de el.
-    leyendas: { flex: 1, gap: spacing.sm, paddingLeft: spacing.md },
-    // Elevada para que la burbuja de la ayuda tape las leyendas de abajo.
-    leyendasCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: spacing.xs, zIndex: 20 },
-    leyendasTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    // En una linea y con el monto a la derecha: el bloque ocupa el ancho que
-    // tiene en vez de dejar un hueco muerto al costado del iceberg.
-    leyenda: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: 4, borderBottomWidth: elevation.hairlineWidth, borderBottomColor: theme.hairline },
-    leyendaBarra: { width: 3, height: 15, borderRadius: radii.full },
-    leyendaTitulo: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
-    leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.tinta },
+    /**
+     * El dibujo arriba y la leyenda debajo, no uno al lado del otro.
+     *
+     * Compartiendo fila, el iceberg se quedaba con el ancho que sobraba
+     * --176px-- y la leyenda con dos filas apretadas contra el borde. Apilados,
+     * el hielo crece a 230 y las dos cifras se reparten la pantalla entera.
+     */
+    bloqueIceberg: { alignItems: 'center', gap: spacing.lg, paddingBottom: spacing.lg },
+    leyendasFila: { alignSelf: 'stretch', flexDirection: 'row', gap: spacing.lg },
+    leyenda: { flex: 1, gap: 3 },
+    leyendaCabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    leyendaBarra: { width: 3, height: 10, borderRadius: radii.full },
+    leyendaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
+    leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
 
     regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.xs, zIndex: 20 },
     reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },

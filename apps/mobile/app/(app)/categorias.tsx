@@ -11,11 +11,13 @@ import {
   AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
+import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarraSegmentada } from '../../components/BarraSegmentada';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
+import { useDesplazamiento } from '../../datos/desplazamiento';
 import { QueCambio } from '../../components/QueCambio';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
 import { iconoDeCategoria } from '../../components/iconos';
@@ -25,6 +27,7 @@ import { useTema } from '../../datos/tema';
 
 export default function Categorias() {
   const { theme } = useTema();
+  const desplazamiento = useDesplazamiento();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { tipo, rango, corte } = usePeriodo();
   const router = useRouter();
@@ -41,7 +44,7 @@ export default function Categorias() {
 
   return (
     <Pantalla>
-      <ScrollView contentContainerStyle={styles.contenido}>
+      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
         <View style={styles.reglaTorta}>
           <Text style={styles.reglaTitulo}>En qué se fue</Text>
           <View style={styles.reglaLinea} />
@@ -103,6 +106,7 @@ export default function Categorias() {
                   </Text>
                   <BarraSegmentada valor={total.amountMinor} unidad={unidad} total={muescas} theme={theme} />
                   <Text style={styles.monto}>{money.formatNumber(total)}</Text>
+                  <CaretRight size={12} weight="bold" color={theme.silencio} />
                 </Pressable>
               );
             })}
@@ -128,15 +132,13 @@ function crearEstilos(theme: Theme) {
     reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 
-    // Cada fila lleva al listado filtrado, asi que se separa con hairline como
-    // el resto de las cosas tocables.
+    // Sin subrayado: eran diez lineas horizontales seguidas para decir algo que
+    // el `>` del final dice sin cortar el ancho de la pantalla.
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
       paddingVertical: spacing.sm,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
     },
     nombre: { width: 78, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     monto: { width: 66, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },

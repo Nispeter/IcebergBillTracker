@@ -26,7 +26,14 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as TextoSvg } from 'react-native-svg';
 
-const ALTO = 120;
+/**
+ * 180 y no 120.
+ *
+ * A 120 la curva de un mes entero se aplastaba en una franja mas baja que una
+ * fila de la lista de movimientos: la forma de diente de sierra --que es todo
+ * lo que la linea tiene que mostrar-- quedaba comprimida hasta ser un garabato.
+ */
+const ALTO = 180;
 /** Aire arriba y abajo para que la linea no toque los bordes ni se corte el punto. */
 const MARGEN = 12;
 /** Ancho reservado a la izquierda para las cifras del eje vertical. */
