@@ -72,11 +72,48 @@ export const movimientos = sqliteTable('movimientos', {
    */
   categoriaId: text('categoria_id'),
   notas: text('notas'),
+  /** El lote de importacion del que vino, o null si se creo a mano. */
+  loteId: text('lote_id'),
+  /**
+   * La clave con la que se reconoce esta fila en el archivo de origen.
+   *
+   * Es lo que hace idempotente reimportar la misma cartola. Lleva un ordinal de
+   * ocurrencia, asi que dos compras iguales el mismo dia en el mismo comercio
+   * —que existen de verdad— conservan las dos su fila. Ver `core/csv`.
+   */
+  origenClave: text('origen_clave'),
 }, (tabla) => [
   // El listado siempre filtra por hogar y descarta lapidas, y ordena por fecha.
   index('mov_hogar_fecha_idx').on(tabla.householdId, tabla.deletedAt, tabla.ocurridoEn),
   index('mov_cuenta_idx').on(tabla.cuentaId),
   index('mov_categoria_idx').on(tabla.categoriaId),
+  // El chequeo de duplicados corre una vez por fila del archivo importado.
+  index('mov_origen_idx').on(tabla.cuentaId, tabla.origenClave),
+  index('mov_lote_idx').on(tabla.loteId),
+]);
+
+/**
+ * Un lote de importacion.
+ *
+ * Existe para poder **deshacerlo entero**. Importar es la operacion que mas
+ * filas escribe de una vez y la que mas facil sale mal —archivo equivocado,
+ * cuenta equivocada—; sin una unidad que agrupe, revertir seria borrar a mano
+ * doscientos movimientos.
+ */
+export const lotes = sqliteTable('lotes', {
+  ...sincronizable,
+  cuentaId: text('cuenta_id').notNull(),
+  /** Nombre del archivo, para que el usuario reconozca cual fue. */
+  archivo: text('archivo').notNull(),
+  /** Cuantos movimientos entraron. Los omitidos por duplicados no cuentan. */
+  cantidad: integer('cantidad').notNull(),
+  /** Cuantos se saltaron por estar ya importados. */
+  duplicados: integer('duplicados').notNull().default(0),
+  /** Fecha civil del movimiento mas viejo y del mas nuevo del lote. */
+  desde: text('desde'),
+  hasta: text('hasta'),
+}, (tabla) => [
+  index('lotes_hogar_idx').on(tabla.householdId, tabla.deletedAt),
 ]);
 
 /**
@@ -167,3 +204,5 @@ export type Regla = typeof reglas.$inferSelect;
 export type ReglaInsert = typeof reglas.$inferInsert;
 export type Instancia = typeof instancias.$inferSelect;
 export type InstanciaInsert = typeof instancias.$inferInsert;
+export type Lote = typeof lotes.$inferSelect;
+export type LoteInsert = typeof lotes.$inferInsert;
