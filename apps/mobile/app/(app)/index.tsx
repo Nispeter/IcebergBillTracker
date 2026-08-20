@@ -154,13 +154,8 @@ export default function Resumen() {
           />
         </View>
 
-        {/* A todo el ancho, como la linea de agua: el hielo a la izquierda, el
-            agua a la derecha, partidas donde las parte el dibujo. */}
-        <View style={styles.barraDelReparto}>
-          <View style={{ flex: Math.max(share, 0.001), backgroundColor: theme.hieloSobreAgua }} />
-          <View style={{ flex: Math.max(1 - share, 0.001), backgroundColor: charts[0] }} />
-        </View>
 
+        {/* La tarjeta se hunde en vez de levantarse: ver `superficieHonda`. */}
         <View style={styles.trio}>
           <Celda styles={styles} theme={theme} etiqueta="ingreso" valor={money.format(a.resumen.ingreso)}
             variacion={a.comparacion.ingreso.variacion} mejorSiSube onPress={() => setCifra('ingreso')} />
@@ -443,14 +438,6 @@ function crearEstilos(theme: Theme) {
     leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.lg, color: theme.tinta },
     leyendaParte: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 11, color: theme.silencio },
 
-    // A todo el ancho, igual que la linea de agua.
-    barraDelReparto: {
-      flexDirection: 'row',
-      height: 4,
-      marginHorizontal: -spacing.lg,
-      marginTop: spacing.md,
-    },
-
     /**
      * Las tres cifras del periodo, mas hondas que el reparto.
      *
@@ -458,9 +445,17 @@ function crearEstilos(theme: Theme) {
      * es la unica de las tres que contesta "como me fue", y en una banda de
      * numeros todos del mismo color era imposible saber donde mirar.
      */
-    trio: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.xxl },
-    celda: { flex: 1, gap: 2 },
-    celdaEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    trio: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.xl,
+      paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.md,
+      backgroundColor: theme.superficieHonda,
+    },
+    celda: { flex: 1, gap: 2, alignItems: 'center' },
+    celdaEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
     celdaValor: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.tinta },
     delta: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10 },
     deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },

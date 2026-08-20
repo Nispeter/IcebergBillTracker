@@ -77,6 +77,15 @@ const palette = {
    */
   abismo: '#070E18',
   deshieloProfundo: '#DDE9F2',
+  deshieloHondo: '#D3E1EC',
+  /**
+   * El gris apagado del tema claro, **oscurecido para el fondo hundido**.
+   *
+   * `silencioClaro` pasa AA sobre el hielo por muy poco --4,55 contra 4,5-- asi
+   * que sobre cualquier fondo mas oscuro que el hielo deja de pasar. Una
+   * etiqueta sobre la tarjeta honda necesita su propio valor o deja de leerse.
+   */
+  silencioHondido: '#4C6070',
 
   /** El unico rojo del sistema. Solo para vencido. */
   vencido: '#D9534F',
@@ -144,6 +153,18 @@ export interface Theme {
   readonly aguaSuperficie: string;
   /** El agua honda: el pie del degradado. */
   readonly aguaProfunda: string;
+  /**
+   * Una superficie que **se hunde** en vez de levantarse.
+   *
+   * `superficie` va hacia el espectador: hojas, menus, burbujas, todo lo que
+   * flota por encima del contenido. Esta va al reves, y es la unica forma de
+   * dar profundidad que le sirve a este proyecto: sobre la noche polar una
+   * sombra negra es invisible, asi que la elevacion se hace con luminosidad, y
+   * hundir es alejarse de la luz.
+   */
+  readonly superficieHonda: string;
+  /** El gris de etiqueta que se lee sobre `superficieHonda`. */
+  readonly silencioHondo: string;
   /** Relleno del ingreso: areas y barras de grafico. */
   readonly ingreso: string;
   /** El ingreso cuando es un monto escrito. */
@@ -173,6 +194,8 @@ export const light: Theme = {
   hieloSobreAgua: palette.nieblaAzul,
   aguaSuperficie: palette.blanco,
   aguaProfunda: palette.deshieloProfundo,
+  superficieHonda: palette.deshieloHondo,
+  silencioHondo: palette.silencioHondido,
   ingreso: palette.aurora,
   ingresoTexto: palette.auroraProfunda,
   gasto: palette.tintaProfunda,
@@ -202,6 +225,9 @@ export const dark: Theme = {
   hieloSobreAgua: palette.hielo,
   aguaSuperficie: palette.superficieNoche,
   aguaProfunda: palette.abismo,
+  superficieHonda: palette.abismo,
+  // Sobre el abismo el gris de siempre da 6,6:1: no hace falta cambiarlo.
+  silencioHondo: palette.silencioOscuro,
   ingreso: palette.aurora,
   ingresoTexto: palette.aurora,
   gasto: palette.tintaClara,

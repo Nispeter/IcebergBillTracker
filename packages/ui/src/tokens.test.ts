@@ -112,6 +112,25 @@ describe('contraste', () => {
     }
   });
 
+  it('la etiqueta se lee sobre la superficie hundida', () => {
+    // El motivo del rol aparte: en el tema claro `silencio` pasa AA sobre el
+    // hielo por 4,55 contra 4,5, asi que sobre cualquier fondo mas oscuro deja
+    // de pasar. Oscurecer la tarjeta sin oscurecer la etiqueta la rompia.
+    for (const [name, theme] of entries) {
+      expect(contrast(theme.silencioHondo, theme.superficieHonda), `${name}.silencioHondo`)
+        .toBeGreaterThanOrEqual(4.5);
+      expect(contrast(theme.tinta, theme.superficieHonda), `${name}.tinta sobre honda`)
+        .toBeGreaterThanOrEqual(7);
+    }
+  });
+
+  it('la superficie hundida se despega del fondo', () => {
+    for (const [name, theme] of entries) {
+      expect(deltaE(theme.superficieHonda, theme.fondo), `${name}.superficieHonda sobre fondo`)
+        .toBeGreaterThanOrEqual(4);
+    }
+  });
+
   it('lo que se escribe sobre el ambar se lee en ambos temas', () => {
     for (const [name, theme] of entries) {
       expect(contrast(theme.sobreAcento, theme.acento), `${name}.sobreAcento sobre acento`)
