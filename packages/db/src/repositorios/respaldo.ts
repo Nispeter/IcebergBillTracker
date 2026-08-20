@@ -18,8 +18,9 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Contexto } from '../contexto';
 import {
-  cuentas, instancias, lotes, movimientos, reglas,
+  cuentas, instancias, lotes, movimientos, reglas, reglasCategoria,
   type Cuenta, type Instancia, type Lote, type Movimiento, type Regla,
+  type ReglaCategoria,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
 import { RepositorioError } from './movimientos';
@@ -30,8 +31,12 @@ import { RepositorioError } from './movimientos';
  * Sube cuando el esquema cambia de forma que un archivo viejo ya no se pueda
  * leer tal cual. Restaurar comprueba este numero antes de tocar nada: mejor
  * negarse que dejar la base a medio escribir con filas que no calzan.
+ *
+ * - **1**: cuentas, movimientos, reglas, instancias, lotes.
+ * - **2**: agrega `reglasCategoria`. Un archivo de la 1 se sigue leyendo, con
+ *   esa tabla vacia: agregar una tabla no invalida lo anterior.
  */
-export const VERSION_DE_RESPALDO = 1;
+export const VERSION_DE_RESPALDO = 2;
 
 export interface Respaldo {
   readonly version: number;
@@ -43,6 +48,8 @@ export interface Respaldo {
   readonly reglas: readonly Regla[];
   readonly instancias: readonly Instancia[];
   readonly lotes: readonly Lote[];
+  /** Las reglas propias de categorizacion. Vacio en respaldos de la version 1. */
+  readonly reglasCategoria: readonly ReglaCategoria[];
 }
 
 export function exportarRespaldo(db: BaseDeDatos, contexto: Contexto): Respaldo {
@@ -60,13 +67,16 @@ export function exportarRespaldo(db: BaseDeDatos, contexto: Contexto): Respaldo 
       .where(eq(instancias.householdId, contexto.householdId)).all() as Instancia[],
     lotes: db.select().from(lotes)
       .where(eq(lotes.householdId, contexto.householdId)).all() as Lote[],
+    reglasCategoria: db.select().from(reglasCategoria)
+      .where(eq(reglasCategoria.householdId, contexto.householdId)).all() as ReglaCategoria[],
   };
 }
 
 /** Cuantas filas trae un respaldo, para poder decirlo antes de restaurar. */
 export function contarRespaldo(respaldo: Respaldo): number {
   return respaldo.cuentas.length + respaldo.movimientos.length
-    + respaldo.reglas.length + respaldo.instancias.length + respaldo.lotes.length;
+    + respaldo.reglas.length + respaldo.instancias.length + respaldo.lotes.length
+    + respaldo.reglasCategoria.length;
 }
 
 /**
@@ -94,7 +104,12 @@ export function leerRespaldo(crudo: unknown): Respaldo {
       throw new RepositorioError(`Al respaldo le falta "${tabla}".`);
     }
   }
-  return posible as Respaldo;
+  // La version 1 no la traia. Se completa vacia en vez de rechazar el archivo:
+  // agregar una tabla no invalida los respaldos anteriores.
+  return {
+    ...posible,
+    reglasCategoria: Array.isArray(posible.reglasCategoria) ? posible.reglasCategoria : [],
+  } as Respaldo;
 }
 
 /**
@@ -114,6 +129,8 @@ export function borrarTodo(db: BaseDeDatos, contexto: Contexto): void {
     base.delete(instancias).where(eq(instancias.householdId, contexto.householdId)).run();
     base.delete(reglas).where(eq(reglas.householdId, contexto.householdId)).run();
     base.delete(lotes).where(eq(lotes.householdId, contexto.householdId)).run();
+    base.delete(reglasCategoria)
+      .where(eq(reglasCategoria.householdId, contexto.householdId)).run();
     base.delete(cuentas).where(eq(cuentas.householdId, contexto.householdId)).run();
   });
 }
@@ -142,6 +159,14 @@ export function restaurarRespaldo(
 ): number {
   const respaldo = leerRespaldo(crudo);
 
+  // Restaurar tambien mete sellos ajenos, asi que el reloj local tiene que
+  // quedar por delante o la primera edicion despues de restaurar perderia
+  // contra lo restaurado. Ver `Contexto.recibir`.
+  for (const fila of [...respaldo.cuentas, ...respaldo.movimientos, ...respaldo.reglas,
+    ...respaldo.instancias, ...respaldo.lotes, ...respaldo.reglasCategoria]) {
+    contexto.recibir(fila.updatedAt);
+  }
+
   const deEsteHogar = <T extends { householdId: string }>(fila: T): T =>
     ({ ...fila, householdId: contexto.householdId });
 
@@ -157,6 +182,9 @@ export function restaurarRespaldo(
     }
     if (respaldo.lotes.length > 0) {
       base.insert(lotes).values(respaldo.lotes.map(deEsteHogar)).run();
+    }
+    if (respaldo.reglasCategoria.length > 0) {
+      base.insert(reglasCategoria).values(respaldo.reglasCategoria.map(deEsteHogar)).run();
     }
     if (respaldo.instancias.length > 0) {
       base.insert(instancias).values(respaldo.instancias.map(deEsteHogar)).run();

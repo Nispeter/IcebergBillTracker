@@ -8,3 +8,4 @@ export * from './repositorios/reglas';
 export * from './repositorios/importaciones';
 export * from './repositorios/respaldo';
 export * from './repositorios/reglasDeCategoria';
+export * from './repositorios/sincronizacion';

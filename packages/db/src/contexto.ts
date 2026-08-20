@@ -21,6 +21,16 @@ export interface Contexto {
   readonly memberId: string;
   /** Devuelve el HLC de ahora, en texto, y avanza el reloj. */
   ahora(): string;
+  /**
+   * Adelanta el reloj para dejarlo por delante de un sello recibido de afuera.
+   *
+   * **Sin esto la fusion se rompe de una forma que no se ve.** Si este aparato
+   * recibe una fila escrita con HLC 100 mientras su reloj va en 50, la proxima
+   * edicion local nace con 51 y **pierde contra lo que se acaba de recibir**: el
+   * usuario edita, guarda, y no pasa nada. Es exactamente el caso para el que
+   * `hlcReceive` existe.
+   */
+  recibir(hlcRemoto: string): void;
   /** Un id nuevo, ordenable por tiempo de creacion. */
   nuevoId(): string;
 }
@@ -50,6 +60,13 @@ export function crearContexto(opciones: OpcionesDeContexto): Contexto {
     ahora() {
       ultimo = sync.hlcNow(ultimo, opciones.deviceId, reloj());
       return sync.hlcToString(ultimo);
+    },
+    recibir(hlcRemoto) {
+      const remoto = sync.hlcParse(hlcRemoto);
+      // Un sello ilegible se ignora en vez de reventar: la fila igual entra por
+      // su contenido, y negarse a fusionar por un texto raro seria peor.
+      if (remoto === null) return;
+      ultimo = sync.hlcReceive(ultimo, remoto, opciones.deviceId, reloj());
     },
     nuevoId: () => ulid(),
   };
