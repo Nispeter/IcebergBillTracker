@@ -30,12 +30,12 @@ export default function EditarMovimiento() {
   if (!movimiento) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.fondo, padding: spacing.xxl, gap: spacing.md }}>
-        <Text style={{ fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta }}>
+        <Text style={{ fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta }}>
           Ese movimiento ya no existe
         </Text>
         <Text
           onPress={() => volver(router)}
-          style={{ fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto }}
+          style={{ fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto }}
         >
           Volver
         </Text>

@@ -62,6 +62,15 @@ const palette = {
 
   // Serie de graficos: frias, ordenadas por profundidad, no arcoiris
   agua: '#4FB3D9',
+  /**
+   * El agua como texto sobre fondo claro.
+   *
+   * Es `agua` con el mismo matiz y menos luz, no otro azul: `profundidad` fue el
+   * primer intento y el test de coherencia lo rechazo --23 grados de matiz de
+   * diferencia--, porque se habria leido como un color distinto en vez del mismo
+   * mas oscuro.
+   */
+  aguaHonda: '#1A6C8C',
   profundidad: '#1B4F72',
   aurora: '#6EE7C8',
   auroraProfunda: '#157E63',
@@ -127,6 +136,24 @@ export interface Theme {
   /** La cara y la panza del pinguino. Fija, por lo mismo. */
   readonly pinguinoPanza: string;
   /**
+   * El pico. **El unico ambar que queda en la app.**
+   *
+   * Era el acento de toda la interfaz, y de ahi salia buena parte de la razon
+   * por la que la app se veia como un panel generado: naranjo de acento sobre
+   * azul medianoche es la paleta por defecto del genero. El acento paso al agua
+   * y el ambar volvio al lugar de donde habia salido --el pico del pinguino--,
+   * que es donde significa algo.
+   */
+  readonly pinguinoPico: string;
+  /**
+   * La tinta que se escribe **encima del dibujo del iceberg**.
+   *
+   * Un solo valor para el hielo y para el agua: el hielo es casi blanco y el
+   * agua junto a la superficie es un cian claro, asi que la misma tinta profunda
+   * se lee sobre los dos. Con blanco no pasaba: sobre el cian da 2,4:1.
+   */
+  readonly sobreElHielo: string;
+  /**
    * El hielo que asoma sobre el agua.
    *
    * Tiene rol propio porque **no puede salir de `gasto`**, que es lo que usaba
@@ -184,11 +211,16 @@ export const light: Theme = {
   tinta: palette.tintaProfunda,
   silencio: palette.silencioClaro,
   hairline: palette.hairlineClaro,
-  acento: palette.ambar,
-  acentoTexto: palette.ambarProfundo,
+  // El acento es el agua, no el ambar. Ver `pinguinoPico`.
+  acento: palette.agua,
+  // Sobre un fondo casi blanco el cian da 2,2:1 como texto. `aguaHonda` es el
+  // mismo matiz con menos luz, y da 5,5:1.
+  acentoTexto: palette.aguaHonda,
   sobreAcento: palette.tintaProfunda,
   pinguinoCuerpo: palette.profundidad,
   pinguinoPanza: palette.hielo,
+  pinguinoPico: palette.ambar,
+  sobreElHielo: palette.tintaProfunda,
   // Sobre el fondo hielo, el blanco desapareceria: va la niebla azul, que se
   // lee como nieve en sombra.
   hieloSobreAgua: palette.nieblaAzul,
@@ -217,11 +249,13 @@ export const dark: Theme = {
   tinta: palette.tintaClara,
   silencio: palette.silencioOscuro,
   hairline: palette.hairlineOscuro,
-  acento: palette.ambar,
-  acentoTexto: palette.ambar,
+  acento: palette.agua,
+  acentoTexto: palette.agua,
   sobreAcento: palette.tintaProfunda,
   pinguinoCuerpo: palette.profundidad,
   pinguinoPanza: palette.hielo,
+  pinguinoPico: palette.ambar,
+  sobreElHielo: palette.tintaProfunda,
   hieloSobreAgua: palette.hielo,
   aguaSuperficie: palette.superficieNoche,
   aguaProfunda: palette.abismo,

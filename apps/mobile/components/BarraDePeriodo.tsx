@@ -185,7 +185,7 @@ function crearEstilos(theme: Theme) {
     barra: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     flecha: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
     centro: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-    nombre: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    nombre: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
 
     panel: {
       marginTop: spacing.sm,
@@ -202,8 +202,8 @@ function crearEstilos(theme: Theme) {
       paddingHorizontal: spacing.md,
     },
     opcionConLinea: { borderTopWidth: elevation.hairlineWidth, borderTopColor: theme.hairline },
-    opcionTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    opcionTextoActivo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
 
     libre: {
       padding: spacing.md,
@@ -231,6 +231,6 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.acento,
     },
     aplicarApagado: { opacity: 0.4 },
-    aplicarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
   });
 }

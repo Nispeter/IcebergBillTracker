@@ -15,11 +15,12 @@ import {
 import {
   AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
+import { Titulo } from '../../components/Titulo';
 import { useDesplazamiento } from '../../datos/desplazamiento';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
@@ -408,11 +409,11 @@ export default function Ajustes() {
                 setConfirmando(null);
                 setAviso('Se borró todo. Quedó una cuenta vacía para empezar.');
               }}
-              style={styles.botonSecundario}
+              style={[styles.botonSecundario, styles.botonDestructivo]}
               accessibilityRole="button"
               accessibilityLabel={confirmando === 'borrar' ? 'Confirmar borrado total' : 'Borrar todos los datos'}
             >
-              <Text style={confirmando === 'borrar' ? styles.botonTextoAlerta : styles.botonTexto}>
+              <Text style={confirmando === 'borrar' ? styles.botonTextoAlerta : styles.botonTextoDestructivo}>
                 {confirmando === 'borrar' ? 'Tocar de nuevo para borrar todo' : 'Borrar todos los datos'}
               </Text>
             </Pressable>
@@ -428,18 +429,22 @@ export default function Ajustes() {
           ayuda={'El rango que están mirando todas las pantallas. Se cambia desde la barra '
             + 'de arriba, no desde aquí: acá solo se ve cuál está puesto.'}
         />
-        <Dato
-          styles={styles}
-          etiqueta="Tipo"
-          valor={TIPOS.find((t) => t.valor === periodo.tipo)?.etiqueta ?? periodo.tipo}
-        />
-        <Dato styles={styles} etiqueta="Desde" valor={periodo.rango.start} />
-        <Dato styles={styles} etiqueta="Hasta" valor={periodo.rango.end} />
+        <Panel styles={styles}>
+          <Dato
+            styles={styles}
+            etiqueta="Tipo"
+            valor={TIPOS.find((t) => t.valor === periodo.tipo)?.etiqueta ?? periodo.tipo}
+          />
+          <Dato styles={styles} etiqueta="Desde" valor={periodo.rango.start} />
+          <Dato styles={styles} etiqueta="Hasta" valor={periodo.rango.end} />
+        </Panel>
 
         <Seccion styles={styles} theme={theme} titulo="Datos" />
-        <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
-        <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
-        <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
+        <Panel styles={styles}>
+          <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
+          <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
+          <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
+        </Panel>
         <Text style={styles.nota}>
           La base arranca vacía, con una cuenta y nada más. Los datos de prueba se cargan
           desde aquí cuando quieras verlos, y se borran igual de fácil.
@@ -452,9 +457,11 @@ export default function Ajustes() {
           ayuda={'Se crean una sola vez y no cambian. Cada movimiento guarda desde qué '
             + 'dispositivo se escribió, que es lo que hace posible el modo hogar.'}
         />
-        <Dato styles={styles} etiqueta="Dispositivo" valor={identidad.dispositivo ?? '—'} mono />
-        <Dato styles={styles} etiqueta="Hogar" valor={identidad.hogar ?? '—'} mono />
-        <Dato styles={styles} etiqueta="Miembro" valor={identidad.miembro ?? '—'} mono />
+        <Panel styles={styles}>
+          <Dato styles={styles} etiqueta="Dispositivo" valor={identidad.dispositivo ?? '—'} mono />
+          <Dato styles={styles} etiqueta="Hogar" valor={identidad.hogar ?? '—'} mono />
+          <Dato styles={styles} etiqueta="Miembro" valor={identidad.miembro ?? '—'} mono />
+        </Panel>
 
       </ScrollView>
     </Pantalla>
@@ -484,13 +491,29 @@ function Seccion(
   { styles, theme, titulo, ayuda }:
   { styles: Estilos; theme: Theme; titulo: string; ayuda?: string },
 ) {
-  return (
-    <View style={styles.regla}>
-      <Text style={styles.reglaTitulo}>{titulo}</Text>
-      <View style={styles.reglaLinea} />
-      {ayuda === undefined ? null : <Ayuda theme={theme} texto={ayuda} />}
-    </View>
-  );
+  // La regla horizontal se fue: once secciones eran once lineas que solo decian
+  // donde empieza cada una, nunca donde termina. Ver `components/Titulo.tsx`.
+  return <Titulo texto={titulo} ayuda={ayuda} theme={theme} estilo={styles.seccion} />;
+}
+
+/**
+ * Un grupo de datos de solo lectura, hundido.
+ *
+ * Las filas de Periodo, Datos y Este dispositivo llevaban un subrayado cada una:
+ * nueve lineas horizontales para separar cosas que **ya** estan separadas por
+ * ser dos columnas alineadas. Y no eran ni afordancia, porque no se tocan.
+ *
+ * El panel hace el trabajo que hacian mal: agrupa, y ademas dice donde termina
+ * el grupo, que es justo lo que una regla de seccion no puede decir. Se hunde en
+ * vez de levantarse --ver `superficieHonda`-- porque sobre la noche polar una
+ * sombra es invisible y la profundidad se hace con luz.
+ *
+ * **No es un stack de tarjetas iguales**: las secciones que son solo botones no
+ * llevan panel. Un recuadro alrededor de dos botones es una caja por nada. La
+ * regla es que el panel agrupa datos, y las acciones viven sueltas en la pagina.
+ */
+function Panel({ styles, children }: { styles: Estilos; children: ReactNode }) {
+  return <View style={styles.panel}>{children}</View>;
 }
 
 function Dato(
@@ -515,26 +538,36 @@ function crearEstilos(theme: Theme) {
       width: '100%',
       alignSelf: 'center',
     },
-    regla: { zIndex: 20,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      marginTop: spacing.xl,
-      marginBottom: spacing.xs,
-    },
-    reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
+    // Ajustes tiene once secciones seguidas: el aire por defecto de `Titulo`
+    // --pensado para dos o tres por pantalla-- las separaba demasiado y la
+    // pantalla se hacia interminable.
+    seccion: { marginTop: spacing.xl },
 
+    // Sin subrayado: dos columnas alineadas ya se leen como tabla, y el panel
+    // dice donde empieza y donde termina el grupo.
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: spacing.lg,
-      paddingVertical: spacing.sm,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
+      paddingVertical: 5,
     },
-    etiqueta: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    // Lo irreversible no puede verse igual que lo reversible: "Borrar todos los
+    // datos" tenia el mismo borde y el mismo color que "Exportar".
+    botonDestructivo: { borderColor: theme.vencido },
+    botonTextoDestructivo: {
+      fontFamily: fonts.texto,
+      fontWeight: pesos.medium,
+      fontSize: fontSizes.xs,
+      color: theme.vencidoTexto,
+    },
+    panel: {
+      backgroundColor: theme.superficieHonda,
+      borderRadius: radii.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
+    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
     valor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
     valorMono: {
       flex: 1,
@@ -559,8 +592,8 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.acento,
       marginBottom: spacing.sm,
     },
-    botonPrincipalTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
-    notaImportar: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio, paddingBottom: spacing.sm },
+    botonPrincipalTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
+    notaImportar: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio, paddingBottom: spacing.sm },
     lote: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -571,8 +604,8 @@ function crearEstilos(theme: Theme) {
     },
     loteTexto: { flex: 1, gap: 1 },
     loteArchivo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    loteDetalle: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-    deshacerTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
+    loteDetalle: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    deshacerTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     acciones: { flexDirection: 'row', gap: spacing.sm },
     entradaFrase: {
       fontFamily: fonts.mono,
@@ -583,8 +616,8 @@ function crearEstilos(theme: Theme) {
       borderBottomColor: theme.hairline,
       paddingVertical: spacing.sm,
     },
-    fraseOk: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.ingresoTexto },
-    fraseFloja: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.vencidoTexto },
+    fraseOk: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.ingresoTexto },
+    fraseFloja: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.vencidoTexto },
     conflictos: {
       gap: spacing.sm,
       padding: spacing.md,
@@ -594,7 +627,7 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
       backgroundColor: theme.superficie,
     },
-    conflictosTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    conflictosTitulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
     conflicto: { gap: 1 },
     conflictoGana: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     conflictoPierde: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textDecorationLine: 'line-through' },
@@ -614,10 +647,10 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
       alignSelf: 'flex-start',
     },
-    botonTextoAlerta: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.vencidoTexto },
-    aviso: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, lineHeight: 18, color: theme.acentoTexto, paddingTop: spacing.sm },
-    botonTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    botonTextoAlerta: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.vencidoTexto },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, lineHeight: 18, color: theme.acentoTexto, paddingTop: spacing.sm },
+    botonTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
-    nota: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.sm },
+    nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.sm },
   });
 }

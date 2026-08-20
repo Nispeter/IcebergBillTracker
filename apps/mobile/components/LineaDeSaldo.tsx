@@ -114,7 +114,10 @@ export function LineaDeSaldo(
 
             <Path d={relleno} fill={charts[0]} fillOpacity={0.12} />
             <Path d={trazo} stroke={charts[0]} strokeWidth={2} fill="none" strokeLinejoin="round" />
-            <Circle cx={x(indiceMinimo)} cy={y(minimo)} r={3.5} fill={theme.acento} />
+            {/* En `alerta` y no en `acento`: el acento paso a ser el agua, que es el
+                mismo color de la curva, asi que el punto desaparecia encima de ella.
+                El ambar quedo como la unica señal de "mira esto". */}
+            <Circle cx={x(indiceMinimo)} cy={y(minimo)} r={3.5} fill={theme.alerta} />
           </Svg>
         ) : null}
       </View>
@@ -154,7 +157,7 @@ function crearEstilos(theme: Theme) {
     fecha: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 9, color: theme.silencio },
     pie: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm },
     dato: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
-    etiqueta: { fontFamily: fonts.ui, color: theme.silencio },
-    vacio: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
+    etiqueta: { fontFamily: fonts.texto, color: theme.silencio },
+    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }

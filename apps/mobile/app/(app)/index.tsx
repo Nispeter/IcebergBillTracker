@@ -34,7 +34,6 @@ import { Link } from 'expo-router';
 import { Info } from 'phosphor-react-native/src/icons/Info';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Ayuda } from '../../components/Ayuda';
 import { Pinguino } from '../../components/Pinguino';
@@ -42,6 +41,7 @@ import { DetalleDeCifra, type Detalle } from '../../components/DetalleDeCifra';
 import { Hoja } from '../../components/Hoja';
 import { Iceberg, alturaDeLineaDeAgua } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
+import { Titulo } from '../../components/Titulo';
 import { useDesplazamiento } from '../../datos/desplazamiento';
 import {
   esGastoComprometido, useAnalisisDeRango, useAnomalias, useDesgloseDelSaldo,
@@ -81,21 +81,6 @@ export default function Resumen() {
 
   return (
     <Pantalla>
-      {/*
-        La columna de agua.
-        Va detras de todo y **no se desplaza**: la profundidad es de la pantalla,
-        no del contenido. Arriba la superficie, abajo el abismo.
-      */}
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
-        <Defs>
-          <LinearGradient id="columnaDeAgua" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={theme.aguaSuperficie} />
-            <Stop offset="1" stopColor={theme.aguaProfunda} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#columnaDeAgua)" />
-      </Svg>
-
       <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
         <Pressable
           onPress={() => setCifra('saldo')}
@@ -132,6 +117,21 @@ export default function Resumen() {
             />
           </View>
           <View style={[styles.lineaDeAgua, { top: alturaDeLineaDeAgua(share, ALTO_HIELO) }]} />
+
+          {/*
+            Los porcentajes van **dentro** del hielo, no en la leyenda.
+            Escritos encima de la parte que miden, el numero y lo que representa
+            son la misma cosa y no hay que cruzar la vista de un lado al otro.
+            La misma tinta profunda sirve arriba y abajo: el hielo es casi blanco
+            y el agua junto a la superficie es un cian claro. Con blanco no
+            servia --sobre el cian da 2,4:1--.
+          */}
+          <Text style={[styles.parteEnElHielo, { top: alturaDeLineaDeAgua(share, ALTO_HIELO) - 32 }]}>
+            {Math.round(share * 100)}%
+          </Text>
+          <Text style={[styles.parteEnElHielo, { top: alturaDeLineaDeAgua(share, ALTO_HIELO) + 14 }]}>
+            {Math.round((1 - share) * 100)}%
+          </Text>
         </View>
 
         {/*
@@ -148,6 +148,7 @@ export default function Resumen() {
           <Leyenda styles={styles} titulo="variable" monto={money.format(variable)}
             parte={1 - share} alDerecho onPress={() => setCifra('variable')} />
           <Ayuda
+            titulo="Comprometido y variable"
             theme={theme}
             texto={'Comprometido llega igual: arriendo, cuentas, cuotas, impuestos. '
               + 'Variable es lo que decides tú, y es sobre lo único que puedes actuar.'}
@@ -166,11 +167,7 @@ export default function Resumen() {
             onPress={() => setCifra('neto')} />
         </View>
 
-        {/* Sin regla: el titulo y el aire de arriba alcanzan para separar. */}
-        <View style={styles.tituloFila}>
-          <Text style={styles.titulo}>Últimos movimientos</Text>
-          <Ayuda theme={theme} texto={EXPLICACION_ANOMALIA} />
-        </View>
+        <Titulo texto="Últimos movimientos" ayuda={EXPLICACION_ANOMALIA} theme={theme} />
         {recientes.length === 0
           ? (
             <View style={styles.vacio}>
@@ -363,17 +360,16 @@ function Leyenda(
     alDerecho?: boolean; onPress: () => void;
   },
 ) {
-  const porcentaje = `${Math.round(parte * 100)}%`;
   return (
     <Pressable
       onPress={onPress}
       style={[styles.leyenda, alDerecho && styles.leyendaDerecha]}
       accessibilityRole="button"
-      accessibilityLabel={`${titulo} ${monto}, ${porcentaje} del gasto. De dónde sale este número`}
+      accessibilityLabel={`${titulo} ${monto}, ${Math.round(parte * 100)}% del gasto. `
+        + 'De dónde sale este número'}
     >
       <Text style={styles.leyendaTitulo}>{titulo}</Text>
       <Text style={styles.leyendaMonto}>{monto}</Text>
-      <Text style={styles.leyendaParte}>{porcentaje}</Text>
     </Pressable>
   );
 }
@@ -422,6 +418,16 @@ function crearEstilos(theme: Theme) {
     escena: { height: ALTO_HIELO, marginHorizontal: -spacing.lg, marginBottom: spacing.lg },
     hielo: { alignItems: 'center' },
     lineaDeAgua: { position: 'absolute', left: 0, right: 0, height: 1.5, backgroundColor: charts[0] },
+    parteEnElHielo: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+      fontFamily: fonts.mono,
+      fontWeight: pesos.medium,
+      fontSize: fontSizes.sm,
+      color: theme.sobreElHielo,
+    },
 
     /**
      * Las dos mitades del gasto, en los dos bordes.
@@ -436,7 +442,6 @@ function crearEstilos(theme: Theme) {
     leyendaDerecha: { alignItems: 'flex-end' },
     leyendaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
     leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.lg, color: theme.tinta },
-    leyendaParte: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 11, color: theme.silencio },
 
     /**
      * Las tres cifras del periodo, mas hondas que el reparto.
@@ -459,19 +464,6 @@ function crearEstilos(theme: Theme) {
     celdaValor: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.tinta },
     delta: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10 },
     deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-
-    /**
-     * Titulo de seccion sin regla.
-     *
-     * El patron `Titulo ───── ?` estaba en once secciones y es la firma mas
-     * reconocible del panel generado. El aire de arriba separa igual, y de paso
-     * se va una linea horizontal por seccion.
-     */
-    tituloFila: {
-      flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-      marginTop: spacing.xxl, marginBottom: spacing.sm, zIndex: 20,
-    },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
 
     // Discreto a proposito: no compite con los movimientos que tiene encima.
     verTodos: { marginTop: spacing.md, alignItems: 'flex-end' },

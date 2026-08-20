@@ -156,7 +156,7 @@ function crearEstilos(theme: Theme) {
       paddingBottom: spacing.lg,
     },
     marcaFila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    marca: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
+    marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
     cerrar: {
       width: 22,
       height: 22,
@@ -176,7 +176,7 @@ function crearEstilos(theme: Theme) {
     },
     itemActivo: { backgroundColor: theme.fondo },
     itemApretado: { opacity: 0.6 },
-    etiqueta: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    etiquetaActiva: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
+    etiqueta: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
+    etiquetaActiva: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
   });
 }

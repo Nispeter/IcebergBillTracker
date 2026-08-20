@@ -110,17 +110,18 @@ function crearEstilos(theme: Theme) {
     marcaFecha: { width: 30, alignItems: 'center' },
     dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
     mes: {
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: 10,
       color: theme.silencio,
-      textTransform: 'uppercase',
     },
     texto: { flex: 1, gap: 2 },
-    nombre: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
+    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
     meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    subtitulo: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.acento },
+    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    // En `alerta`: marca un movimiento fuera de lo habitual, y el acento --que
+    // ahora es el agua-- se confunde con el resto de la interfaz.
+    punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.alerta },
     montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.gasto },
     // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
     // hasta cumplir AA, en oscuro es la misma aurora viva.

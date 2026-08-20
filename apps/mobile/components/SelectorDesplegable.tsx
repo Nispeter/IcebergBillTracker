@@ -118,7 +118,7 @@ function crearEstilos(theme: Theme) {
     },
     chipActivo: { backgroundColor: theme.tinta, borderColor: theme.tinta },
     chipAbierto: { borderColor: theme.silencio },
-    chipTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs },
+    chipTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs },
 
     panel: {
       maxHeight: 260,
@@ -137,8 +137,8 @@ function crearEstilos(theme: Theme) {
     },
     opcionConLinea: { borderTopWidth: elevation.hairlineWidth, borderTopColor: theme.hairline },
     iconoOpcion: { width: 16, alignItems: 'center' },
-    opcionTexto: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    opcionTextoActivo: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
+    opcionTexto: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
+    opcionTextoActivo: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
     detalle: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
   });
 }

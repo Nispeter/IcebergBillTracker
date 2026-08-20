@@ -281,9 +281,9 @@ function crearEstilos(theme: Theme) {
       justifyContent: 'space-between',
       paddingTop: spacing.xxl,
     },
-    titulo: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
 
     elegir: {
       paddingVertical: spacing.lg,
@@ -294,7 +294,7 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.superficie,
     },
     apagado: { opacity: 0.5 },
-    elegirTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
+    elegirTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
 
     tarjeta: {
       gap: spacing.sm,
@@ -307,11 +307,11 @@ function crearEstilos(theme: Theme) {
     archivo: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.silencio, paddingBottom: spacing.xs },
     dato: { gap: 1 },
     datoFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-    datoEtiqueta: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
+    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
     datoValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.tinta },
-    datoNota: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-    cuadra: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.ingresoTexto, paddingTop: spacing.xs },
-    noCuadra: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, lineHeight: 18, color: theme.vencidoTexto, paddingTop: spacing.xs },
+    datoNota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    cuadra: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.ingresoTexto, paddingTop: spacing.xs },
+    noCuadra: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, lineHeight: 18, color: theme.vencidoTexto, paddingTop: spacing.xs },
 
     importar: {
       paddingVertical: spacing.lg,
@@ -319,10 +319,10 @@ function crearEstilos(theme: Theme) {
       borderRadius: radii.sm,
       backgroundColor: theme.acento,
     },
-    importarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
-    error: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, lineHeight: 20, color: theme.vencidoTexto },
+    importarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
+    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, lineHeight: 20, color: theme.vencidoTexto },
     // Discreto: solo hace falta cuando la deteccion no acerto, que es raro.
     ajustar: { alignItems: 'center', paddingVertical: spacing.xs },
-    ajustarTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.acentoTexto },
+    ajustarTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.acentoTexto },
   });
 }

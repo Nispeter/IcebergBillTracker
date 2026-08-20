@@ -205,9 +205,9 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     raiz: { gap: spacing.md },
     encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    titulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta },
-    cancelar: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
 
     campos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     campo: {
@@ -218,8 +218,8 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
     },
     campoActivo: { backgroundColor: theme.acento, borderColor: theme.acento },
-    campoTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    campoTextoActivo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    campoTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    campoTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
 
     grilla: {
       maxHeight: 260,
@@ -261,6 +261,6 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.acento,
     },
     apagado: { opacity: 0.4 },
-    aplicarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
   });
 }

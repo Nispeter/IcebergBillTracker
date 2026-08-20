@@ -17,6 +17,7 @@ import { Calendario } from '../../components/Calendario';
 import { Ayuda } from '../../components/Ayuda';
 import { LineaDeSaldo } from '../../components/LineaDeSaldo';
 import { Pantalla } from '../../components/Pantalla';
+import { Titulo } from '../../components/Titulo';
 import { useDesplazamiento } from '../../datos/desplazamiento';
 import { useAnalisisDeRango, useSaldoAlEmpezar } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
@@ -60,27 +61,21 @@ export default function DiaADia() {
           />
         )}
 
-        <View style={styles.regla}>
-          <Text style={styles.reglaTitulo}>Saldo día a día</Text>
-          <View style={styles.reglaLinea} />
-          <Ayuda
-            theme={theme}
-            texto={'Cuánta plata te quedaba al cerrar cada día. Baja con cada gasto y sube '
-              + 'cuando entra un ingreso. El punto ámbar marca el día en que estuviste más abajo.'}
-          />
-        </View>
+        <Titulo
+          texto="Saldo día a día"
+          theme={theme}
+          ayuda={'Cuánta plata te quedaba al cerrar cada día. Baja con cada gasto y sube '
+            + 'cuando entra un ingreso. El punto ámbar marca el día en que estuviste más abajo.'}
+        />
         <LineaDeSaldo serie={serieDeSaldo} theme={theme} />
 
-        <View style={styles.regla}>
-          <Text style={styles.reglaTitulo}>Por día de la semana</Text>
-          <View style={styles.reglaLinea} />
-          <Ayuda
-            theme={theme}
-            texto={'Promedio por vez que cayó ese día dentro del período. Un mes tiene '
-              + 'cuatro o cinco de cada uno, así que sumar sin promediar haría ganar '
-              + 'siempre al día que se repitió más veces.'}
-          />
-        </View>
+        <Titulo
+          texto="Por día de la semana"
+          theme={theme}
+          ayuda={'Promedio por vez que cayó ese día dentro del período. Un mes tiene '
+            + 'cuatro o cinco de cada uno, así que sumar sin promediar haría ganar '
+            + 'siempre al día que se repitió más veces.'}
+        />
 
         {porDiaDeSemana.map((fila) => (
           <View key={fila.dia} style={styles.filaSemana}>
@@ -98,10 +93,7 @@ export default function DiaADia() {
           </View>
         ))}
 
-        <View style={styles.regla}>
-          <Text style={styles.reglaTitulo}>Detalle</Text>
-          <View style={styles.reglaLinea} />
-        </View>
+        <Titulo texto="Detalle" theme={theme} />
         <Dato styles={styles} etiqueta="Día más caro"
           valor={masCaro === null ? '—' : `${money.format(masCaro.gasto)}`} />
         <Dato styles={styles} etiqueta="Racha sin gastar"
@@ -133,19 +125,16 @@ function crearEstilos(theme: Theme) {
       width: '100%',
       alignSelf: 'center',
     },
-    aviso: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
 
     // Elevada para que la burbuja de la ayuda tape lo que viene debajo.
-    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 20 },
-    reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
 
     filaSemana: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 3 },
-    nombreDia: { width: 72, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    nombreDia: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     pista: { flex: 1, flexDirection: 'row', height: 6 },
     relleno: { backgroundColor: charts[0], borderRadius: radii.sm },
     montoDia: { width: 62, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    nota: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.xs },
+    nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.xs },
 
     dato: {
       flexDirection: 'row',
@@ -154,7 +143,7 @@ function crearEstilos(theme: Theme) {
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
     },
-    datoEtiqueta: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
     datoValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
   });
 }

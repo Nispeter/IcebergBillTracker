@@ -25,6 +25,7 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
+import { Titulo } from '../../components/Titulo';
 import { useDesplazamiento } from '../../datos/desplazamiento';
 import { Pinguino } from '../../components/Pinguino';
 import { iconoDeCategoria } from '../../components/iconos';
@@ -59,10 +60,11 @@ export default function Tempanos() {
       <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
         <View style={styles.cabecera}>
           <View style={styles.total}>
-            <Text style={styles.totalEtiqueta}>POR PAGAR</Text>
+            <Text style={styles.totalEtiqueta}>por pagar</Text>
             <Text style={styles.totalCifra}>{money.format(porPagar)}</Text>
           </View>
           <Ayuda
+            titulo="Por pagar"
             theme={theme}
             texto={'Cada fila es una fecha concreta, no la cuenta entera. Marcar pagada crea '
               + 'el movimiento; omitir no crea nada. Las dos se pueden deshacer.'}
@@ -102,15 +104,12 @@ export default function Tempanos() {
 
         {candidatas.length > 0 ? (
           <>
-            <View style={styles.regla}>
-              <Text style={styles.reglaTitulo}>Encontradas en tu historial</Text>
-              <View style={styles.reglaLinea} />
-              <Ayuda
-                theme={theme}
-                texto={'Movimientos que se repiten con la misma frecuencia y un monto '
-                  + 'parecido. Son una propuesta: nada se crea hasta que la confirmes.'}
-              />
-            </View>
+            <Titulo
+              texto="Encontradas en tu historial"
+              theme={theme}
+              ayuda={'Movimientos que se repiten con la misma frecuencia y un monto '
+                + 'parecido. Son una propuesta: nada se crea hasta que la confirmes.'}
+            />
 
             {candidatas.map((candidata) => (
               <Sugerencia
@@ -307,9 +306,9 @@ function crearEstilos(theme: Theme) {
       zIndex: 20,
     },
     total: { gap: 1 },
-    totalEtiqueta: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
+    totalEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     totalCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 28, color: theme.tinta, letterSpacing: -0.5 },
-    aviso: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto, paddingBottom: spacing.sm },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto, paddingBottom: spacing.sm },
 
     // Sin subrayado, igual que en la lista de movimientos: la fecha a la
     // izquierda y los dos renglones de cada fila ya la separan de la siguiente.
@@ -324,12 +323,12 @@ function crearEstilos(theme: Theme) {
     marcaFecha: { width: 30, alignItems: 'center' },
     dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
     diaVencido: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: fontSizes.md, color: theme.vencidoTexto },
-    mes: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase' },
+    mes: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     texto: { flex: 1, gap: 2 },
-    nombre: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
+    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
     meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    subtitulo: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    subtituloVencido: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
+    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    subtituloVencido: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
     montoResuelto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio, textDecorationLine: 'line-through' },
 
@@ -338,10 +337,10 @@ function crearEstilos(theme: Theme) {
 
     vacio: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
     filaAviso: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
-    vacioTexto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio, paddingVertical: spacing.lg },
+    vacioTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio, paddingVertical: spacing.lg },
 
     regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 20 },
-    reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    reglaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
     crearChico: {
       paddingVertical: 5,
@@ -349,8 +348,8 @@ function crearEstilos(theme: Theme) {
       borderRadius: radii.full,
       backgroundColor: theme.acento,
     },
-    crearChicoTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    crearChicoTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
     agregar: { marginTop: spacing.lg, alignItems: 'flex-end' },
-    agregarTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
+    agregarTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
   });
 }

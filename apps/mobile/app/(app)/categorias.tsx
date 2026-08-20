@@ -17,6 +17,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarraSegmentada } from '../../components/BarraSegmentada';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
+import { Titulo } from '../../components/Titulo';
 import { useDesplazamiento } from '../../datos/desplazamiento';
 import { QueCambio } from '../../components/QueCambio';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
@@ -45,16 +46,14 @@ export default function Categorias() {
   return (
     <Pantalla>
       <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
-        <View style={styles.reglaTorta}>
-          <Text style={styles.reglaTitulo}>En qué se fue</Text>
-          <View style={styles.reglaLinea} />
-          <Ayuda
-            theme={theme}
-            texto={'Las cinco categorías más grandes llevan color propio; el resto se '
-              + 'junta en "Otras" porque doce porciones no se distinguen. Los porcentajes '
-              + 'son sobre el gasto del período, no sobre el total del año.'}
-          />
-        </View>
+        <Titulo
+          texto="En qué se fue"
+          theme={theme}
+          estilo={styles.primerTitulo}
+          ayuda={'Las cinco categorías más grandes llevan color propio; el resto se '
+            + 'junta en "Otras" porque doce porciones no se distinguen. Los porcentajes '
+            + 'son sobre el gasto del período, no sobre el total del año.'}
+        />
         <TortaDeCategorias
           porciones={a.porCategoria}
           theme={theme}
@@ -76,16 +75,13 @@ export default function Categorias() {
 
         {a.porCategoria.length > 0 ? (
           <>
-            <View style={styles.regla}>
-              <Text style={styles.reglaTitulo}>Todas</Text>
-              <View style={styles.reglaLinea} />
-              <Ayuda
-                theme={theme}
-                texto={'Cada barra es una categoría del período, de mayor a menor. Tocar '
-                  + 'una lleva al listado filtrado por ella. Las muescas son de un mismo '
-                  + 'tamaño, así que dos barras se comparan contándolas.'}
-              />
-            </View>
+            <Titulo
+              texto="Todas"
+              theme={theme}
+              ayuda={'Cada barra es una categoría del período, de mayor a menor. Tocar '
+                + 'una lleva al listado filtrado por ella. Las muescas son de un mismo '
+                + 'tamaño, así que dos barras se comparan contándolas.'}
+            />
 
             {a.porCategoria.map(({ categoriaId, total }) => {
               const Icono = iconoDeCategoria(categoriaId);
@@ -127,10 +123,8 @@ function crearEstilos(theme: Theme) {
       width: '100%',
       alignSelf: 'center',
     },
-    reglaTorta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md, zIndex: 20 },
-    regla: { zIndex: 20, flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs },
-    reglaTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
+    // El primero no necesita el aire de arriba: ya lo da el encabezado.
+    primerTitulo: { marginTop: 0 },
 
     // Sin subrayado: eran diez lineas horizontales seguidas para decir algo que
     // el `>` del final dice sin cortar el ancho de la pantalla.
@@ -140,7 +134,7 @@ function crearEstilos(theme: Theme) {
       gap: spacing.sm,
       paddingVertical: spacing.sm,
     },
-    nombre: { width: 78, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    nombre: { width: 78, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     monto: { width: 66, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
   });
 }

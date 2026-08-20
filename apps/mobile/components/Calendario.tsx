@@ -120,7 +120,7 @@ function crearEstilos(theme: Theme) {
     diaSemana: {
       width: `${100 / 7}%`,
       textAlign: 'center',
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.medium,
       fontSize: 9,
       color: theme.silencio,

@@ -74,7 +74,7 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     raiz: { gap: 2 },
     total: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 28, color: theme.tinta, letterSpacing: -0.5 },
-    formula: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 17, color: theme.silencio, paddingBottom: spacing.sm },
+    formula: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 17, color: theme.silencio, paddingBottom: spacing.sm },
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -83,8 +83,8 @@ function crearEstilos(theme: Theme) {
       borderTopWidth: elevation.hairlineWidth,
       borderTopColor: theme.hairline,
     },
-    etiqueta: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    etiqueta: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    resto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, paddingTop: spacing.sm },
+    resto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, paddingTop: spacing.sm },
   });
 }

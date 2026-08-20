@@ -250,8 +250,8 @@ function crearEstilos(theme: Theme) {
       justifyContent: 'space-between',
       paddingTop: spacing.xxl,
     },
-    titulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.lg, color: theme.tinta },
-    cancelar: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.lg, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
 
     selector: {
       flexDirection: 'row',
@@ -262,17 +262,16 @@ function crearEstilos(theme: Theme) {
     },
     opcion: { flex: 1, paddingVertical: spacing.md, alignItems: 'center' },
     opcionActiva: { backgroundColor: theme.tinta },
-    opcionTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    opcionTextoActivo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.fondo },
+    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
+    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.fondo },
 
     campo: { gap: spacing.sm },
     filaChip: { flexDirection: 'row' },
     etiqueta: {
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.medium,
       fontSize: fontSizes.xs,
       color: theme.silencio,
-      textTransform: 'uppercase',
       letterSpacing: 1,
     },
 
@@ -295,7 +294,7 @@ function crearEstilos(theme: Theme) {
     },
 
     entrada: {
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: fontSizes.md,
       color: theme.tinta,
@@ -303,9 +302,9 @@ function crearEstilos(theme: Theme) {
       borderBottomColor: theme.hairline,
       paddingVertical: spacing.sm,
     },
-    ayuda: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    aviso: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.vencidoTexto },
-    error: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.vencidoTexto },
+    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
 
 
     guardar: {
@@ -316,9 +315,9 @@ function crearEstilos(theme: Theme) {
       marginTop: spacing.md,
     },
     guardarApagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
+    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
 
     borrar: { paddingVertical: spacing.md, alignItems: 'center' },
-    borrarTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
+    borrarTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
   });
 }

@@ -11,6 +11,11 @@
  * A la izquierda y no a la derecha porque ahi caen los montos de cada fila, y un
  * circulo opaco sobre la columna de cifras tapa justo lo que uno esta mirando.
  *
+ * El **fondo es una columna de agua**: un degradado que se hace mas hondo hacia
+ * abajo. Va aca y no en cada pantalla para que la profundidad sea de la app y no
+ * de una vista, y **no se desplaza**: lo hondo es la parte baja de la pantalla,
+ * no la parte baja del contenido.
+ *
  * Y **se esconde mientras uno baja**. Flote donde flote tapa algo: a la derecha
  * los montos, a la izquierda los nombres de categoria. La unica salida es que se
  * quite del medio cuando uno esta leyendo y vuelva apenas frena o sube, que es
@@ -24,6 +29,7 @@ import { List } from 'phosphor-react-native/src/icons/List';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
 import { Sidebar } from './Sidebar';
@@ -64,6 +70,17 @@ export function Pantalla(
   return (
     <View style={styles.raiz}>
       <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+
+      {/* La columna de agua. Detras de todo y quieta. */}
+      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
+        <Defs>
+          <LinearGradient id="columnaDeAgua" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={theme.aguaSuperficie} />
+            <Stop offset="1" stopColor={theme.aguaProfunda} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#columnaDeAgua)" />
+      </Svg>
       <View style={styles.marco}>
         <View style={styles.encabezado}>
           {/* Sin burbuja: tres lineas ya se leen como menu, y el circulo solo
@@ -145,7 +162,7 @@ function crearEstilos(theme: Theme) {
     encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, zIndex: capas.encabezado },
     periodo: { flex: 1, zIndex: capas.encabezado },
     marcaFila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    marca: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
+    marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
     boton: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
 
     /**

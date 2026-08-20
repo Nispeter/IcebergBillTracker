@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Pinguino } from '../components/Pinguino';
 import { ProveedorDeDatos } from '../datos/BaseDeDatos';
 import { useFechaDeCorte } from '../datos/consultas';
+import { ProveedorDeExplicacion } from '../datos/explicacion';
 import { ProveedorDePeriodo } from '../datos/periodo';
 import { ProveedorDeTema, useTema } from '../datos/tema';
 
@@ -50,14 +51,14 @@ function Contenido() {
           <View style={centro}>
             <Pinguino theme={theme} tamano={48} />
             <ActivityIndicator color={theme.acento} />
-            <Text style={{ fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio }}>
+            <Text style={{ fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio }}>
               Preparando la base…
             </Text>
           </View>
         }
         error={(mensaje) => (
           <View style={centro}>
-            <Text style={{ fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.vencidoTexto }}>
+            <Text style={{ fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.vencidoTexto }}>
               No se pudo abrir la base
             </Text>
             <Text style={{ fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, textAlign: 'center' }}>
@@ -67,16 +68,20 @@ function Contenido() {
         )}
       >
         <ConPeriodo>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(app)" />
-            <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="regla/nueva" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="regla/[id]" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="importar" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="cuenta/[id]" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="reglas-categoria" options={{ presentation: 'modal' }} />
-          </Stack>
+          {/* Una sola hoja de explicaciones para toda la app: ver
+              `datos/explicacion.tsx`. */}
+          <ProveedorDeExplicacion theme={theme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(app)" />
+              <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="regla/nueva" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="regla/[id]" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="importar" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="cuenta/[id]" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="reglas-categoria" options={{ presentation: 'modal' }} />
+            </Stack>
+          </ProveedorDeExplicacion>
         </ConPeriodo>
       </ProveedorDeDatos>
     </GestureHandlerRootView>

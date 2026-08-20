@@ -84,8 +84,27 @@ describe('forma de los tokens', () => {
     expect(Object.keys(dark)).toEqual(Object.keys(light));
   });
 
-  it('el ambar es el mismo acento en ambos temas', () => {
+  it('el acento es el mismo en ambos temas', () => {
     expect(dark.acento).toBe(light.acento);
+  });
+
+  it('el ambar quedo solo en el pico del pinguino', () => {
+    // Dejo de ser el acento de la interfaz: naranjo sobre azul medianoche es la
+    // paleta por defecto del panel generado, y era uno de los rasgos que hacian
+    // ver la app como tal. Vuelve al lugar del que habia salido.
+    for (const [name, theme] of entries) {
+      expect(theme.pinguinoPico, `${name}.pinguinoPico`).not.toBe(theme.acento);
+    }
+    expect(dark.pinguinoPico).toBe(light.pinguinoPico);
+  });
+
+  it('la tinta del iceberg se lee sobre el hielo y sobre el agua', () => {
+    for (const [name, theme] of entries) {
+      expect(contrast(theme.sobreElHielo, theme.hieloSobreAgua), `${name}: sobre el hielo`)
+        .toBeGreaterThanOrEqual(4.5);
+      expect(contrast(theme.sobreElHielo, charts[0]), `${name}: sobre el agua`)
+        .toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it('vencido es el unico rojo y su relleno es igual en ambos temas', () => {
@@ -191,7 +210,7 @@ describe('contraste', () => {
     // Si la version legible cambiara de matiz dejaria de leerse como el mismo
     // color y la paleta perderia coherencia: seria otro color, no el mismo mas
     // oscuro.
-    expect(hueDistance(light.acentoTexto, light.acento), 'ambar').toBeLessThan(12);
+    expect(hueDistance(light.acentoTexto, light.acento), 'agua').toBeLessThan(12);
     expect(hueDistance(light.ingresoTexto, light.ingreso), 'aurora').toBeLessThan(12);
     expect(hueDistance(light.vencidoTexto, light.vencido), 'vencido').toBeLessThan(12);
   });

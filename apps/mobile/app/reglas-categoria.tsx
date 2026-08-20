@@ -251,12 +251,12 @@ function crearEstilos(theme: Theme) {
       justifyContent: 'space-between',
       paddingTop: spacing.xxl,
     },
-    titulo: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
 
     campo: { gap: spacing.xs },
-    etiqueta: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },
+    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     entrada: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
@@ -275,7 +275,7 @@ function crearEstilos(theme: Theme) {
       alignItems: 'center',
     },
     apagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
+    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
     aplicar: {
       paddingVertical: spacing.md,
       alignItems: 'center',
@@ -283,11 +283,11 @@ function crearEstilos(theme: Theme) {
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },
-    aplicarTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    error: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
     seccion: {
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.semibold,
       fontSize: fontSizes.xs,
       color: theme.tinta,
@@ -313,7 +313,7 @@ function crearEstilos(theme: Theme) {
       borderBottomColor: theme.hairline,
     },
     patron: { flex: 1, fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    categoria: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    categoria: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
     borrar: { padding: 2 },
   });
 }

@@ -1,80 +1,50 @@
 /**
- * Un `?` chico que abre una burbuja con la explicacion.
+ * Una `i` chica que abre la explicacion en la hoja de siempre.
  *
  * La alternativa era dejar la frase escrita siempre, y eso convierte cada
- * definicion en ruido permanente para quien ya la sabe —que despues de la
- * primera semana es siempre—. Con el `?` la explicacion esta cuando se busca y
+ * definicion en ruido permanente para quien ya la sabe --que despues de la
+ * primera semana es siempre--. Con la `i` la explicacion esta cuando se busca y
  * no ocupa cuando no.
  *
- * La burbuja va **absoluta**, no en el flujo: abrir una ayuda no puede correr
- * media pantalla hacia abajo. Se cierra tocando el mismo `?`.
+ * ## Por que ya no es un `?` con globo
+ *
+ * Dos razones, y la primera es un bug que se repitio hasta cansar. El globo iba
+ * absoluto y peleaba el apilado con lo que tuviera al lado: `zIndex` en la
+ * raiz, en el contenedor, en el padre del padre. Un elemento flotante solo
+ * compite dentro de su contexto de apilado y ese contexto lo decide cualquier
+ * ancestro, asi que cada pantalla nueva traia otro caso de "se dibuja atras".
+ * La hoja no puede tener ese problema: vive una sola vez y arriba de todo.
+ *
+ * La segunda es que la app ya tenia dos formas de explicar --el globo del `?` y
+ * la hoja de la `i` del saldo-- y no habia motivo para dos. Queda la que muestra
+ * mejor: cabe texto largo, se lee sin apretar y se cierra deslizando.
  *
  * No es hover: en Android no hay puntero. Es tocar.
  */
 
-import { capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Aparecer } from './Aparecer';
+import { type Theme } from '@iceberg/ui';
+import { Info } from 'phosphor-react-native/src/icons/Info';
+import { Pressable } from 'react-native';
+import { useExplicar } from '../datos/explicacion';
 
-export function Ayuda({ texto, theme }: { texto: string; theme: Theme }) {
-  const styles = crearEstilos(theme);
-  const [abierta, setAbierta] = useState(false);
+export function Ayuda(
+  { titulo, texto, theme }: {
+    /** Encabeza la hoja. Normalmente el titulo de la seccion que la trae. */
+    titulo: string;
+    texto: string;
+    theme: Theme;
+  },
+) {
+  const explicar = useExplicar();
 
   return (
-    <View style={styles.raiz}>
-      <Pressable
-        onPress={() => setAbierta(!abierta)}
-        style={[styles.boton, abierta && styles.botonAbierto]}
-        hitSlop={10}
-        accessibilityRole="button"
-        accessibilityLabel="Qué significa esto"
-        accessibilityState={{ expanded: abierta }}
-      >
-        <Text style={[styles.signo, abierta && styles.signoAbierto]}>?</Text>
-      </Pressable>
-
-      <Aparecer visible={abierta} estilo={styles.burbuja}>
-        <Text style={styles.texto}>{texto}</Text>
-      </Aparecer>
-    </View>
+    <Pressable
+      onPress={() => explicar(titulo, texto)}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel={`Qué significa: ${titulo}`}
+    >
+      <Info size={15} weight="regular" color={theme.silencio} />
+    </Pressable>
   );
-}
-
-const LADO = 16;
-
-function crearEstilos(theme: Theme) {
-  return StyleSheet.create({
-    // El `zIndex` va tambien en la raiz, no solo en la burbuja: sin el, la
-    // burbuja solo compite dentro de este subarbol y cualquier hermano que
-    // venga despues en el orden del documento le pasa por encima.
-    raiz: { position: 'relative', zIndex: capas.ayuda },
-    boton: {
-      width: LADO,
-      height: LADO,
-      borderRadius: radii.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    botonAbierto: { backgroundColor: theme.acento, borderColor: theme.acento },
-    signo: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: 10, lineHeight: 12, color: theme.silencio },
-    signoAbierto: { color: theme.sobreAcento },
-    // Anclada a la derecha del `?`: asi crece hacia adentro de la pantalla y no
-    // se sale por el borde cuando el boton esta en una esquina.
-    burbuja: {
-      position: 'absolute',
-      top: LADO + spacing.xs,
-      right: 0,
-      width: 232,
-      padding: spacing.md,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-      backgroundColor: theme.superficie,
-      zIndex: capas.ayuda,
-    },
-    texto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 17, color: theme.tinta },
-  });
 }

@@ -71,7 +71,7 @@ function crearEstilos(theme: Theme) {
       width: '100%',
       alignSelf: 'center',
     },
-    titulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta },
     linea: { height: elevation.hairlineWidth, backgroundColor: theme.hairline, marginBottom: spacing.xs },
   });
 }

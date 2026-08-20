@@ -119,7 +119,7 @@ export function Pinguino(
         </>
       ) : null}
 
-      <Path d={PICO} fill={theme.acento} />
+      <Path d={PICO} fill={theme.pinguinoPico} />
     </Svg>
   );
 }

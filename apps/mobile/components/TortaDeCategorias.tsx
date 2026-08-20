@@ -182,9 +182,9 @@ function crearEstilos(theme: Theme) {
     fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
     sinCaret: { width: ANCHO_CARET },
     punto: { width: 8, height: 8, borderRadius: 4 },
-    nombre: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    nombre: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
     porcentaje: { width: 30, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-    vacio: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
   });
 }

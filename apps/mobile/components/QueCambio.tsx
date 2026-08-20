@@ -20,6 +20,7 @@
 import { analytics, categories, money } from '@iceberg/core';
 import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
+import { Titulo } from './Titulo';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
 
@@ -52,14 +53,14 @@ export function QueCambio(
 
   return (
     <View>
-      <View style={styles.regla}>
-        <Text style={styles.titulo}>Qué cambió</Text>
-        <View style={styles.linea} />
-        {/* El "contra que" va en el titulo y no en un encabezado de columna:
-            "vs. 10 al 16 de agosto" no entra en 84px, y sin el la seccion no
-            se entiende en ningun alcance. */}
-        <Text style={styles.referencia} numberOfLines={1}>vs. {referencia}</Text>
-      </View>
+      {/* El "contra que" va en el titulo y no en un encabezado de columna:
+          "vs. 10 al 16 de agosto" no entra en 84px, y sin el la seccion no se
+          entiende en ningun alcance. */}
+      <Titulo
+        texto="Qué cambió"
+        theme={theme}
+        derecha={<Text style={styles.referencia} numberOfLines={1}>vs. {referencia}</Text>}
+      />
 
       {filas.length === 0 ? (
         <Text style={styles.vacio}>Sin cambios contra el período anterior.</Text>
@@ -68,8 +69,8 @@ export function QueCambio(
           <View style={styles.cabecera}>
             <View style={styles.hueco} />
             <View style={styles.relleno} />
-            <Text style={styles.cabeceraTexto}>GASTO</Text>
-            <Text style={styles.cabeceraTexto}>CAMBIO</Text>
+            <Text style={styles.cabeceraTexto}>gasto</Text>
+            <Text style={styles.cabeceraTexto}>cambio</Text>
             <View style={styles.sinCaret} />
           </View>
 
@@ -137,22 +138,17 @@ function crearEstilos(theme: Theme) {
   } as const;
 
   return StyleSheet.create({
-    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg, marginBottom: spacing.xs },
-    titulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    linea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
-    referencia: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    referencia: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
 
     cabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: 2 },
     relleno: { flex: 1 },
     cabeceraTexto: {
       width: ANCHO_COLUMNA,
       textAlign: 'right',
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: 10,
       color: theme.silencio,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
     },
 
     // Sin subrayado: lo tocable lo dice el `>`, igual que en la leyenda de la
@@ -160,9 +156,9 @@ function crearEstilos(theme: Theme) {
     fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
     sinCaret: { width: ANCHO_CARET },
     hueco: { width: 13 },
-    nombre: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    nombre: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     gasto: { ...columna, fontWeight: pesos.regular, color: theme.tinta },
     cambio: { ...columna, fontWeight: pesos.medium },
-    vacio: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
+    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }

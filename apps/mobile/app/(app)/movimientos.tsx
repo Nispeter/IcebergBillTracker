@@ -100,7 +100,7 @@ export default function Movimientos() {
           {resumen.cantidad} {resumen.cantidad === 1 ? 'movimiento' : 'movimientos'}
           {' · '}{money.formatSigned(resumen.neto)}
         </Text>
-        <Ayuda theme={theme} texto={EXPLICACION_ANOMALIA} />
+        <Ayuda titulo="Movimientos fuera de lo habitual" theme={theme} texto={EXPLICACION_ANOMALIA} />
       </View>
 
       {/* Los dos disparadores en una linea, y un solo panel **encima** a lo
@@ -227,7 +227,7 @@ function crearEstilos(theme: Theme) {
     espacio: { height: spacing.lg },
 
     vacio: {
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: fontSizes.sm,
       color: theme.silencio,
@@ -243,9 +243,9 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
       borderRadius: radii.sm,
     },
-    verMasTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto },
+    verMasTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto },
     pie: {
-      fontFamily: fonts.ui,
+      fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: fontSizes.xs,
       color: theme.silencio,
