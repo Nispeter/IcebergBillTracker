@@ -134,19 +134,31 @@ export default function Resumen() {
           <View style={[styles.lineaDeAgua, { top: alturaDeLineaDeAgua(share, ALTO_HIELO) }]} />
         </View>
 
-        <View style={styles.leyendasFila}>
-          {/* El color sale del dibujo, no de la paleta semantica: el area sobre
-              el agua es la comprometida, asi que el marcador tiene que ser el
-              mismo hielo o la leyenda deja de explicar la figura. */}
-          <Leyenda styles={styles} color={theme.hieloSobreAgua} titulo="comprometido" monto={money.format(a.fijo)}
-            onPress={() => setCifra('comprometido')} />
-          <Leyenda styles={styles} color={charts[0]} titulo="variable" monto={money.format(variable)}
-            onPress={() => setCifra('variable')} />
+        {/*
+          El reparto del gasto, con la misma division que el dibujo.
+          La barra repite la linea de agua en recto: el iceberg codifica la
+          proporcion como **area**, que se juzga mal a ojo, y la barra la pone
+          sobre un eje donde se lee de una. Es el mismo dato dos veces a
+          proposito, y es lo que le da forma a una banda que si no son cinco
+          cifras del mismo tamaño una al lado de la otra.
+        */}
+        <View style={styles.reparto}>
+          <Leyenda styles={styles} titulo="comprometido" monto={money.format(a.fijo)}
+            parte={share} onPress={() => setCifra('comprometido')} />
+          <Leyenda styles={styles} titulo="variable" monto={money.format(variable)}
+            parte={1 - share} alDerecho onPress={() => setCifra('variable')} />
           <Ayuda
             theme={theme}
             texto={'Comprometido llega igual: arriendo, cuentas, cuotas, impuestos. '
               + 'Variable es lo que decides tú, y es sobre lo único que puedes actuar.'}
           />
+        </View>
+
+        {/* A todo el ancho, como la linea de agua: el hielo a la izquierda, el
+            agua a la derecha, partidas donde las parte el dibujo. */}
+        <View style={styles.barraDelReparto}>
+          <View style={{ flex: Math.max(share, 0.001), backgroundColor: theme.hieloSobreAgua }} />
+          <View style={{ flex: Math.max(1 - share, 0.001), backgroundColor: charts[0] }} />
         </View>
 
         <View style={styles.trio}>
@@ -155,6 +167,7 @@ export default function Resumen() {
           <Celda styles={styles} theme={theme} etiqueta="gasto" valor={money.format(a.resumen.gasto)}
             variacion={a.comparacion.gasto.variacion} onPress={() => setCifra('gasto')} />
           <Celda styles={styles} theme={theme} etiqueta="neto" valor={money.formatSigned(a.resumen.neto)}
+            color={money.isNegative(a.resumen.neto) ? theme.vencidoTexto : theme.ingresoTexto}
             onPress={() => setCifra('neto')} />
         </View>
 
@@ -301,10 +314,12 @@ function detalleDe(
 }
 
 function Celda(
-  { styles, theme, etiqueta, valor, variacion, mejorSiSube, onPress }:
+  { styles, theme, etiqueta, valor, variacion, mejorSiSube, color, onPress }:
   {
     styles: Estilos; theme: Theme; etiqueta: string; valor: string;
-    variacion?: number | null; mejorSiSube?: boolean; onPress: () => void;
+    variacion?: number | null; mejorSiSube?: boolean;
+    /** Si viene, pinta la cifra. Solo el neto lo usa. */
+    color?: string; onPress: () => void;
   },
 ) {
   return (
@@ -315,7 +330,7 @@ function Celda(
       accessibilityLabel={`${etiqueta} ${valor}. De dónde sale este número`}
     >
       <Text style={styles.celdaEtiqueta}>{etiqueta}</Text>
-      <Text style={styles.celdaValor} numberOfLines={1}>{valor}</Text>
+      <Text style={[styles.celdaValor, color !== undefined && { color }]} numberOfLines={1}>{valor}</Text>
       <Delta styles={styles} theme={theme} variacion={variacion ?? null} mejorSiSube={mejorSiSube} />
     </Pressable>
   );
@@ -336,22 +351,34 @@ function Delta(
   return <Text style={[styles.delta, { color }]}>{subio ? '+' : '−'}{Math.abs(variacion * 100).toFixed(0)}%</Text>;
 }
 
+/**
+ * Una de las dos mitades del gasto.
+ *
+ * Sin punto de color: el color lo pone la barra de abajo, que ademas dice
+ * cuanto. Un punto solo dice "este es de este color", que es la mitad del
+ * trabajo por el mismo espacio.
+ *
+ * La de la derecha se alinea a la derecha para que las dos cifras queden en los
+ * bordes y la barra corra entera entre medio.
+ */
 function Leyenda(
-  { styles, color, titulo, monto, onPress }:
-  { styles: Estilos; color: string; titulo: string; monto: string; onPress: () => void },
+  { styles, titulo, monto, parte, alDerecho, onPress }:
+  {
+    styles: Estilos; titulo: string; monto: string; parte: number;
+    alDerecho?: boolean; onPress: () => void;
+  },
 ) {
+  const porcentaje = `${Math.round(parte * 100)}%`;
   return (
     <Pressable
       onPress={onPress}
-      style={styles.leyenda}
+      style={[styles.leyenda, alDerecho && styles.leyendaDerecha]}
       accessibilityRole="button"
-      accessibilityLabel={`${titulo} ${monto}. De dónde sale este número`}
+      accessibilityLabel={`${titulo} ${monto}, ${porcentaje} del gasto. De dónde sale este número`}
     >
-      <View style={styles.leyendaCabecera}>
-        <View style={[styles.leyendaPunto, { backgroundColor: color }]} />
-        <Text style={styles.leyendaTitulo}>{titulo}</Text>
-      </View>
+      <Text style={styles.leyendaTitulo}>{titulo}</Text>
       <Text style={styles.leyendaMonto}>{monto}</Text>
+      <Text style={styles.leyendaParte}>{porcentaje}</Text>
     </Pressable>
   );
 }
@@ -401,19 +428,40 @@ function crearEstilos(theme: Theme) {
     hielo: { alignItems: 'center' },
     lineaDeAgua: { position: 'absolute', left: 0, right: 0, height: 1.5, backgroundColor: charts[0] },
 
-    // Las dos cifras del gasto, repartidas bajo el agua.
-    leyendasFila: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg, paddingBottom: spacing.xl },
-    leyenda: { flex: 1, gap: 3 },
-    leyendaCabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    leyendaPunto: { width: 7, height: 7, borderRadius: radii.full },
+    /**
+     * Las dos mitades del gasto, en los dos bordes.
+     *
+     * A 20px, mas grandes que el trio de abajo y mucho mas chicas que el saldo.
+     * Esa escala --52 / 20 / 16-- es la que le faltaba a la banda: antes las
+     * cinco cifras median casi lo mismo y se leian como una planilla pegada
+     * debajo del dibujo.
+     */
+    reparto: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+    leyenda: { flex: 1, gap: 2 },
+    leyendaDerecha: { alignItems: 'flex-end' },
     leyendaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.tinta },
+    leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.lg, color: theme.tinta },
+    leyendaParte: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 11, color: theme.silencio },
 
-    // Las tres cifras del periodo. Sin subrayado y sin versalitas.
-    trio: { flexDirection: 'row', gap: spacing.lg },
+    // A todo el ancho, igual que la linea de agua.
+    barraDelReparto: {
+      flexDirection: 'row',
+      height: 4,
+      marginHorizontal: -spacing.lg,
+      marginTop: spacing.md,
+    },
+
+    /**
+     * Las tres cifras del periodo, mas hondas que el reparto.
+     *
+     * El neto se pinta segun convenga y no segun el signo, igual que los delta:
+     * es la unica de las tres que contesta "como me fue", y en una banda de
+     * numeros todos del mismo color era imposible saber donde mirar.
+     */
+    trio: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.xxl },
     celda: { flex: 1, gap: 2 },
     celdaEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    celdaValor: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
+    celdaValor: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.tinta },
     delta: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10 },
     deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
 
