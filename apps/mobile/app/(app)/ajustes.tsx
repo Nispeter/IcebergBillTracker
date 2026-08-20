@@ -6,26 +6,30 @@
  * depurar cuando algo no cuadra entre dos telefonos.
  */
 
-import { money } from '@iceberg/core';
-import { CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, leerAjuste } from '@iceberg/db';
+import { dates, money } from '@iceberg/core';
+import {
+  CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, deshacerLote, leerAjuste, type Lote,
+} from '@iceberg/db';
 import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
 import { Pantalla } from '../../components/Pantalla';
 import { useDatos } from '../../datos/BaseDeDatos';
-import { useCuentas, useMovimientos, useSaldo, useSaldoInicial } from '../../datos/consultas';
+import { useCuentas, useLotes, useMovimientos, useSaldo, useSaldoInicial } from '../../datos/consultas';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
 export default function Ajustes() {
   const { nombre: tema, theme, alternar } = useTema();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
-  const { db } = useDatos();
+  const { db, contexto } = useDatos();
   const periodo = usePeriodo();
 
   const movimientos = useMovimientos();
   const cuentas = useCuentas();
   const saldo = useSaldo(useSaldoInicial());
+  const lotes = useLotes();
 
   const identidad = useMemo(() => ({
     dispositivo: leerAjuste(db, CLAVE_DISPOSITIVO),
@@ -48,6 +52,43 @@ export default function Ajustes() {
             <Text style={styles.botonTexto}>{tema === 'dark' ? 'Noche polar' : 'Deshielo'}</Text>
           </Pressable>
         </View>
+
+        <Seccion styles={styles} titulo="Importar" />
+        <Text style={styles.notaImportar}>
+          Trae los movimientos del .xls que descargas del banco. Reimportar el mismo
+          archivo no duplica nada, y cada importación se puede deshacer entera.
+        </Text>
+        <Link href="/importar" asChild>
+          <Pressable
+            style={styles.botonPrincipal}
+            accessibilityRole="button"
+            accessibilityLabel="Importar una cartola"
+          >
+            <Text style={styles.botonPrincipalTexto}>Importar cartola</Text>
+          </Pressable>
+        </Link>
+
+        {lotes.length === 0 ? null : [...lotes].reverse().map((lote: Lote) => (
+          <View key={lote.id} style={styles.lote}>
+            <View style={styles.loteTexto}>
+              <Text style={styles.loteArchivo} numberOfLines={1}>{lote.archivo}</Text>
+              <Text style={styles.loteDetalle}>
+                {lote.cantidad} {lote.cantidad === 1 ? 'movimiento' : 'movimientos'}
+                {lote.desde !== null && lote.hasta !== null
+                  ? ` · ${dates.formatDate(lote.desde as dates.PlainDate)} — ${dates.formatDate(lote.hasta as dates.PlainDate)}`
+                  : ''}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => deshacerLote(db, contexto, lote.id)}
+              style={styles.boton}
+              accessibilityRole="button"
+              accessibilityLabel={`Deshacer la importación de ${lote.archivo}`}
+            >
+              <Text style={styles.deshacerTexto}>Deshacer</Text>
+            </Pressable>
+          </View>
+        ))}
 
         <Seccion styles={styles} titulo="Período" />
         <Dato
@@ -150,6 +191,27 @@ function crearEstilos(theme: Theme) {
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },
+    botonPrincipal: {
+      paddingVertical: spacing.md,
+      alignItems: 'center',
+      borderRadius: radii.sm,
+      backgroundColor: theme.acento,
+      marginBottom: spacing.sm,
+    },
+    botonPrincipalTexto: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
+    notaImportar: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio, paddingBottom: spacing.sm },
+    lote: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingVertical: spacing.sm,
+      borderBottomWidth: elevation.hairlineWidth,
+      borderBottomColor: theme.hairline,
+    },
+    loteTexto: { flex: 1, gap: 1 },
+    loteArchivo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    loteDetalle: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    deshacerTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     botonTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
     nota: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.sm },

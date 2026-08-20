@@ -18,10 +18,10 @@
 
 import { analytics, dates, money, recurrence } from '@iceberg/core';
 import {
-  combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeMovimientos,
-  consultaDeReglas, resumenDeMovimientos,
-  type Cuenta, type FiltroDeMovimientos, type Instancia, type Movimiento, type Regla,
-  type ResumenDeFiltro, type Tempano,
+  combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeLotes,
+  consultaDeMovimientos, consultaDeReglas, resumenDeMovimientos,
+  type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Movimiento,
+  type Regla, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
@@ -366,4 +366,12 @@ export function useCandidatasARegla(hoy: dates.PlainDate): recurrence.Candidata[
     return recurrence.detectarRecurrentes(observados, hoy)
       .filter((c) => !yaSonRegla.has(recurrence.normalizarNombre(c.nombre)));
   }, [movimientos, reglas, hoy]);
+}
+
+/** Los lotes de importacion, del mas viejo al mas nuevo. */
+export function useLotes(): Lote[] {
+  const { db, contexto } = useDatos();
+  const consulta = useMemo(() => consultaDeLotes(db, contexto), [db, contexto]);
+  const { data } = useLiveQuery(consulta, []);
+  return (data ?? []) as Lote[];
 }
