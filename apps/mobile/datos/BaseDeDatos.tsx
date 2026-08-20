@@ -6,8 +6,8 @@
  * 1. Abre la base **de forma asincronica**.
  * 2. Corre las migraciones pendientes.
  * 3. Resuelve la identidad de este dispositivo, creandola la primera vez.
- * 4. Se asegura de que exista **una cuenta**, porque sin cuenta no se puede
- *    escribir ni un movimiento.
+ * 4. Se asegura de que existan **una cuenta** —sin cuenta no se puede escribir
+ *    ni un movimiento— y la **fila de miembro** de este dispositivo.
  *
  * Lo que ya **no** hace es sembrar datos de prueba. Estaba bien mientras esto
  * era una demo, y deja de estarlo apenas alguien quiere usarla con su plata:
@@ -30,7 +30,7 @@
 import type { dates } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO,
-  crearContexto, crearCuenta, leerOCrear, listarCuentas,
+  asegurarMiembro, crearContexto, crearCuenta, leerOCrear, listarCuentas,
   type BaseDeDatos as Base, type Contexto,
 } from '@iceberg/db';
 import migraciones from '@iceberg/db/migraciones';
@@ -151,6 +151,10 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
       const contexto = crearContexto({ householdId, deviceId, memberId });
 
       asegurarCuenta(db, contexto);
+      // El miembro se registra aca por lo mismo: sin fila con nombre, un
+      // conflicto de sincronizacion diria que gano una version y no quien la
+      // escribio.
+      asegurarMiembro(db, contexto);
 
       setDatos({ db, contexto, sqlite: conexion.sqlite });
     } catch (e) {

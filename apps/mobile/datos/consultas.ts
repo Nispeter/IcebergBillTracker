@@ -19,9 +19,10 @@
 import { analytics, dates, money, recurrence } from '@iceberg/core';
 import {
   combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeLotes,
-  consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria, resumenDeMovimientos,
-  type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Movimiento,
-  type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
+  consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
+  resumenDeMovimientos,
+  type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
+  type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
@@ -382,4 +383,12 @@ export function useReglasDeCategoria(): ReglaCategoria[] {
   const consulta = useMemo(() => consultaDeReglasDeCategoria(db, contexto), [db, contexto]);
   const { data } = useLiveQuery(consulta, []);
   return (data ?? []) as ReglaCategoria[];
+}
+
+/** Quienes escriben en este hogar, reactivos. */
+export function useMiembros(): Miembro[] {
+  const { db, contexto } = useDatos();
+  const consulta = useMemo(() => consultaDeMiembros(db, contexto), [db, contexto]);
+  const { data } = useLiveQuery(consulta, []);
+  return (data ?? []) as Miembro[];
 }

@@ -9,8 +9,8 @@
 import { crypto, dates, money } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, borrarTodo, contarRespaldo, crearCuenta,
-  deshacerLote, exportarRespaldo, fusionarRespaldo, leerAjuste, restaurarRespaldo,
-  type ConflictoLegible, type Lote,
+  deshacerLote, exportarRespaldo, fusionarRespaldo, leerAjuste, renombrarMiembro,
+  restaurarRespaldo, type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
 import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { useMemo, useState } from 'react';
@@ -18,7 +18,9 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { Link } from 'expo-router';
 import { Pantalla } from '../../components/Pantalla';
 import { useDatos } from '../../datos/BaseDeDatos';
-import { useCuentas, useLotes, useMovimientos, useSaldo, useSaldoInicial } from '../../datos/consultas';
+import {
+  useCuentas, useLotes, useMiembros, useMovimientos, useSaldo, useSaldoInicial,
+} from '../../datos/consultas';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
 import { elegirRespaldo, guardarRespaldo } from '../../datos/archivo';
 import { cargarSemilla } from '../../datos/semilla';
@@ -34,10 +36,12 @@ export default function Ajustes() {
   const cuentas = useCuentas();
   const saldo = useSaldo(useSaldoInicial());
   const lotes = useLotes();
+  const miembros = useMiembros();
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<'borrar' | 'restaurar' | null>(null);
   const [conflictos, setConflictos] = useState<readonly ConflictoLegible[]>([]);
   const [frase, setFrase] = useState('');
+  const [nombrePropio, setNombrePropio] = useState<string | null>(null);
 
   /**
    * Abre un archivo elegido, descifrandolo si hace falta.
@@ -115,6 +119,8 @@ export default function Ajustes() {
     hogar: leerAjuste(db, CLAVE_HOGAR),
     miembro: leerAjuste(db, CLAVE_MIEMBRO),
   }), [db]);
+  const identidadDelMiembro = identidad.miembro;
+  const yo = miembros.find((m: Miembro) => m.id === identidadDelMiembro);
 
   return (
     <Pantalla sinPeriodo>
@@ -131,6 +137,53 @@ export default function Ajustes() {
             <Text style={styles.botonTexto}>{tema === 'dark' ? 'Noche polar' : 'Deshielo'}</Text>
           </Pressable>
         </View>
+
+        <Seccion styles={styles} titulo="Quién escribe" />
+        <Text style={styles.notaImportar}>
+          Cada movimiento guarda quién lo escribió. Ponerle nombre a este teléfono hace que
+          al sincronizar se pueda ver de quién viene cada versión.
+        </Text>
+        {miembros.map((miembro: Miembro) => {
+          const soyYo = miembro.id === identidadDelMiembro;
+          return (
+            <View key={miembro.id} style={styles.lote}>
+              <View style={styles.loteTexto}>
+                <Text style={styles.loteArchivo} numberOfLines={1}>{miembro.nombre}</Text>
+                <Text style={styles.loteDetalle}>
+                  {soyYo ? 'Este teléfono' : 'Otro dispositivo'}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+        {yo === undefined ? null : (
+          <>
+            <TextInput
+              value={nombrePropio ?? yo.nombre}
+              onChangeText={setNombrePropio}
+              placeholder="Cómo se llama este teléfono"
+              placeholderTextColor={theme.silencio}
+              style={styles.entradaFrase}
+              accessibilityLabel="Nombre de este dispositivo"
+            />
+            <Pressable
+              onPress={() => {
+                try {
+                  renombrarMiembro(db, contexto, yo.id, nombrePropio ?? yo.nombre);
+                  setNombrePropio(null);
+                  setAviso('Listo. El nombre viaja en la próxima sincronización.');
+                } catch (e) {
+                  setAviso((e as Error).message);
+                }
+              }}
+              style={styles.botonSecundario}
+              accessibilityRole="button"
+              accessibilityLabel="Guardar el nombre de este dispositivo"
+            >
+              <Text style={styles.botonTexto}>Guardar nombre</Text>
+            </Pressable>
+          </>
+        )}
 
         <Seccion styles={styles} titulo="Frase de cifrado" />
         <Text style={styles.notaImportar}>
@@ -178,9 +231,11 @@ export default function Ajustes() {
               <View key={`${conflicto.tabla}|${conflicto.id}`} style={styles.conflicto}>
                 <Text style={styles.conflictoGana} numberOfLines={1}>
                   {conflicto.ganadora}
+                  {conflicto.escribioGanadora === '' ? '' : ` · ${conflicto.escribioGanadora}`}
                 </Text>
                 <Text style={styles.conflictoPierde} numberOfLines={1}>
                   antes: {conflicto.descartada}
+                  {conflicto.escribioDescartada === '' ? '' : ` · ${conflicto.escribioDescartada}`}
                 </Text>
               </View>
             ))}

@@ -183,6 +183,31 @@ export const instancias = sqliteTable('instancias', {
 ]);
 
 /**
+ * Quien escribe en este hogar.
+ *
+ * Cada fila de la base guarda en `createdBy` el id del miembro que la escribio,
+ * pero un ULID no le dice nada a nadie. Esta tabla le pone nombre: sin ella, un
+ * conflicto de sincronizacion dice "una version gano" y no **quien** la escribio,
+ * que es justo lo que uno necesita saber para decidir si estuvo bien.
+ *
+ * Se sincroniza como todo lo demas, asi que cuando dos telefonos intercambian,
+ * cada uno aprende el nombre del otro.
+ */
+export const miembros = sqliteTable('miembros', {
+  ...sincronizable,
+  nombre: text('nombre').notNull(),
+  /**
+   * El dispositivo desde el que se registro.
+   *
+   * Un miembro puede terminar con varios si cambia de telefono; se guarda el
+   * ultimo, que es el unico util para reconocerlo.
+   */
+  dispositivoId: text('dispositivo_id').notNull(),
+}, (tabla) => [
+  index('miembros_hogar_idx').on(tabla.householdId, tabla.deletedAt),
+]);
+
+/**
  * Reglas propias de categorizacion: "si dice X, es comida".
  *
  * El catalogo de comercios que trae la app reconoce el 60 % de las filas que
@@ -232,3 +257,5 @@ export type Lote = typeof lotes.$inferSelect;
 export type LoteInsert = typeof lotes.$inferInsert;
 export type ReglaCategoria = typeof reglasCategoria.$inferSelect;
 export type ReglaCategoriaInsert = typeof reglasCategoria.$inferInsert;
+export type Miembro = typeof miembros.$inferSelect;
+export type MiembroInsert = typeof miembros.$inferInsert;

@@ -22,7 +22,8 @@ import { sync } from '@iceberg/core';
 import { eq } from 'drizzle-orm';
 import type { Contexto } from '../contexto';
 import {
-  cuentas, instancias, lotes, movimientos, reglas, reglasCategoria,
+  cuentas, instancias, lotes, miembros, movimientos, reglas, reglasCategoria,
+  type Miembro,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
 import { leerRespaldo, type Respaldo } from './respaldo';
@@ -46,6 +47,9 @@ export interface ConflictoLegible {
   readonly id: string;
   readonly ganadora: string;
   readonly descartada: string;
+  /** Quien escribio la version que quedo, si se sabe. */
+  readonly escribioGanadora: string;
+  readonly escribioDescartada: string;
 }
 
 const TOPE_DE_EJEMPLOS = 10;
@@ -58,6 +62,7 @@ const TABLAS = [
   { nombre: 'instancias', tabla: instancias, de: (r: Respaldo) => r.instancias },
   { nombre: 'movimientos', tabla: movimientos, de: (r: Respaldo) => r.movimientos },
   { nombre: 'reglas de categoría', tabla: reglasCategoria, de: (r: Respaldo) => r.reglasCategoria },
+  { nombre: 'miembros', tabla: miembros, de: (r: Respaldo) => r.miembros },
 ] as const;
 
 const VACIO: sync.ResumenDeFusion = {
@@ -82,6 +87,22 @@ function describir(fila: Record<string, unknown>): string {
 }
 
 /**
+ * Quien hizo la ultima escritura de una fila.
+ *
+ * Se mira `originDeviceId` y no `createdBy`: el conflicto es entre dos
+ * **ediciones**, y quien creo la fila hace un ano no tiene nada que ver con
+ * quien la cambio hoy. Devuelve cadena vacia si ese aparato no tiene todavia su
+ * fila de miembro, que pasa cuando llega antes el movimiento que el nombre.
+ */
+function quienEscribio(
+  fila: Record<string, unknown>,
+  porDispositivo: ReadonlyMap<string, string>,
+): string {
+  const dispositivo = typeof fila.originDeviceId === 'string' ? fila.originDeviceId : '';
+  return porDispositivo.get(dispositivo) ?? '';
+}
+
+/**
  * Fusiona un respaldo ajeno con lo que hay, sin perder nada de ninguno de los dos.
  *
  * **Las filas remotas adoptan el hogar de este aparato**, por la misma razón que
@@ -101,6 +122,17 @@ export function fusionarRespaldo(
   const porTabla: Record<string, sync.ResumenDeFusion> = {};
   const ejemplos: ConflictoLegible[] = [];
   let total = VACIO;
+
+  // Los nombres salen de los dos lados: el aparato que escribio la version
+  // descartada puede ser justamente el que todavia no conocemos.
+  const porDispositivo = new Map<string, string>();
+  for (const miembro of [
+    ...(db.select().from(miembros)
+      .where(eq(miembros.householdId, contexto.householdId)).all() as Miembro[]),
+    ...respaldo.miembros,
+  ]) {
+    if (miembro.deletedAt === null) porDispositivo.set(miembro.dispositivoId, miembro.nombre);
+  }
 
   db.transaction((tx) => {
     const base = tx as unknown as BaseDeDatos;
@@ -124,11 +156,15 @@ export function fusionarRespaldo(
 
       for (const conflicto of resultado.conflictos) {
         if (ejemplos.length >= TOPE_DE_EJEMPLOS) break;
+        const gana = conflicto.ganadora as unknown as Record<string, unknown>;
+        const pierde = conflicto.descartada as unknown as Record<string, unknown>;
         ejemplos.push({
           tabla: nombre,
           id: conflicto.id,
-          ganadora: describir(conflicto.ganadora as unknown as Record<string, unknown>),
-          descartada: describir(conflicto.descartada as unknown as Record<string, unknown>),
+          ganadora: describir(gana),
+          descartada: describir(pierde),
+          escribioGanadora: quienEscribio(gana, porDispositivo),
+          escribioDescartada: quienEscribio(pierde, porDispositivo),
         });
       }
 

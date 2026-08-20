@@ -18,8 +18,8 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Contexto } from '../contexto';
 import {
-  cuentas, instancias, lotes, movimientos, reglas, reglasCategoria,
-  type Cuenta, type Instancia, type Lote, type Movimiento, type Regla,
+  cuentas, instancias, lotes, miembros, movimientos, reglas, reglasCategoria,
+  type Cuenta, type Instancia, type Lote, type Miembro, type Movimiento, type Regla,
   type ReglaCategoria,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
@@ -33,10 +33,13 @@ import { RepositorioError } from './movimientos';
  * negarse que dejar la base a medio escribir con filas que no calzan.
  *
  * - **1**: cuentas, movimientos, reglas, instancias, lotes.
- * - **2**: agrega `reglasCategoria`. Un archivo de la 1 se sigue leyendo, con
- *   esa tabla vacia: agregar una tabla no invalida lo anterior.
+ * - **2**: agrega `reglasCategoria`.
+ * - **3**: agrega `miembros`.
+ *
+ * Un archivo viejo se sigue leyendo, con las tablas que no traia vacias:
+ * agregar una tabla no invalida lo anterior.
  */
-export const VERSION_DE_RESPALDO = 2;
+export const VERSION_DE_RESPALDO = 3;
 
 export interface Respaldo {
   readonly version: number;
@@ -50,6 +53,8 @@ export interface Respaldo {
   readonly lotes: readonly Lote[];
   /** Las reglas propias de categorizacion. Vacio en respaldos de la version 1. */
   readonly reglasCategoria: readonly ReglaCategoria[];
+  /** Quien escribe en el hogar. Vacio en respaldos anteriores a la version 3. */
+  readonly miembros: readonly Miembro[];
 }
 
 export function exportarRespaldo(db: BaseDeDatos, contexto: Contexto): Respaldo {
@@ -69,6 +74,8 @@ export function exportarRespaldo(db: BaseDeDatos, contexto: Contexto): Respaldo 
       .where(eq(lotes.householdId, contexto.householdId)).all() as Lote[],
     reglasCategoria: db.select().from(reglasCategoria)
       .where(eq(reglasCategoria.householdId, contexto.householdId)).all() as ReglaCategoria[],
+    miembros: db.select().from(miembros)
+      .where(eq(miembros.householdId, contexto.householdId)).all() as Miembro[],
   };
 }
 
@@ -76,7 +83,7 @@ export function exportarRespaldo(db: BaseDeDatos, contexto: Contexto): Respaldo 
 export function contarRespaldo(respaldo: Respaldo): number {
   return respaldo.cuentas.length + respaldo.movimientos.length
     + respaldo.reglas.length + respaldo.instancias.length + respaldo.lotes.length
-    + respaldo.reglasCategoria.length;
+    + respaldo.reglasCategoria.length + respaldo.miembros.length;
 }
 
 /**
@@ -109,6 +116,7 @@ export function leerRespaldo(crudo: unknown): Respaldo {
   return {
     ...posible,
     reglasCategoria: Array.isArray(posible.reglasCategoria) ? posible.reglasCategoria : [],
+    miembros: Array.isArray(posible.miembros) ? posible.miembros : [],
   } as Respaldo;
 }
 
@@ -131,6 +139,7 @@ export function borrarTodo(db: BaseDeDatos, contexto: Contexto): void {
     base.delete(lotes).where(eq(lotes.householdId, contexto.householdId)).run();
     base.delete(reglasCategoria)
       .where(eq(reglasCategoria.householdId, contexto.householdId)).run();
+    base.delete(miembros).where(eq(miembros.householdId, contexto.householdId)).run();
     base.delete(cuentas).where(eq(cuentas.householdId, contexto.householdId)).run();
   });
 }
@@ -163,7 +172,8 @@ export function restaurarRespaldo(
   // quedar por delante o la primera edicion despues de restaurar perderia
   // contra lo restaurado. Ver `Contexto.recibir`.
   for (const fila of [...respaldo.cuentas, ...respaldo.movimientos, ...respaldo.reglas,
-    ...respaldo.instancias, ...respaldo.lotes, ...respaldo.reglasCategoria]) {
+    ...respaldo.instancias, ...respaldo.lotes, ...respaldo.reglasCategoria,
+    ...respaldo.miembros]) {
     contexto.recibir(fila.updatedAt);
   }
 
@@ -185,6 +195,9 @@ export function restaurarRespaldo(
     }
     if (respaldo.reglasCategoria.length > 0) {
       base.insert(reglasCategoria).values(respaldo.reglasCategoria.map(deEsteHogar)).run();
+    }
+    if (respaldo.miembros.length > 0) {
+      base.insert(miembros).values(respaldo.miembros.map(deEsteHogar)).run();
     }
     if (respaldo.instancias.length > 0) {
       base.insert(instancias).values(respaldo.instancias.map(deEsteHogar)).run();
