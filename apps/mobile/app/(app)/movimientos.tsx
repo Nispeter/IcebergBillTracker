@@ -15,7 +15,7 @@
 import { categories, money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -203,13 +203,13 @@ function crearEstilos(theme: Theme) {
     },
 
 
-    encabezado: { zIndex: 30 },
+    encabezado: { zIndex: capas.desplegable },
     fijo: {
       paddingHorizontal: spacing.lg,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',
-      zIndex: 30,
+      zIndex: capas.desplegable,
     },
     cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 },
     resumen: {

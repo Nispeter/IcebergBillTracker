@@ -5,13 +5,14 @@
  * su propio encabezado, tarde o temprano alguna se olvidaria de la barra y el
  * usuario perderia la referencia de que fecha esta mirando.
  *
- * El **mas flota abajo a la derecha**, no en el encabezado. Es la accion mas
+ * El **mas flota abajo a la izquierda**, no en el encabezado. Es la accion mas
  * frecuente de la app y arriba quedaba lejos del pulgar; ademas competia por
  * ancho con el nombre del periodo, que en "17 al 23 de agosto" ya va justo.
- * Abajo no compite con nada y se alcanza sin mover la mano.
+ * A la izquierda y no a la derecha porque ahi caen los montos de cada fila, y un
+ * circulo opaco sobre la columna de cifras tapa justo lo que uno esta mirando.
  */
 
-import { fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import { capas, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { List } from 'phosphor-react-native/src/icons/List';
@@ -68,11 +69,11 @@ export function Pantalla(
 
       <Link href="/nuevo" asChild>
         <Pressable
-          style={styles.flotante}
+          style={({ pressed }) => [styles.flotante, pressed && styles.flotanteApretado]}
           accessibilityRole="button"
           accessibilityLabel="Agregar movimiento"
         >
-          <Plus size={26} weight="bold" color={theme.sobreAcento} />
+          <Plus size={22} weight="bold" color={theme.sobreAcento} />
         </Pressable>
       </Link>
 
@@ -99,32 +100,36 @@ function crearEstilos(theme: Theme) {
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',
-      zIndex: 40,
+      zIndex: capas.encabezado,
     },
     // El periodo va en la misma linea que el menu: es marco, no contenido, y no
     // merece una franja propia.
-    encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, zIndex: 40 },
-    periodo: { flex: 1, zIndex: 40 },
+    encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, zIndex: capas.encabezado },
+    periodo: { flex: 1, zIndex: capas.encabezado },
     marcaFila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     marca: { fontFamily: fonts.ui, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
     boton: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
 
     /**
-     * 56 px es el tamano al que un boton flotante se toca sin apuntar. Va sobre
-     * el contenido, asi que las listas dejan aire abajo para que no tape la
-     * ultima fila.
+     * Abajo a la izquierda y de 44 px.
+     *
+     * A la izquierda porque el lado derecho es donde caen los montos de cada
+     * fila, y un circulo opaco encima de la columna de cifras tapa justo lo que
+     * uno esta mirando. 44 es el minimo que se toca sin apuntar; los 56 de la
+     * primera version pesaban demasiado para una pantalla de 480.
      */
     flotante: {
       position: 'absolute',
-      right: spacing.lg,
+      left: spacing.lg,
       bottom: spacing.lg,
-      width: 56,
-      height: 56,
+      width: 44,
+      height: 44,
       borderRadius: radii.full,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.acento,
-      zIndex: 5,
+      zIndex: capas.flotante,
     },
+    flotanteApretado: { opacity: 0.8, transform: [{ scale: 0.92 }] },
   });
 }

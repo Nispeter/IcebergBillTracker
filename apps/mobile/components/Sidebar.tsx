@@ -14,7 +14,7 @@
  */
 
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { usePathname, useRouter } from 'expo-router';
 import { CalendarBlank } from 'phosphor-react-native/src/icons/CalendarBlank';
@@ -117,7 +117,7 @@ export function Sidebar(
                 onCerrar();
                 if (!activo) router.replace(destino.ruta as never);
               }}
-              style={[styles.item, activo && styles.itemActivo]}
+              style={({ pressed }) => [styles.item, activo && styles.itemActivo, pressed && styles.itemApretado]}
               accessibilityRole="button"
               accessibilityState={{ selected: activo }}
               accessibilityLabel={destino.etiqueta}
@@ -135,7 +135,7 @@ export function Sidebar(
 function crearEstilos(theme: Theme) {
   const lleno = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
   return StyleSheet.create({
-    capa: { ...lleno, flexDirection: 'row', zIndex: 10 },
+    capa: { ...lleno, flexDirection: 'row', zIndex: capas.lateral },
     velo: { ...lleno, backgroundColor: theme.fondo },
     veloTocable: lleno,
     panel: {
@@ -175,6 +175,7 @@ function crearEstilos(theme: Theme) {
       borderRadius: radii.sm,
     },
     itemActivo: { backgroundColor: theme.fondo },
+    itemApretado: { opacity: 0.6 },
     etiqueta: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
     etiquetaActiva: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
   });

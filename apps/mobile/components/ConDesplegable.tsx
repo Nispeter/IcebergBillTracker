@@ -16,11 +16,13 @@
  * `Ayuda`.
  */
 
+import { capas } from '@iceberg/ui';
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { Aparecer } from './Aparecer';
 
-/** Por encima de las filas de contenido, por debajo del botón flotante. */
-const CAPA = 30;
+/** Por encima de las filas de contenido y del botón flotante. */
+const CAPA = capas.desplegable;
 
 export function ConDesplegable(
   { disparador, panel, abierto }: {
@@ -38,7 +40,11 @@ export function ConDesplegable(
       <View onLayout={(evento) => setAlto(evento.nativeEvent.layout.height)}>
         {disparador}
       </View>
-      {abierto ? <View style={[styles.panel, { top: alto }]}>{panel}</View> : null}
+      {/* `Aparecer` lo mantiene montado mientras se va, para que la
+          animacion de salida llegue a verse. */}
+      <Aparecer visible={abierto} estilo={[styles.panel, { top: alto }]}>
+        {panel}
+      </Aparecer>
     </View>
   );
 }

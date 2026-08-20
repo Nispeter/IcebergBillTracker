@@ -284,3 +284,25 @@ export const durations = {
   quick: 200,
   calm: 320,
 } as const;
+
+/**
+ * Que va encima de que.
+ *
+ * Estaban repartidas como numeros sueltos en cinco componentes, y eso ya causo
+ * un bug: al subir el encabezado para que el selector de periodo se abriera por
+ * encima del contenido, quedo **tambien por encima del menu lateral**, que se
+ * veia con el boton de hamburguesa dibujado arriba del panel.
+ *
+ * De abajo hacia arriba, y el orden es el que importa: el contenido; el boton
+ * flotante, que va sobre el contenido pero cede ante cualquier panel; los
+ * desplegables; las burbujas de ayuda; el encabezado, que lleva el selector de
+ * periodo; y el menu lateral, que tapa todo porque es el unico que ocupa la
+ * pantalla entera.
+ */
+export const capas = {
+  flotante: 10,
+  desplegable: 20,
+  ayuda: 30,
+  encabezado: 40,
+  lateral: 50,
+} as const;

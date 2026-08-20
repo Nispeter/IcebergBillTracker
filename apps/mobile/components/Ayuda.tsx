@@ -12,9 +12,10 @@
  * No es hover: en Android no hay puntero. Es tocar.
  */
 
-import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import { capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Aparecer } from './Aparecer';
 
 export function Ayuda({ texto, theme }: { texto: string; theme: Theme }) {
   const styles = crearEstilos(theme);
@@ -33,11 +34,9 @@ export function Ayuda({ texto, theme }: { texto: string; theme: Theme }) {
         <Text style={[styles.signo, abierta && styles.signoAbierto]}>?</Text>
       </Pressable>
 
-      {abierta ? (
-        <View style={styles.burbuja}>
-          <Text style={styles.texto}>{texto}</Text>
-        </View>
-      ) : null}
+      <Aparecer visible={abierta} estilo={styles.burbuja}>
+        <Text style={styles.texto}>{texto}</Text>
+      </Aparecer>
     </View>
   );
 }
@@ -49,7 +48,7 @@ function crearEstilos(theme: Theme) {
     // El `zIndex` va tambien en la raiz, no solo en la burbuja: sin el, la
     // burbuja solo compite dentro de este subarbol y cualquier hermano que
     // venga despues en el orden del documento le pasa por encima.
-    raiz: { position: 'relative', zIndex: 20 },
+    raiz: { position: 'relative', zIndex: capas.ayuda },
     boton: {
       width: LADO,
       height: LADO,
@@ -74,7 +73,7 @@ function crearEstilos(theme: Theme) {
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
       backgroundColor: theme.superficie,
-      zIndex: 20,
+      zIndex: capas.ayuda,
     },
     texto: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 17, color: theme.tinta },
   });

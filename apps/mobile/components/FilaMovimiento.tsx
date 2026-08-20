@@ -49,7 +49,9 @@ export function FilaMovimiento(
   return (
     <Link href={{ pathname: '/movimiento/[id]', params: { id: tx.id } }} asChild>
       <Pressable
-        style={styles.fila}
+        // Responde al toque apagandose. Sin esto no hay forma de saber que la
+        // fila registro el gesto hasta que la pantalla siguiente aparece.
+        style={({ pressed }) => [styles.fila, pressed && styles.filaApretada]}
         accessibilityRole="button"
         accessibilityLabel={`Editar ${tx.nombre}`}
       >
@@ -86,6 +88,7 @@ function crearEstilos(theme: Theme) {
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
     },
+    filaApretada: { opacity: 0.55 },
     marcaFecha: { width: 30, alignItems: 'center' },
     dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
     mes: {
