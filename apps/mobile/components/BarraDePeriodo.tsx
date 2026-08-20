@@ -21,6 +21,7 @@ import { Check } from 'phosphor-react-native/src/icons/Check';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { TIPOS, nombreDePeriodo, usePeriodo, type TipoDePeriodo } from '../datos/periodo';
+import { ConDesplegable } from './ConDesplegable';
 
 export function BarraDePeriodo(
   { theme, permitirFuturo }: {
@@ -58,9 +59,8 @@ export function BarraDePeriodo(
     setAbierto(false);
   };
 
-  return (
-    <View>
-      <View style={styles.barra}>
+  const barra = (
+    <View style={styles.barra}>
         <Pressable
           onPress={periodo.anterior}
           style={styles.flecha}
@@ -93,10 +93,15 @@ export function BarraDePeriodo(
           hitSlop={10}
         >
           <CaretRight size={13} weight="bold" color={frenado ? theme.hairline : theme.tinta} />
-        </Pressable>
-      </View>
+      </Pressable>
+    </View>
+  );
 
-      {abierto ? (
+  return (
+    <ConDesplegable
+      abierto={abierto}
+      disparador={barra}
+      panel={(
         <View style={styles.panel}>
           {TIPOS.map((t, indice) => {
             const activo = t.valor === periodo.tipo;
@@ -167,8 +172,8 @@ export function BarraDePeriodo(
             </Pressable>
           ) : null}
         </View>
-      ) : null}
-    </View>
+      )}
+    />
   );
 }
 

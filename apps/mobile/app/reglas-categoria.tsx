@@ -25,6 +25,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Trash } from 'phosphor-react-native/src/icons/Trash';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ConDesplegable } from '../components/ConDesplegable';
 import { ChipDisparador, ListaDeOpciones } from '../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../components/iconos';
 import { useDatos } from '../datos/BaseDeDatos';
@@ -123,28 +124,33 @@ export default function ReglasDeCategoria() {
 
         <View style={styles.campo}>
           <Text style={styles.etiqueta}>Es</Text>
-          <View style={styles.filaChip}>
-            <ChipDisparador
-              theme={theme}
-              etiqueta={categories.categoryShortName(categoriaId)}
-              icono={iconoDeCategoria(categoriaId)}
-              abierto={eligiendo}
-              activo
-              onPress={() => setEligiendo(!eligiendo)}
-              accesible={`Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`}
-            />
-          </View>
-          {eligiendo ? (
-            <ListaDeOpciones
-              theme={theme}
-              opciones={opciones}
-              seleccionado={categoriaId}
-              onElegir={(valor: categories.CategoryId) => {
-                setCategoriaId(valor);
-                setEligiendo(false);
-              }}
-            />
-          ) : null}
+          <ConDesplegable
+            abierto={eligiendo}
+            disparador={(
+              <View style={styles.filaChip}>
+                <ChipDisparador
+                  theme={theme}
+                  etiqueta={categories.categoryShortName(categoriaId)}
+                  icono={iconoDeCategoria(categoriaId)}
+                  abierto={eligiendo}
+                  activo
+                  onPress={() => setEligiendo(!eligiendo)}
+                  accesible={`Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`}
+                />
+              </View>
+            )}
+            panel={(
+              <ListaDeOpciones
+                theme={theme}
+                opciones={opciones}
+                seleccionado={categoriaId}
+                onElegir={(valor: categories.CategoryId) => {
+                  setCategoriaId(valor);
+                  setEligiendo(false);
+                }}
+              />
+            )}
+          />
         </View>
 
         <Pressable
