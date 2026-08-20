@@ -9,7 +9,8 @@
 import { dates, money } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, borrarTodo, contarRespaldo, crearCuenta,
-  deshacerLote, exportarRespaldo, leerAjuste, restaurarRespaldo, type Lote,
+  deshacerLote, exportarRespaldo, fusionarRespaldo, leerAjuste, restaurarRespaldo,
+  type ConflictoLegible, type Lote,
 } from '@iceberg/db';
 import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { useMemo, useState } from 'react';
@@ -35,6 +36,7 @@ export default function Ajustes() {
   const lotes = useLotes();
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<'borrar' | 'restaurar' | null>(null);
+  const [conflictos, setConflictos] = useState<readonly ConflictoLegible[]>([]);
 
   const vacia = movimientos.length === 0;
 
@@ -49,12 +51,32 @@ export default function Ajustes() {
     }
   }
 
+  async function fusionar() {
+    try {
+      const archivo = await elegirRespaldo();
+      if (archivo === null) return;
+      const resultado = fusionarRespaldo(db, contexto, archivo.datos);
+      setConflictos(resultado.ejemplos);
+
+      const { nuevas, actualizadas, conflictos: cuantos } = resultado.total;
+      setAviso(
+        nuevas === 0 && actualizadas === 0
+          ? 'Ya estaban sincronizados: nada que traer.'
+          : `${nuevas} nuevas, ${actualizadas} actualizadas.`
+            + (cuantos === 0 ? '' : ` ${cuantos} se resolvieron por fecha.`),
+      );
+    } catch (e) {
+      setAviso((e as Error).message);
+    }
+  }
+
   async function restaurar() {
     try {
       const archivo = await elegirRespaldo();
       if (archivo === null) return;
       const filas = restaurarRespaldo(db, contexto, archivo.datos);
       setConfirmando(null);
+      setConflictos([]);
       setAviso(`Restauradas ${filas} filas desde ${archivo.nombre}.`);
     } catch (e) {
       setAviso((e as Error).message);
@@ -82,6 +104,38 @@ export default function Ajustes() {
             <Text style={styles.botonTexto}>{tema === 'dark' ? 'Noche polar' : 'Deshielo'}</Text>
           </Pressable>
         </View>
+
+        <Seccion styles={styles} titulo="Sincronizar" />
+        <Text style={styles.notaImportar}>
+          Trae el respaldo del otro dispositivo sin borrar lo tuyo. Lo que esté en los dos
+          se resuelve por fecha de edición, y aquí se ve qué versión quedó.
+        </Text>
+        <Pressable
+          onPress={fusionar}
+          style={styles.botonSecundario}
+          accessibilityRole="button"
+          accessibilityLabel="Fusionar con otro dispositivo"
+        >
+          <Text style={styles.botonTexto}>Fusionar con un archivo</Text>
+        </Pressable>
+
+        {conflictos.length === 0 ? null : (
+          <View style={styles.conflictos}>
+            <Text style={styles.conflictosTitulo}>
+              Se descartaron estas versiones por ser más antiguas
+            </Text>
+            {conflictos.map((conflicto) => (
+              <View key={`${conflicto.tabla}|${conflicto.id}`} style={styles.conflicto}>
+                <Text style={styles.conflictoGana} numberOfLines={1}>
+                  {conflicto.ganadora}
+                </Text>
+                <Text style={styles.conflictoPierde} numberOfLines={1}>
+                  antes: {conflicto.descartada}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <Seccion styles={styles} titulo="Cuentas" />
         <Text style={styles.notaImportar}>
@@ -373,6 +427,19 @@ function crearEstilos(theme: Theme) {
     loteDetalle: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     deshacerTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     acciones: { flexDirection: 'row', gap: spacing.sm },
+    conflictos: {
+      gap: spacing.sm,
+      padding: spacing.md,
+      marginTop: spacing.sm,
+      borderRadius: radii.sm,
+      borderWidth: elevation.hairlineWidth,
+      borderColor: theme.hairline,
+      backgroundColor: theme.superficie,
+    },
+    conflictosTitulo: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    conflicto: { gap: 1 },
+    conflictoGana: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    conflictoPierde: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textDecorationLine: 'line-through' },
     cuenta: {
       flexDirection: 'row',
       alignItems: 'center',
