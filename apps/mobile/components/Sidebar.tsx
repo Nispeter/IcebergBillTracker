@@ -93,7 +93,7 @@ export function Sidebar(
       <Animated.View style={[styles.panel, { transform: [{ translateX: desplazamiento }] }]}>
         <View style={styles.cabecera}>
           <View style={styles.marcaFila}>
-            <Pinguino theme={theme} tamano={22} />
+            <Pinguino theme={theme} tamano={24} />
             <Text style={styles.marca}>ICEBERG</Text>
           </View>
           <Pressable

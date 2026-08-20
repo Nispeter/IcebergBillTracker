@@ -119,6 +119,32 @@ describe('contraste', () => {
     }
   });
 
+  it('la silueta del pinguino se ve sobre los dos fondos', () => {
+    // Es el unico dibujo con colores fijos: una cara no se puede invertir sin
+    // dejar las pupilas claras, y ahi deja de parecer un pinguino.
+    for (const [name, theme] of entries) {
+      expect(deltaE(theme.pinguinoCuerpo, theme.fondo), `${name}.pinguinoCuerpo sobre fondo`)
+        .toBeGreaterThanOrEqual(15);
+      expect(deltaE(theme.pinguinoCuerpo, theme.superficie), `${name}.pinguinoCuerpo sobre superficie`)
+        .toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  it('la cara se distingue del cuerpo, que es lo unico que la rodea', () => {
+    // La panza **no** necesita separarse del fondo: el cuerpo la encierra por
+    // completo, nunca toca el fondo de la pantalla. Exigirselo hacia imposible
+    // usar el hielo, que es justo el blanco que corresponde.
+    for (const [name, theme] of entries) {
+      expect(deltaE(theme.pinguinoCuerpo, theme.pinguinoPanza), `${name}: cuerpo contra panza`)
+        .toBeGreaterThanOrEqual(30);
+    }
+  });
+
+  it('el pinguino es igual en los dos temas', () => {
+    expect(dark.pinguinoCuerpo).toBe(light.pinguinoCuerpo);
+    expect(dark.pinguinoPanza).toBe(light.pinguinoPanza);
+  });
+
   it('todo rol de relleno se despega del fondo y de la superficie', () => {
     for (const [name, theme] of entries) {
       for (const rol of ROLES_RELLENO) {

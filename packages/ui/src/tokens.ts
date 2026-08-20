@@ -93,6 +93,20 @@ export interface Theme {
    * los dos temas, lo que va encima tambien: la tinta profunda, 7,6:1.
    */
   readonly sobreAcento: string;
+  /**
+   * El cuerpo del pinguino. **El mismo en los dos temas.**
+   *
+   * No usa `tinta` como el resto de los dibujos. Una silueta que se da vuelta
+   * con el tema funciona para un iceberg, pero en una **cara** invierte los ojos
+   * —pupilas claras sobre antifaz oscuro— y deja de leerse como pinguino: parece
+   * un buho. Los ojos tienen que ser oscuros sobre claro siempre.
+   *
+   * Es el azul de profundidad, que se despega tanto del hielo como de la noche
+   * polar, asi que sirve fijo en los dos temas.
+   */
+  readonly pinguinoCuerpo: string;
+  /** La cara y la panza del pinguino. Fija, por lo mismo. */
+  readonly pinguinoPanza: string;
   /** Relleno del ingreso: areas y barras de grafico. */
   readonly ingreso: string;
   /** El ingreso cuando es un monto escrito. */
@@ -115,6 +129,8 @@ export const light: Theme = {
   acento: palette.ambar,
   acentoTexto: palette.ambarProfundo,
   sobreAcento: palette.tintaProfunda,
+  pinguinoCuerpo: palette.profundidad,
+  pinguinoPanza: palette.hielo,
   ingreso: palette.aurora,
   ingresoTexto: palette.auroraProfunda,
   gasto: palette.tintaProfunda,
@@ -139,6 +155,8 @@ export const dark: Theme = {
   acento: palette.ambar,
   acentoTexto: palette.ambar,
   sobreAcento: palette.tintaProfunda,
+  pinguinoCuerpo: palette.profundidad,
+  pinguinoPanza: palette.hielo,
   ingreso: palette.aurora,
   ingresoTexto: palette.aurora,
   gasto: palette.tintaClara,
