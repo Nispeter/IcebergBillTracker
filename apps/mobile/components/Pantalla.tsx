@@ -10,6 +10,11 @@
  * ancho con el nombre del periodo, que en "17 al 23 de agosto" ya va justo.
  * A la izquierda y no a la derecha porque ahi caen los montos de cada fila, y un
  * circulo opaco sobre la columna de cifras tapa justo lo que uno esta mirando.
+ *
+ * Y **se esconde mientras uno baja**. Flote donde flote tapa algo: a la derecha
+ * los montos, a la izquierda los nombres de categoria. La unica salida es que se
+ * quite del medio cuando uno esta leyendo y vuelva apenas frena o sube, que es
+ * justo cuando podria querer usarlo.
  */
 
 import { capas, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
@@ -17,11 +22,12 @@ import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { List } from 'phosphor-react-native/src/icons/List';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
-import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
 import { Sidebar } from './Sidebar';
+import { useEstadoDelFlotante } from '../datos/desplazamiento';
 import { useTema } from '../datos/tema';
 
 export function Pantalla(
@@ -38,6 +44,22 @@ export function Pantalla(
   // Ver `FilaMovimiento`: dentro de `Link asChild` el estilo tiene que ser un
   // objeto aplanado, asi que el estado de presion se lleva a mano.
   const [masApretado, setMasApretado] = useState(false);
+
+  const { oculto, reiniciar } = useEstadoDelFlotante();
+  const salida = useRef(new Animated.Value(0)).current;
+
+  // Cada vista arranca arriba de todo: si se llega a ella con el mas escondido,
+  // se quedaria escondido hasta que alguien vuelva a desplazar.
+  useEffect(reiniciar, [reiniciar]);
+
+  useEffect(() => {
+    Animated.timing(salida, {
+      toValue: oculto ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [oculto, salida]);
 
   return (
     <View style={styles.raiz}>
@@ -70,17 +92,28 @@ export function Pantalla(
 
       {children}
 
-      <Link href="/nuevo" asChild>
-        <Pressable
-          style={StyleSheet.flatten([styles.flotante, masApretado && styles.flotanteApretado])}
-          onPressIn={() => setMasApretado(true)}
-          onPressOut={() => setMasApretado(false)}
-          accessibilityRole="button"
-          accessibilityLabel="Agregar movimiento"
-        >
-          <Plus size={22} weight="bold" color={theme.sobreAcento} />
-        </Pressable>
-      </Link>
+      {/* La animacion va en una caja aparte y no en el `Pressable`: dentro de
+          `Link asChild` el estilo del hijo tiene que ser un objeto plano, y un
+          `Animated.Value` ahi adentro vuelve a romper el enlace. */}
+      <Animated.View
+        style={[styles.flotanteCaja, {
+          opacity: salida.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+          transform: [{ translateY: salida.interpolate({ inputRange: [0, 1], outputRange: [0, 80] }) }],
+        }]}
+        pointerEvents={oculto ? 'none' : 'auto'}
+      >
+        <Link href="/nuevo" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.flotante, masApretado && styles.flotanteApretado])}
+            onPressIn={() => setMasApretado(true)}
+            onPressOut={() => setMasApretado(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Agregar movimiento"
+          >
+            <Plus size={22} weight="bold" color={theme.sobreAcento} />
+          </Pressable>
+        </Link>
+      </Animated.View>
 
       <Sidebar theme={theme} abierta={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
     </View>
@@ -123,17 +156,19 @@ function crearEstilos(theme: Theme) {
      * uno esta mirando. 44 es el minimo que se toca sin apuntar; los 56 de la
      * primera version pesaban demasiado para una pantalla de 480.
      */
-    flotante: {
+    flotanteCaja: {
       position: 'absolute',
       left: spacing.lg,
       bottom: spacing.lg,
+      zIndex: capas.flotante,
+    },
+    flotante: {
       width: 44,
       height: 44,
       borderRadius: radii.full,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.acento,
-      zIndex: capas.flotante,
     },
     flotanteApretado: { opacity: 0.8, transform: [{ scale: 0.92 }] },
   });

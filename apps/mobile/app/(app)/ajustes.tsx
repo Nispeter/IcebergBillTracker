@@ -20,6 +20,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
+import { useDesplazamiento } from '../../datos/desplazamiento';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
   useCuentas, useLotes, useMiembros, useMovimientos, useSaldo, useSaldoInicial,
@@ -31,6 +32,7 @@ import { useTema } from '../../datos/tema';
 
 export default function Ajustes() {
   const { nombre: tema, theme, alternar } = useTema();
+  const desplazamiento = useDesplazamiento();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { db, contexto } = useDatos();
   const periodo = usePeriodo();
@@ -127,7 +129,7 @@ export default function Ajustes() {
 
   return (
     <Pantalla sinPeriodo>
-      <ScrollView contentContainerStyle={styles.contenido}>
+      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
         <Seccion styles={styles} theme={theme} titulo="Apariencia" />
         <View style={styles.fila}>
           <Text style={styles.etiqueta}>Tema</Text>

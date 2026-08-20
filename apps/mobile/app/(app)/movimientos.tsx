@@ -24,6 +24,7 @@ import { Ayuda } from '../../components/Ayuda';
 import { ConDesplegable } from '../../components/ConDesplegable';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Pantalla } from '../../components/Pantalla';
+import { useDesplazamiento } from '../../datos/desplazamiento';
 import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
@@ -37,6 +38,7 @@ type Desplegable = 'tipo' | 'categoria' | null;
 
 export default function Movimientos() {
   const { theme } = useTema();
+  const desplazamiento = useDesplazamiento();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango } = usePeriodo();
   // Se puede llegar aca desde una categoria de la torta o desde un dia del
@@ -157,6 +159,7 @@ export default function Movimientos() {
           scroll justo cuando uno quiere cambiarlo. */}
       <View style={styles.fijo}>{encabezado}</View>
       <FlatList
+        {...desplazamiento}
         data={movimientos}
         keyExtractor={(tx) => tx.id}
         renderItem={({ item }: { item: Movimiento }) => (

@@ -11,16 +11,21 @@
  */
 
 import { Stack } from 'expo-router';
+import { ProveedorDeDesplazamiento } from '../../datos/desplazamiento';
 
 export default function AppLayout() {
+  // El proveedor va aca y no dentro de `Pantalla`: las pantallas renderizan
+  // `Pantalla`, asi que un contexto puesto ahi adentro no lo verian nunca.
   return (
-    <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="categorias" />
-      <Stack.Screen name="calendario" />
-      <Stack.Screen name="tempanos" />
-      <Stack.Screen name="movimientos" />
-      <Stack.Screen name="ajustes" />
-    </Stack>
+    <ProveedorDeDesplazamiento>
+      <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="categorias" />
+        <Stack.Screen name="calendario" />
+        <Stack.Screen name="tempanos" />
+        <Stack.Screen name="movimientos" />
+        <Stack.Screen name="ajustes" />
+      </Stack>
+    </ProveedorDeDesplazamiento>
   );
 }

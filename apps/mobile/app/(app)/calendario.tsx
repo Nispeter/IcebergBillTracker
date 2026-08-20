@@ -17,6 +17,7 @@ import { Calendario } from '../../components/Calendario';
 import { Ayuda } from '../../components/Ayuda';
 import { LineaDeSaldo } from '../../components/LineaDeSaldo';
 import { Pantalla } from '../../components/Pantalla';
+import { useDesplazamiento } from '../../datos/desplazamiento';
 import { useAnalisisDeRango, useSaldoAlEmpezar } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
@@ -25,6 +26,7 @@ const NOMBRES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
 
 export default function DiaADia() {
   const { theme } = useTema();
+  const desplazamiento = useDesplazamiento();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte, tipo } = usePeriodo();
   const router = useRouter();
@@ -44,7 +46,7 @@ export default function DiaADia() {
 
   return (
     <Pantalla>
-      <ScrollView contentContainerStyle={styles.contenido}>
+      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
         {tipo === 'year' ? (
           <Text style={styles.aviso}>
             El calendario se ve por día, semana o mes. Un año son 365 celdas de tres píxeles.
