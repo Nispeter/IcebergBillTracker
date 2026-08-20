@@ -8,16 +8,19 @@
 
 import { dates, money } from '@iceberg/core';
 import {
-  CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, deshacerLote, leerAjuste, type Lote,
+  CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, borrarTodo, contarRespaldo, crearCuenta,
+  deshacerLote, exportarRespaldo, leerAjuste, restaurarRespaldo, type Lote,
 } from '@iceberg/db';
 import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Pantalla } from '../../components/Pantalla';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { useCuentas, useLotes, useMovimientos, useSaldo, useSaldoInicial } from '../../datos/consultas';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
+import { elegirRespaldo, guardarRespaldo } from '../../datos/archivo';
+import { cargarSemilla } from '../../datos/semilla';
 import { useTema } from '../../datos/tema';
 
 export default function Ajustes() {
@@ -30,6 +33,33 @@ export default function Ajustes() {
   const cuentas = useCuentas();
   const saldo = useSaldo(useSaldoInicial());
   const lotes = useLotes();
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [confirmando, setConfirmando] = useState<'borrar' | 'restaurar' | null>(null);
+
+  const vacia = movimientos.length === 0;
+
+  async function exportar() {
+    try {
+      const respaldo = exportarRespaldo(db, contexto);
+      const nombre = `iceberg-${respaldo.exportadoEn.slice(0, 10)}.json`;
+      await guardarRespaldo(nombre, JSON.stringify(respaldo));
+      setAviso(`Respaldo con ${contarRespaldo(respaldo)} filas guardado como ${nombre}.`);
+    } catch (e) {
+      setAviso((e as Error).message);
+    }
+  }
+
+  async function restaurar() {
+    try {
+      const archivo = await elegirRespaldo();
+      if (archivo === null) return;
+      const filas = restaurarRespaldo(db, contexto, archivo.datos);
+      setConfirmando(null);
+      setAviso(`Restauradas ${filas} filas desde ${archivo.nombre}.`);
+    } catch (e) {
+      setAviso((e as Error).message);
+    }
+  }
 
   const identidad = useMemo(() => ({
     dispositivo: leerAjuste(db, CLAVE_DISPOSITIVO),
@@ -50,6 +80,31 @@ export default function Ajustes() {
             accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
           >
             <Text style={styles.botonTexto}>{tema === 'dark' ? 'Noche polar' : 'Deshielo'}</Text>
+          </Pressable>
+        </View>
+
+        <Seccion styles={styles} titulo="Respaldo" />
+        <Text style={styles.notaImportar}>
+          Todo lo tuyo en un archivo. Restaurar reemplaza lo que haya: no mezcla.
+        </Text>
+        <View style={styles.acciones}>
+          <Pressable
+            onPress={exportar}
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel="Exportar respaldo"
+          >
+            <Text style={styles.botonTexto}>Exportar</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => (confirmando === 'restaurar' ? restaurar() : setConfirmando('restaurar'))}
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel={confirmando === 'restaurar' ? 'Confirmar restauración' : 'Restaurar respaldo'}
+          >
+            <Text style={confirmando === 'restaurar' ? styles.botonTextoAlerta : styles.botonTexto}>
+              {confirmando === 'restaurar' ? 'Elegir archivo y reemplazar' : 'Restaurar'}
+            </Text>
           </Pressable>
         </View>
 
@@ -90,6 +145,59 @@ export default function Ajustes() {
           </View>
         ))}
 
+        <Seccion styles={styles} titulo="Empezar de cero" />
+        {vacia ? (
+          <>
+            <Text style={styles.notaImportar}>
+              La base está vacía. Puedes cargar 18 meses de datos chilenos inventados para
+              ver cómo se comporta la app antes de meter los tuyos.
+            </Text>
+            <Pressable
+              onPress={() => {
+                const cuantos = cargarSemilla(db, contexto);
+                setAviso(`Cargados ${cuantos} movimientos de prueba.`);
+              }}
+              style={styles.botonSecundario}
+              accessibilityRole="button"
+              accessibilityLabel="Cargar datos de prueba"
+            >
+              <Text style={styles.botonTexto}>Cargar datos de prueba</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={styles.notaImportar}>
+              Borra cuentas, movimientos, reglas e importaciones. No se puede deshacer:
+              exporta un respaldo antes si hay algo que quieras conservar.
+            </Text>
+            <Pressable
+              onPress={() => {
+                if (confirmando !== 'borrar') {
+                  setConfirmando('borrar');
+                  return;
+                }
+                borrarTodo(db, contexto);
+                // `borrarTodo` se lleva tambien la cuenta, y sin cuenta la app no
+                // deja escribir ni un movimiento: quedaria vacia y ademas rota.
+                crearCuenta(db, contexto, {
+                  nombre: 'Cuenta corriente', tipo: 'corriente', saldoInicialMinor: 0,
+                });
+                setConfirmando(null);
+                setAviso('Se borró todo. Quedó una cuenta vacía para empezar.');
+              }}
+              style={styles.botonSecundario}
+              accessibilityRole="button"
+              accessibilityLabel={confirmando === 'borrar' ? 'Confirmar borrado total' : 'Borrar todos los datos'}
+            >
+              <Text style={confirmando === 'borrar' ? styles.botonTextoAlerta : styles.botonTexto}>
+                {confirmando === 'borrar' ? 'Tocar de nuevo para borrar todo' : 'Borrar todos los datos'}
+              </Text>
+            </Pressable>
+          </>
+        )}
+
+        {aviso === null ? null : <Text style={styles.aviso}>{aviso}</Text>}
+
         <Seccion styles={styles} titulo="Período" />
         <Dato
           styles={styles}
@@ -104,8 +212,8 @@ export default function Ajustes() {
         <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
         <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
         <Text style={styles.nota}>
-          La base arranca con datos de prueba: 18 meses de gasto chileno generados con una
-          semilla fija. Los movimientos que agregues quedan junto a ellos.
+          La base arranca vacía, con una cuenta y nada más. Los datos de prueba se cargan
+          desde aquí cuando quieras verlos, y se borran igual de fácil.
         </Text>
 
         <Seccion styles={styles} titulo="Este dispositivo" />
@@ -212,6 +320,17 @@ function crearEstilos(theme: Theme) {
     loteArchivo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     loteDetalle: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     deshacerTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
+    acciones: { flexDirection: 'row', gap: spacing.sm },
+    botonSecundario: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.full,
+      borderWidth: elevation.hairlineWidth,
+      borderColor: theme.hairline,
+      alignSelf: 'flex-start',
+    },
+    botonTextoAlerta: { fontFamily: fonts.ui, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.vencidoTexto },
+    aviso: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, lineHeight: 18, color: theme.acentoTexto, paddingTop: spacing.sm },
     botonTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
     nota: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.sm },

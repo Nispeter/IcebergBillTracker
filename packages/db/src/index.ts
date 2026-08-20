@@ -6,3 +6,4 @@ export * from './repositorios/cuentas';
 export * from './repositorios/movimientos';
 export * from './repositorios/reglas';
 export * from './repositorios/importaciones';
+export * from './repositorios/respaldo';

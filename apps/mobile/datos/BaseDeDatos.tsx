@@ -6,8 +6,14 @@
  * 1. Abre la base **de forma asincronica**.
  * 2. Corre las migraciones pendientes.
  * 3. Resuelve la identidad de este dispositivo, creandola la primera vez.
- * 4. Si la base esta vacia, la llena con datos de prueba, para que la app no
- *    abra en una pantalla en blanco que no dice nada.
+ * 4. Se asegura de que exista **una cuenta**, porque sin cuenta no se puede
+ *    escribir ni un movimiento.
+ *
+ * Lo que ya **no** hace es sembrar datos de prueba. Estaba bien mientras esto
+ * era una demo, y deja de estarlo apenas alguien quiere usarla con su plata:
+ * dieciocho meses de gasto chileno inventado mezclado con lo propio no se
+ * arregla sino borrando todo. Los datos de prueba se cargan desde Ajustes,
+ * cuando se piden.
  *
  * **Por que asincronica y no `openDatabaseSync` a nivel de modulo**: en web la
  * base vive en un Web Worker y las llamadas sincronicas bloquean el hilo
@@ -23,12 +29,11 @@
 
 import type { dates } from '@iceberg/core';
 import {
-  CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, CLAVE_SEMILLA_CARGADA,
-  crearContexto, crearCuenta, crearMovimiento, escribirAjuste, leerAjuste, leerOCrear,
+  CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO,
+  crearContexto, crearCuenta, leerOCrear, listarCuentas,
   type BaseDeDatos as Base, type Contexto,
 } from '@iceberg/db';
 import migraciones from '@iceberg/db/migraciones';
-import { generateSeed } from '@iceberg/seed';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
@@ -145,12 +150,7 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
 
       const contexto = crearContexto({ householdId, deviceId, memberId });
 
-      // Se consulta la marca, **no** si hay filas. Con el conteo, borrar todos
-      // los movimientos volveria a sembrar 679 mas y una segunda cuenta, y el
-      // saldo quedaria al doble sin que nada avise.
-      if (leerAjuste(db, CLAVE_SEMILLA_CARGADA) === null) {
-        cargarSemilla(db, contexto);
-      }
+      asegurarCuenta(db, contexto);
 
       setDatos({ db, contexto, sqlite: conexion.sqlite });
     } catch (e) {
@@ -166,37 +166,17 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
 }
 
 /**
- * Vuelca el dataset de prueba a la base la primera vez.
+ * Crea la cuenta inicial si no hay ninguna.
  *
- * Entra por los mismos repositorios que usa la app, no por SQL crudo: asi los
- * datos de prueba pasan por las mismas validaciones que un movimiento escrito a
- * mano, y si alguna estuviera mal, se nota aca y no en produccion.
+ * Sin cuenta no se puede escribir ni un movimiento, asi que una base
+ * recien creada sin esto abriria en un estado en el que nada funciona. Arranca
+ * en cero: el saldo real lo pone el usuario en Ajustes o lo trae el respaldo.
  */
-function cargarSemilla(db: Base, contexto: Contexto): void {
-  const dataset = generateSeed();
-
-  // Todo en una transaccion: si una validacion falla a mitad de los 679
-  // movimientos, sin esto quedarian escritos los anteriores mas la cuenta, la
-  // marca no se pondria, y el proximo arranque volveria a intentar sobre una
-  // base a medio llenar.
-  db.transaction((tx) => {
-    const cuenta = crearCuenta(tx as unknown as Base, contexto, {
-      nombre: 'Cuenta corriente',
-      tipo: 'corriente',
-      saldoInicialMinor: dataset.saldoInicialMinor,
-    });
-
-    for (const movimiento of dataset.transactions) {
-      crearMovimiento(tx as unknown as Base, contexto, {
-        cuentaId: cuenta.id,
-        tipo: movimiento.type,
-        montoMinor: movimiento.amountMinor,
-        ocurridoEn: movimiento.occurredAt as dates.PlainDate,
-        nombre: movimiento.name,
-        categoriaId: movimiento.category ?? null,
-      });
-    }
-
-    escribirAjuste(tx as unknown as Base, CLAVE_SEMILLA_CARGADA, 'si');
+function asegurarCuenta(db: Base, contexto: Contexto): void {
+  if (listarCuentas(db, contexto).length > 0) return;
+  crearCuenta(db, contexto, {
+    nombre: 'Cuenta corriente',
+    tipo: 'corriente',
+    saldoInicialMinor: 0,
   });
 }
