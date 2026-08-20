@@ -6,7 +6,7 @@
  * depurar cuando algo no cuadra entre dos telefonos.
  */
 
-import { dates, money } from '@iceberg/core';
+import { crypto, dates, money } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, borrarTodo, contarRespaldo, crearCuenta,
   deshacerLote, exportarRespaldo, fusionarRespaldo, leerAjuste, restaurarRespaldo,
@@ -14,7 +14,7 @@ import {
 } from '@iceberg/db';
 import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Pantalla } from '../../components/Pantalla';
 import { useDatos } from '../../datos/BaseDeDatos';
@@ -37,15 +37,42 @@ export default function Ajustes() {
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<'borrar' | 'restaurar' | null>(null);
   const [conflictos, setConflictos] = useState<readonly ConflictoLegible[]>([]);
+  const [frase, setFrase] = useState('');
+
+  /**
+   * Abre un archivo elegido, descifrandolo si hace falta.
+   *
+   * Un archivo cifrado y uno en claro se distinguen por su forma, asi que no hay
+   * que preguntarle al usuario cual es: se mira y se actua.
+   */
+  function abrir(datos: unknown): unknown {
+    if (!crypto.esSobre(datos)) return datos;
+    if (frase.trim() === '') {
+      throw new Error('Ese archivo está cifrado. Escribe la frase y vuelve a intentar.');
+    }
+    return JSON.parse(crypto.descifrar(datos, frase)) as unknown;
+  }
 
   const vacia = movimientos.length === 0;
 
   async function exportar() {
     try {
       const respaldo = exportarRespaldo(db, contexto);
-      const nombre = `iceberg-${respaldo.exportadoEn.slice(0, 10)}.json`;
-      await guardarRespaldo(nombre, JSON.stringify(respaldo));
-      setAviso(`Respaldo con ${contarRespaldo(respaldo)} filas guardado como ${nombre}.`);
+      const dia = respaldo.exportadoEn.slice(0, 10);
+      const conFrase = frase.trim() !== '';
+
+      // Se cifra solo si hay frase. Pedirla siempre haria que alguien que solo
+      // quiere un respaldo local invente una y la olvide.
+      const contenido = conFrase
+        ? JSON.stringify(crypto.cifrar(JSON.stringify(respaldo), frase))
+        : JSON.stringify(respaldo);
+      const nombre = conFrase ? `iceberg-${dia}.cifrado.json` : `iceberg-${dia}.json`;
+
+      await guardarRespaldo(nombre, contenido);
+      setAviso(
+        `Respaldo con ${contarRespaldo(respaldo)} filas guardado como ${nombre}.`
+        + (conFrase ? ' Sin la frase no se puede abrir.' : ''),
+      );
     } catch (e) {
       setAviso((e as Error).message);
     }
@@ -55,7 +82,7 @@ export default function Ajustes() {
     try {
       const archivo = await elegirRespaldo();
       if (archivo === null) return;
-      const resultado = fusionarRespaldo(db, contexto, archivo.datos);
+      const resultado = fusionarRespaldo(db, contexto, abrir(archivo.datos));
       setConflictos(resultado.ejemplos);
 
       const { nuevas, actualizadas, conflictos: cuantos } = resultado.total;
@@ -74,7 +101,7 @@ export default function Ajustes() {
     try {
       const archivo = await elegirRespaldo();
       if (archivo === null) return;
-      const filas = restaurarRespaldo(db, contexto, archivo.datos);
+      const filas = restaurarRespaldo(db, contexto, abrir(archivo.datos));
       setConfirmando(null);
       setConflictos([]);
       setAviso(`Restauradas ${filas} filas desde ${archivo.nombre}.`);
@@ -104,6 +131,29 @@ export default function Ajustes() {
             <Text style={styles.botonTexto}>{tema === 'dark' ? 'Noche polar' : 'Deshielo'}</Text>
           </Pressable>
         </View>
+
+        <Seccion styles={styles} titulo="Frase de cifrado" />
+        <Text style={styles.notaImportar}>
+          Si escribes una, el archivo que exportes queda cifrado y sin ella no se puede
+          abrir —ni por ti—. Se usa también para abrir archivos cifrados. No se guarda en
+          ninguna parte.
+        </Text>
+        <TextInput
+          value={frase}
+          onChangeText={setFrase}
+          placeholder="Sin cifrar"
+          placeholderTextColor={theme.silencio}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.entradaFrase}
+          accessibilityLabel="Frase de cifrado"
+        />
+        {frase.trim() === '' ? null : (
+          <Text style={crypto.fraseDebil(frase) === null ? styles.fraseOk : styles.fraseFloja}>
+            {crypto.fraseDebil(frase) ?? 'Se cifrará con esta frase.'}
+          </Text>
+        )}
 
         <Seccion styles={styles} titulo="Sincronizar" />
         <Text style={styles.notaImportar}>
@@ -427,6 +477,17 @@ function crearEstilos(theme: Theme) {
     loteDetalle: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     deshacerTexto: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     acciones: { flexDirection: 'row', gap: spacing.sm },
+    entradaFrase: {
+      fontFamily: fonts.mono,
+      fontWeight: pesos.regular,
+      fontSize: fontSizes.sm,
+      color: theme.tinta,
+      borderBottomWidth: elevation.hairlineWidth,
+      borderBottomColor: theme.hairline,
+      paddingVertical: spacing.sm,
+    },
+    fraseOk: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.ingresoTexto },
+    fraseFloja: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.vencidoTexto },
     conflictos: {
       gap: spacing.sm,
       padding: spacing.md,
