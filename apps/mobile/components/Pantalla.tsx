@@ -35,6 +35,9 @@ export function Pantalla(
   const { nombre: tema, theme } = useTema();
   const styles = crearEstilos(theme);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // Ver `FilaMovimiento`: dentro de `Link asChild` el estilo tiene que ser un
+  // objeto aplanado, asi que el estado de presion se lleva a mano.
+  const [masApretado, setMasApretado] = useState(false);
 
   return (
     <View style={styles.raiz}>
@@ -69,7 +72,9 @@ export function Pantalla(
 
       <Link href="/nuevo" asChild>
         <Pressable
-          style={({ pressed }) => [styles.flotante, pressed && styles.flotanteApretado]}
+          style={StyleSheet.flatten([styles.flotante, masApretado && styles.flotanteApretado])}
+          onPressIn={() => setMasApretado(true)}
+          onPressOut={() => setMasApretado(false)}
           accessibilityRole="button"
           accessibilityLabel="Agregar movimiento"
         >

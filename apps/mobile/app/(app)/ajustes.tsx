@@ -12,7 +12,9 @@ import {
   deshacerLote, exportarRespaldo, fusionarRespaldo, leerAjuste, renombrarMiembro,
   restaurarRespaldo, type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
-import { elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import {
+  AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+} from '@iceberg/ui';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
@@ -506,7 +508,7 @@ function crearEstilos(theme: Theme) {
     contenido: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: spacing.xxl,
+      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

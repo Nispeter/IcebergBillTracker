@@ -13,6 +13,7 @@ import {
   elevation, fontSizes, fonts, pesos, spacing, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
 
@@ -43,6 +44,15 @@ export function FilaMovimiento(
   },
 ) {
   const styles = crearEstilos(theme);
+  /**
+   * El estilo va **aplanado**, y el estado de presion a mano.
+   *
+   * Dentro de `Link asChild`, expo-router exige un objeto de estilo: con una
+   * funcion la fila se queda sin estilo y todo se apila en vertical, sin ningun
+   * error de por medio; con un arreglo tira un error y la pantalla queda en
+   * blanco. `StyleSheet.flatten` deja las dos cosas contentas.
+   */
+  const [apretada, setApretada] = useState(false);
   const fecha = tx.ocurridoEn as dates.PlainDate;
   const Icono = tx.categoriaId ? iconoDeCategoria(tx.categoriaId) : null;
 
@@ -51,7 +61,9 @@ export function FilaMovimiento(
       <Pressable
         // Responde al toque apagandose. Sin esto no hay forma de saber que la
         // fila registro el gesto hasta que la pantalla siguiente aparece.
-        style={({ pressed }) => [styles.fila, pressed && styles.filaApretada]}
+        style={StyleSheet.flatten([styles.fila, apretada && styles.filaApretada])}
+        onPressIn={() => setApretada(true)}
+        onPressOut={() => setApretada(false)}
         accessibilityRole="button"
         accessibilityLabel={`Editar ${tx.nombre}`}
       >

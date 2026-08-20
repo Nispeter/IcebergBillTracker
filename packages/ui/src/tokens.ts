@@ -210,6 +210,16 @@ export const spacing = {
 } as const;
 
 /**
+ * Aire al final de una pantalla que scrollea, para que el boton flotante no
+ * tape la ultima fila.
+ *
+ * Son sus 44 px mas los 16 que lo separan del borde, mas un respiro. Sin esto la
+ * ultima fila de cada lista queda debajo del circulo **siempre**, y no hay forma
+ * de leerla ni de tocarla.
+ */
+export const AIRE_PARA_EL_FLOTANTE = 76;
+
+/**
  * Tipografia.
  *
  * **Consolas**, la monoespaciada de Windows, para toda la interfaz. Que las

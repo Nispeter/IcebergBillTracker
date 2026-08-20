@@ -8,7 +8,7 @@
 
 import { categories, dates, money } from '@iceberg/core';
 import {
-  elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
+  AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
@@ -118,7 +118,7 @@ function crearEstilos(theme: Theme) {
     contenido: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.lg,
-      paddingBottom: spacing.xxl,
+      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

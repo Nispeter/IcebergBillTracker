@@ -15,7 +15,7 @@
 import { categories, money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
 import {
-  capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  AIRE_PARA_EL_FLOTANTE, capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -196,7 +196,7 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xxl,
+      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

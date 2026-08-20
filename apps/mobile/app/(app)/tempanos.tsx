@@ -15,7 +15,7 @@ import {
   crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
 } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { ArrowCounterClockwise } from 'phosphor-react-native/src/icons/ArrowCounterClockwise';
@@ -291,7 +291,7 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xxl,
+      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

@@ -74,13 +74,16 @@ export function Calendario(
               accessibilityRole={onElegirDia && gastado > 0 ? 'button' : undefined}
               accessibilityLabel={`${dates.formatDate(dia.fecha)}: ${money.format(dia.gasto)}`}
             >
-              {gastado === 0 ? (
-                <View style={[styles.marca, styles.marcaVacia]} />
-              ) : (
+              {gastado === 0 ? null : (
                 <View style={[styles.marca, { backgroundColor: charts[0], opacity: intensidad }]} />
               )}
               <View style={styles.textos}>
-                <Text style={[styles.numero, esHoy && styles.numeroHoy, fuerte && styles.sobreFuerte]}>
+                <Text style={[
+                  styles.numero,
+                  gastado === 0 && styles.numeroApagado,
+                  esHoy && styles.numeroHoy,
+                  fuerte && styles.sobreFuerte,
+                ]}>
                   {dates.day(dia.fecha)}
                 </Text>
                 <Text style={[styles.monto, fuerte && styles.sobreFuerte]}>{abreviar(gastado)}</Text>
@@ -107,9 +110,15 @@ function crearEstilos(theme: Theme) {
     grilla: { flexDirection: 'row', flexWrap: 'wrap' },
     celda: { width: `${100 / 7}%`, aspectRatio: 0.95, padding: 2, alignItems: 'center', justifyContent: 'center' },
     marca: { position: 'absolute', top: 2, right: 2, bottom: 2, left: 2, borderRadius: radii.sm },
-    // Un dia sin gasto no se pinta: la hairline ya es el token para "existe
-    // pero no pesa".
-    marcaVacia: { borderWidth: elevation.hairlineWidth, borderColor: theme.hairline },
+    /**
+     * Un dia sin gasto no dibuja nada, ni siquiera un contorno.
+     *
+     * La primera version le ponia una hairline alrededor. En un mes con diez
+     * dias sin gastar eso son diez cajas vacias compitiendo con las que si
+     * tienen algo, y un mapa de calor funciona justamente al reves: lo que no
+     * pasa no se dibuja. Queda el numero, apagado, que ya dice que el dia existe.
+     */
+    numeroApagado: { color: theme.silencio },
     textos: { alignItems: 'center' },
     numero: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
     numeroHoy: { fontWeight: pesos.bold, color: theme.acentoTexto },

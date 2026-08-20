@@ -7,7 +7,9 @@
 
 import { money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
-import { charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import {
+  AIRE_PARA_EL_FLOTANTE, charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+} from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { Info } from 'phosphor-react-native/src/icons/Info';
 import { useMemo, useState } from 'react';
@@ -298,7 +300,7 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xxl,
+      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',
@@ -310,7 +312,9 @@ function crearEstilos(theme: Theme) {
     heroCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 40, lineHeight: 44, color: theme.tinta, letterSpacing: -1 },
     heroPie: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
 
-    trio: { flexDirection: 'row', borderTopWidth: elevation.hairlineWidth, borderTopColor: theme.hairline, paddingTop: spacing.md },
+    // Sin regla arriba: las tres celdas ya llevan su subrayado, y dos lineas
+    // horizontales a cuarenta pixeles una de otra encajonan sin separar nada.
+    trio: { flexDirection: 'row', paddingTop: spacing.xs },
     // Subrayadas: las tres abren su detalle.
     celda: { flex: 1, gap: 1, paddingBottom: 4, marginRight: spacing.sm, borderBottomWidth: elevation.hairlineWidth, borderBottomColor: theme.hairline },
     celdaEtiqueta: { fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textTransform: 'uppercase', letterSpacing: 0.8 },

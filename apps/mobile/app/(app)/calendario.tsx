@@ -6,7 +6,9 @@
  */
 
 import { money } from '@iceberg/core';
-import { charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import {
+  AIRE_PARA_EL_FLOTANTE, charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+} from '@iceberg/ui';
 import { analytics } from '@iceberg/core';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
@@ -124,7 +126,7 @@ function crearEstilos(theme: Theme) {
     contenido: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.lg,
-      paddingBottom: spacing.xxl,
+      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',
