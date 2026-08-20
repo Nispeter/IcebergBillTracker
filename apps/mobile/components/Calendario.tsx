@@ -23,6 +23,24 @@ const DIAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 /** Opacidad minima de un dia con gasto, para que nunca desaparezca. */
 const PISO = 0.22;
 
+/**
+ * La intensidad de una celda, comprimida con raiz cuadrada.
+ *
+ * En escala lineal el mapa no funcionaba: el gasto de un mes tiene una cola
+ * larguisima --el dia del arriendo son $490.000 y un dia cualquiera $17.000--
+ * asi que dividir por el maximo dejaba a casi todos los dias en 0,25 y solo uno
+ * encendido. Cuarenta celdas del mismo tono no son un mapa de calor, son un
+ * fondo con una mancha.
+ *
+ * La raiz reparte el rango donde estan los datos en vez de donde esta el
+ * maximo: ese mismo dia de $17.000 pasa de 0,25 a 0,37 y uno de $143.000 a
+ * 0,64. Es la correccion de siempre para intensidad sobre datos sesgados.
+ */
+function intensidadDe(gastado: number, mayor: number): number {
+  if (mayor === 0 || gastado === 0) return 0;
+  return PISO + Math.sqrt(gastado / mayor) * (1 - PISO);
+}
+
 /** Abrevia a miles: en una celda de 45px no entra "150.000". */
 function abreviar(minor: number): string {
   if (minor === 0) return '';
@@ -61,7 +79,7 @@ export function Calendario(
 
         {serie.map((dia) => {
           const gastado = dia.gasto.amountMinor;
-          const intensidad = mayor === 0 || gastado === 0 ? 0 : PISO + ((gastado / mayor) * (1 - PISO));
+          const intensidad = intensidadDe(gastado, mayor);
           const esHoy = dia.fecha === hoy;
           const fuerte = intensidad > 0.55;
 
