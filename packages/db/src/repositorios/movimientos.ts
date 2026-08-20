@@ -73,7 +73,10 @@ export function crearMovimiento(
   contexto: Contexto,
   datos: DatosDeMovimiento,
 ): Movimiento {
-  const fila = {
+  // Las columnas van todas explicitas, incluidas las que quedan en null: asi el
+  // tipo de `fila` es el de la tabla y el compilador avisa cuando se agrega una
+  // columna nueva, en vez de dejarla fuera en silencio detras de un cast.
+  const fila: Movimiento = {
     ...columnasNuevas(contexto),
     cuentaId: datos.cuentaId,
     tipo: datos.tipo,
@@ -83,9 +86,12 @@ export function crearMovimiento(
     nombre: validarNombre(datos.nombre),
     categoriaId: datos.categoriaId ?? null,
     notas: datos.notas ?? null,
+    // Lo cargado a mano no viene de ningun archivo.
+    loteId: null,
+    origenClave: null,
   };
   db.insert(movimientos).values(fila).run();
-  return fila as Movimiento;
+  return fila;
 }
 
 /** Las lapidas quedan fuera: para el resto de la app, la fila ya no existe. */
