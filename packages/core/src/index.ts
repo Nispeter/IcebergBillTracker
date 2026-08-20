@@ -1,5 +1,6 @@
 export * as analytics from './analytics/index';
 export * as categories from './categories/index';
+export * as crypto from './crypto/index';
 export * as csv from './csv/index';
 export * as dates from './dates/index';
 export * as money from './money/index';
