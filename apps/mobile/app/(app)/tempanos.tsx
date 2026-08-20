@@ -25,6 +25,7 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
+import { useDesplazamiento } from '../../datos/desplazamiento';
 import { Pinguino } from '../../components/Pinguino';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useDatos } from '../../datos/BaseDeDatos';
@@ -36,6 +37,7 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 
 export default function Tempanos() {
   const { theme } = useTema();
+  const desplazamiento = useDesplazamiento();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte } = usePeriodo();
   const { db, contexto } = useDatos();
@@ -54,7 +56,7 @@ export default function Tempanos() {
 
   return (
     <Pantalla permitirFuturo>
-      <ScrollView contentContainerStyle={styles.contenido}>
+      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
         <View style={styles.cabecera}>
           <View style={styles.total}>
             <Text style={styles.totalEtiqueta}>POR PAGAR</Text>
@@ -309,13 +311,13 @@ function crearEstilos(theme: Theme) {
     totalCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 28, color: theme.tinta, letterSpacing: -0.5 },
     aviso: { fontFamily: fonts.ui, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto, paddingBottom: spacing.sm },
 
+    // Sin subrayado, igual que en la lista de movimientos: la fecha a la
+    // izquierda y los dos renglones de cada fila ya la separan de la siguiente.
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.md,
       paddingVertical: spacing.md,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
     },
     // Lo resuelto sigue a la vista pero deja de pedir atencion.
     filaResuelta: { opacity: 0.45 },

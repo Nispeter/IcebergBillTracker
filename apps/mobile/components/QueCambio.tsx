@@ -19,6 +19,7 @@
 
 import { analytics, categories, money } from '@iceberg/core';
 import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
 
@@ -27,6 +28,9 @@ const FILAS = 3;
 
 /** Anchos fijos: dos columnas de numeros solo se leen si estan alineadas. */
 const ANCHO_COLUMNA = 84;
+
+/** El ancho que ocupa el `>` de las filas que llevan a algun lado. */
+const ANCHO_CARET = 12;
 
 export function QueCambio(
   { deriva, referencia, theme, onElegir }:
@@ -66,6 +70,7 @@ export function QueCambio(
             <View style={styles.relleno} />
             <Text style={styles.cabeceraTexto}>GASTO</Text>
             <Text style={styles.cabeceraTexto}>CAMBIO</Text>
+            <View style={styles.sinCaret} />
           </View>
 
           {filas.map((fila) => {
@@ -101,14 +106,20 @@ export function QueCambio(
               <Pressable
                 key={fila.categoriaId}
                 onPress={() => onElegir?.(fila.categoriaId)}
-                style={styles.filaTocable}
+                style={styles.fila}
                 accessibilityRole="button"
                 accessibilityLabel={`Ver movimientos de ${nombre}`}
               >
                 {contenido}
+                <CaretRight size={ANCHO_CARET} weight="bold" color={theme.silencio} />
               </Pressable>
             ) : (
-              <View key={fila.categoriaId} style={styles.fila}>{contenido}</View>
+              <View key={fila.categoriaId} style={styles.fila}>
+                {contenido}
+                {/* Una categoria que bajo a cero no lleva a ningun lado, pero
+                    reserva el hueco para que las columnas no se corran. */}
+                <View style={styles.sinCaret} />
+              </View>
             );
           })}
         </>
@@ -144,16 +155,10 @@ function crearEstilos(theme: Theme) {
       letterSpacing: 0.8,
     },
 
+    // Sin subrayado: lo tocable lo dice el `>`, igual que en la leyenda de la
+    // torta. Ver el comentario largo alla.
     fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
-    // Subrayada porque lleva a algun lado, igual que la leyenda de la torta.
-    filaTocable: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: 5,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-    },
+    sinCaret: { width: ANCHO_CARET },
     hueco: { width: 13 },
     nombre: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     gasto: { ...columna, fontWeight: pesos.regular, color: theme.tinta },

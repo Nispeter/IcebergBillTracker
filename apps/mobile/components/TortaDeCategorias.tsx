@@ -13,12 +13,19 @@
  * La geometria del arco vive en `@iceberg/ui/geometry`, con tests: el flag de
  * arco grande y el sentido del borde interior son dos errores clasicos que solo
  * se ven cuando la torta ya salio mal.
+ *
+ * **La leyenda va abajo y no al costado.** Compartiendo fila, el dibujo se
+ * quedaba con los 132px que sobraban y la leyenda con seis filas apretadas.
+ * Puestos uno sobre otro, el donut crece a 176 y cada fila de la leyenda tiene
+ * la pantalla entera para el nombre, el monto y el porcentaje. Cuesta unos
+ * pixeles de alto y los dos dejan de estorbarse.
  */
 
 import { categories, money } from '@iceberg/core';
 import {
   charts, donutArcPath, fontSizes, fonts, pesos, sectoresDeTorta, spacing, type Theme,
 } from '@iceberg/ui';
+import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { iconoDeCategoria } from './iconos';
@@ -29,9 +36,12 @@ export interface PorcionDeTorta {
   readonly participacion: number | null;
 }
 
-const LADO = 132;
-const RADIO_EXTERIOR = 64;
-const RADIO_INTERIOR = 38;
+const LADO = 176;
+const RADIO_EXTERIOR = 86;
+const RADIO_INTERIOR = 52;
+
+/** El ancho que ocupa el `>` de las filas que llevan a algun lado. */
+const ANCHO_CARET = 12;
 
 /** Cuantas categorias llevan color propio antes de agruparse en "Otras". */
 const CON_COLOR = 5;
@@ -135,14 +145,20 @@ export function TortaDeCategorias(
             <Pressable
               key={sector.id}
               onPress={() => onElegir(sector.id)}
-              style={styles.filaTocable}
+              style={styles.fila}
               accessibilityRole="button"
               accessibilityLabel={`Ver movimientos de ${sector.etiqueta}`}
             >
               {contenido}
+              <CaretRight size={ANCHO_CARET} weight="bold" color={theme.silencio} />
             </Pressable>
           ) : (
-            <View key={sector.id} style={styles.fila}>{contenido}</View>
+            <View key={sector.id} style={styles.fila}>
+              {contenido}
+              {/* "Otras" no lleva a ningun lado, pero reserva el hueco del `>`
+                  para que la columna de porcentajes no se desalinee. */}
+              <View style={styles.sinCaret} />
+            </View>
           );
         })}
       </View>
@@ -152,19 +168,19 @@ export function TortaDeCategorias(
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    bloque: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-    leyenda: { flex: 1, gap: 2 },
-    fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: 3 },
-    // Las filas que llevan a algun lado se subrayan: sin eso no hay como saber
-    // que se pueden tocar.
-    filaTocable: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingVertical: 3,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.hairline,
-    },
+    bloque: { alignItems: 'center', gap: spacing.md },
+    leyenda: { alignSelf: 'stretch', gap: 2 },
+    /**
+     * Sin subrayado.
+     *
+     * La primera version subrayaba las filas tocables, y era la unica pista de
+     * que se podian tocar. Con seis sectores eso son seis lineas horizontales
+     * que no separan nada --las filas ya se distinguen solas-- y que sumadas al
+     * resto de la pantalla la volvian un rayado. El `>` del final dice lo mismo
+     * con un glifo, y ademas se alinea en columna en vez de cortar el ancho.
+     */
+    fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
+    sinCaret: { width: ANCHO_CARET },
     punto: { width: 8, height: 8, borderRadius: 4 },
     nombre: { flex: 1, fontFamily: fonts.ui, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },

@@ -10,7 +10,7 @@
 import { categories, dates, money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, spacing, type Theme,
+  fontSizes, fonts, pesos, spacing, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { useState } from 'react';
@@ -92,13 +92,19 @@ export function FilaMovimiento(
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
+    /**
+     * Sin subrayado entre filas.
+     *
+     * Con una lista de treinta movimientos eran treinta lineas horizontales, y
+     * no separaban nada que no separara ya el espacio: cada fila trae su bloque
+     * de fecha a la izquierda y dos renglones propios, y el aire entre filas es
+     * el triple que el aire entre esos dos renglones. La agrupacion se lee sola.
+     */
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.lg,
       paddingVertical: spacing.md,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
     },
     filaApretada: { opacity: 0.55 },
     marcaFecha: { width: 30, alignItems: 'center' },
