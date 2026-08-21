@@ -16,7 +16,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "web": "npm run web --workspace @iceberg/mobile",
     "postinstall": "patch-package",
-    "movil": "npm run start --workspace @iceberg/mobile"
+    "movil": "npm run start --workspace @iceberg/mobile",
+    "exportar:web": "npm run exportar:web --workspace @iceberg/mobile"
   },
   "devDependencies": {
     "patch-package": "^8.0.1"

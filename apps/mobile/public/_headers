@@ -1,0 +1,14 @@
+# Cabeceras para el sitio exportado. Las leen Cloudflare Pages y Netlify tal
+# cual; en Vercel el equivalente esta en vercel.json.
+#
+# NO son opcionales: SQLite en el navegador corre sobre OPFS con
+# SharedArrayBuffer, y los navegadores solo lo habilitan en un contexto
+# "cross-origin isolated", que es lo que declaran estas dos cabeceras. Sin
+# ellas la app carga y muere con "No se pudo abrir la base".
+#
+# Por lo mismo GitHub Pages no sirve para este proyecto: no deja poner
+# cabeceras propias.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: cross-origin

@@ -90,8 +90,18 @@ export default function Resumen() {
    * que mostrar: 0% y 100% de cero no significan nada.
    */
   const hayGasto = !money.isZero(a.resumen.gasto);
-  const arriba = hayGasto && yLinea >= ALTO_ETIQUETA ? yLinea - ALTO_ETIQUETA : null;
-  const abajo = hayGasto && ALTO_HIELO - yLinea >= ALTO_ETIQUETA ? yLinea + 12 : null;
+  // Cada porcentaje al **centro de su franja**, no pegado a la linea de agua.
+  // Pegados funcionaban con la linea al medio, pero con un reparto extremo
+  // --0% comprometido, que es lo normal antes de crear la primera cuenta
+  // periodica-- la linea queda en el borde y la etiqueta caia sobre la punta
+  // del hielo, donde no hay ancho para leerla. El centro de la franja siempre
+  // es la parte mas ancha.
+  const arriba = hayGasto && yLinea >= ALTO_ETIQUETA
+    ? yLinea / 2 - ALTO_ETIQUETA / 2
+    : null;
+  const abajo = hayGasto && ALTO_HIELO - yLinea >= ALTO_ETIQUETA
+    ? yLinea + (ALTO_HIELO - yLinea) / 2 - ALTO_ETIQUETA / 2
+    : null;
 
   const detalle = cifra === null ? null
     : detalleDe(cifra, { delPeriodo, resumen: a.resumen, fijo: a.fijo, variable, desglose, deRegla });
