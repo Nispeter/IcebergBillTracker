@@ -23,6 +23,9 @@ sobre lo único que puedes decidir. La línea no está puesta a ojo: se calcula 
 
 ## Correr el proyecto
 
+Necesitas **Node 22 o más nuevo** (`better-sqlite3` lo exige, y con Node 20 no falla con
+un mensaje sino con un segmentation fault).
+
 ```bash
 npm install
 npm run movil     # Expo Go: escanea el QR con el teléfono
