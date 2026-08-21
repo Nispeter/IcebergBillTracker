@@ -14,7 +14,7 @@ import {
   restaurarRespaldo, type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
 import {
-  AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -24,7 +24,7 @@ import { Star } from 'phosphor-react-native/src/icons/Star';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
   useCuentas, useLotes, useMiembros, useMovimientos, useSaldo, useSaldoInicial,
@@ -38,6 +38,7 @@ import { useTema } from '../../datos/tema';
 export default function Ajustes() {
   const { nombre: tema, theme, alternar } = useTema();
   const desplazamiento = useDesplazamiento();
+  const aireInferior = useAireInferior();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { db, contexto, cambiarHogar } = useDatos();
@@ -190,8 +191,17 @@ export default function Ajustes() {
 
   return (
     <Pantalla sinPeriodo>
-      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
-        <Seccion styles={styles} theme={theme} titulo="Apariencia" />
+      <ScrollView
+        contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
+        {...desplazamiento}
+      >
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Apariencia"
+          ayuda={'Deshielo es el tema claro y Noche polar el oscuro. Por ahora la elección '
+            + 'dura hasta que cierres la app: al volver a abrirla arranca en Noche polar.'}
+        />
         <View style={styles.fila}>
           <Text style={styles.etiqueta}>Tema</Text>
           <Pressable
@@ -281,13 +291,18 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Sincronizar"
-          ayuda={'Trae el respaldo del otro dispositivo sin borrar lo tuyo. Lo que esté en '
-            + 'los dos se resuelve por fecha de edición, y aquí se ve qué versión quedó. '
-            + 'Las cuentas que marcaste como no compartidas no salen en el archivo, y '
-            + 'tampoco entran si el otro dispositivo todavía las manda. '
-            + 'Compartir el hogar no es obligatorio para sincronizar, pero sirve de '
-            + 'resguardo: con el mismo código, la app distingue un archivo tuyo de uno '
-            + 'ajeno y avisa antes de mezclarlos.'}
+          ayuda={'Para compartir cuentas con otra persona, una sola vez:\n\n'
+            + '1. Toca tu código de hogar para enviárselo.\n'
+            + '2. Esa persona lo pega en "Unirme a otro hogar".\n\n'
+            + 'Desde ahí, cada vez que quieran ponerse al día:\n\n'
+            + '3. Uno toca "Exportar para compartir" y manda el archivo.\n'
+            + '4. El otro toca "Fusionar con un archivo" y lo elige.\n\n'
+            + 'Fusionar no borra nada: junta los dos lados. Si el mismo movimiento se '
+            + 'editó en los dos, gana la edición más nueva y abajo queda anotado cuál se '
+            + 'descartó.\n\n'
+            + 'Compartir el hogar no es obligatorio, pero es lo que le permite a la app '
+            + 'avisarte si el archivo viene de otra persona antes de mezclarlo. Las '
+            + 'cuentas marcadas como no compartidas no salen ni entran.'}
         />
         {/* En columna y con aire: los dos textos son largos y no caben en una
             fila, pero apilados sin separacion se leian como un solo bloque. */}
@@ -450,8 +465,13 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Respaldo"
-          ayuda={'Todo lo tuyo en un archivo. Restaurar reemplaza lo que haya: no mezcla. '
-            + 'Para juntar dos dispositivos sin perder nada, usa Sincronizar.'}
+          ayuda={'Exportar guarda todo en un archivo: hazlo antes de cambiar de teléfono '
+            + 'o de borrar la app, porque la base vive solo aquí y no hay copia en ninguna '
+            + 'nube.\n\n'
+            + 'Restaurar **reemplaza** lo que haya, no mezcla. Úsalo en un teléfono nuevo. '
+            + 'Para juntar dos que ya tienen datos, lo que corresponde es Sincronizar.\n\n'
+            + 'Si escribes una frase de cifrado, el archivo sale cifrado y sin esa frase no '
+            + 'se puede abrir.'}
         />
         <View style={styles.acciones}>
           <Pressable
@@ -480,8 +500,13 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Importar"
-          ayuda={'Trae los movimientos del .xls que descargas del banco. Reimportar el '
-            + 'mismo archivo no duplica nada, y cada importación se puede deshacer entera.'}
+          ayuda={'Baja la cartola desde la web de tu banco --en Banco de Chile es Cartola '
+            + 'en Excel-- y elígela aquí. Verás una vista previa antes de que se escriba '
+            + 'nada.\n\n'
+            + 'Reimportar el mismo archivo no duplica: reconoce lo que ya está. Y cada '
+            + 'importación se puede deshacer entera desde esta misma pantalla.\n\n'
+            + 'Si tu banco no es Banco de Chile, igual sirve: te va a pedir que indiques '
+            + 'qué columna es cuál.'}
         />
         <Link href="/importar" asChild>
           <Pressable
@@ -598,7 +623,14 @@ export default function Ajustes() {
           <Dato styles={styles} etiqueta="Hasta" valor={periodo.rango.end} />
         </Panel>
 
-        <Seccion styles={styles} theme={theme} titulo="Datos" />
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Datos"
+          ayuda={'Cuánto hay guardado en este teléfono. El saldo sale del saldo inicial de '
+            + 'las cuentas más todo lo que entró menos todo lo que salió, y por eso no '
+            + 'cuadra con el banco si no pusiste el saldo inicial.'}
+        />
         <Panel theme={theme}>
           <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
           <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
@@ -672,7 +704,6 @@ function crearEstilos(theme: Theme) {
     contenido: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',
@@ -780,6 +811,9 @@ function crearEstilos(theme: Theme) {
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
       paddingVertical: spacing.sm,
+      // El subrayado del campo quedaba pegado al boton de abajo y los dos se
+      // leian como una sola pieza.
+      marginBottom: spacing.md,
     },
     fraseOk: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.ingresoTexto },
     fraseFloja: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.vencidoTexto },

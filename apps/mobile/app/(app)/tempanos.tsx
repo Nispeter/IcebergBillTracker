@@ -15,7 +15,7 @@ import {
   crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
 } from '@iceberg/db';
 import {
-  AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { ArrowCounterClockwise } from 'phosphor-react-native/src/icons/ArrowCounterClockwise';
@@ -26,7 +26,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import { Pinguino } from '../../components/Pinguino';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useDatos } from '../../datos/BaseDeDatos';
@@ -39,6 +39,7 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 export default function Tempanos() {
   const { theme } = useTema();
   const desplazamiento = useDesplazamiento();
+  const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte } = usePeriodo();
   const { db, contexto } = useDatos();
@@ -57,7 +58,10 @@ export default function Tempanos() {
 
   return (
     <Pantalla permitirFuturo>
-      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
+      <ScrollView
+        contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
+        {...desplazamiento}
+      >
         <View style={styles.cabecera}>
           <View style={styles.total}>
             <Text style={styles.totalEtiqueta}>por pagar</Text>
@@ -292,7 +296,6 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
-      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

@@ -8,7 +8,7 @@
 
 import { categories, dates, money } from '@iceberg/core';
 import {
-  AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
+  elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
@@ -18,7 +18,7 @@ import { BarraSegmentada } from '../../components/BarraSegmentada';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import { QueCambio } from '../../components/QueCambio';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
 import { iconoDeCategoria } from '../../components/iconos';
@@ -29,6 +29,7 @@ import { useTema } from '../../datos/tema';
 export default function Categorias() {
   const { theme } = useTema();
   const desplazamiento = useDesplazamiento();
+  const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { tipo, rango, corte } = usePeriodo();
   const router = useRouter();
@@ -45,7 +46,10 @@ export default function Categorias() {
 
   return (
     <Pantalla>
-      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
+      <ScrollView
+        contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
+        {...desplazamiento}
+      >
         <Titulo
           texto="En qué se fue"
           theme={theme}
@@ -118,7 +122,6 @@ function crearEstilos(theme: Theme) {
     contenido: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.lg,
-      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

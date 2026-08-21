@@ -15,7 +15,7 @@
 import { categories, money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
 import {
-  AIRE_PARA_EL_FLOTANTE, capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -24,7 +24,7 @@ import { Ayuda } from '../../components/Ayuda';
 import { ConDesplegable } from '../../components/ConDesplegable';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Pantalla } from '../../components/Pantalla';
-import { useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
@@ -58,6 +58,7 @@ type Desplegable = 'tipo' | 'categoria' | 'tanda' | null;
 export default function Movimientos() {
   const { theme } = useTema();
   const desplazamiento = useDesplazamiento();
+  const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango } = usePeriodo();
   // Se puede llegar aca desde una categoria de la torta o desde un dia del
@@ -240,7 +241,7 @@ export default function Movimientos() {
         // para quien prefiera pedirla.
         onEndReached={() => { if (hayMas) setPagina((actual) => actual + 1); }}
         onEndReachedThreshold={0.4}
-        contentContainerStyle={styles.contenido}
+        contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
         keyboardShouldPersistTaps="handled"
       />
     </Pantalla>
@@ -251,7 +252,6 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
-      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

@@ -9,7 +9,11 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.nispeter.iceberg",
-      "backgroundColor": "#0E192A"
+      "backgroundColor": "#0E192A",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E192A"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -25,6 +29,7 @@
     "experiments": {
       "typedRoutes": true
     },
-    "backgroundColor": "#0E192A"
+    "backgroundColor": "#0E192A",
+    "icon": "./assets/icon.png"
   }
 }

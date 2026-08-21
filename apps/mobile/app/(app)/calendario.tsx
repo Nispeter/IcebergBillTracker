@@ -7,7 +7,7 @@
 
 import { money } from '@iceberg/core';
 import {
-  AIRE_PARA_EL_FLOTANTE, charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { analytics } from '@iceberg/core';
 import { useRouter } from 'expo-router';
@@ -19,7 +19,7 @@ import { LineaDeSaldo } from '../../components/LineaDeSaldo';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import { useAnalisisDeRango, useSaldoAlEmpezar } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
@@ -29,6 +29,7 @@ const NOMBRES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
 export default function DiaADia() {
   const { theme } = useTema();
   const desplazamiento = useDesplazamiento();
+  const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte, tipo } = usePeriodo();
   const router = useRouter();
@@ -48,7 +49,10 @@ export default function DiaADia() {
 
   return (
     <Pantalla>
-      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
+      <ScrollView
+        contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
+        {...desplazamiento}
+      >
         {tipo === 'year' ? (
           <Text style={styles.aviso}>
             El calendario se ve por día, semana o mes. Un año son 365 celdas de tres píxeles.
@@ -123,7 +127,6 @@ function crearEstilos(theme: Theme) {
     contenido: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.lg,
-      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

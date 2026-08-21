@@ -28,7 +28,7 @@
 import { money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
-  AIRE_PARA_EL_FLOTANTE, charts, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  charts, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { Info } from 'phosphor-react-native/src/icons/Info';
@@ -42,7 +42,7 @@ import { Hoja } from '../../components/Hoja';
 import { Iceberg, alturaDeLineaDeAgua } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import {
   esGastoComprometido, useAnalisisDeRango, useAnomalias, useDesgloseDelSaldo,
   useMovimientosDeRegla, useMovimientosFiltrados, useSaldoInicial, type DesgloseDelSaldo,
@@ -59,6 +59,7 @@ const ALTO_ETIQUETA = 30;
 export default function Resumen() {
   const { theme } = useTema();
   const desplazamiento = useDesplazamiento();
+  const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { tipo, rango, corte } = usePeriodo();
 
@@ -108,7 +109,10 @@ export default function Resumen() {
 
   return (
     <Pantalla>
-      <ScrollView contentContainerStyle={styles.contenido} {...desplazamiento}>
+      <ScrollView
+        contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
+        {...desplazamiento}
+      >
         <Pressable
           onPress={() => setCifra('saldo')}
           style={styles.hero}
@@ -412,7 +416,6 @@ function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
-      paddingBottom: AIRE_PARA_EL_FLOTANTE,
       maxWidth: 480,
       width: '100%',
       alignSelf: 'center',

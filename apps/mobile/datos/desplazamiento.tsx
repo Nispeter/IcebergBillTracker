@@ -16,10 +16,12 @@
  * que avisa y del boton que reacciona.
  */
 
+import { AIRE_PARA_EL_FLOTANTE } from '@iceberg/ui';
 import {
   createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode,
 } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** Lo que hay que pasarle al scroll de una pantalla para que el mas reaccione. */
 export interface PropsDeScroll {
@@ -80,6 +82,22 @@ export function ProveedorDeDesplazamiento({ children }: { children: ReactNode })
  */
 export function useDesplazamiento(): PropsDeScroll {
   return useContext(Contexto).props;
+}
+
+/**
+ * Cuanto aire dejarle al final de una lista.
+ *
+ * `AIRE_PARA_EL_FLOTANTE` sola no alcanza: es una constante pensada para que el
+ * boton no tape la ultima fila, y **no sabe nada de la barra de gestos**. En un
+ * telefono que la tenga, el ultimo elemento queda debajo del sistema --se vio
+ * con "Importar cartola" cortado por la barra-- porque la app dibuja a pantalla
+ * completa.
+ *
+ * Va aca y no en cada pantalla para que sumar el margen del sistema no dependa
+ * de acordarse seis veces.
+ */
+export function useAireInferior(): number {
+  return AIRE_PARA_EL_FLOTANTE + useSafeAreaInsets().bottom;
 }
 
 /** Para `Pantalla`: si el mas esta escondido y como volver a mostrarlo. */
