@@ -1,0 +1,98 @@
+# Compila la APK de Android y la publica como release.
+#
+# Existe para no necesitar nada instalado en el computador: los runners de
+# GitHub ya traen el SDK de Android y el JDK, que era justo lo que faltaba para
+# generar una APK. Tampoco hace falta cuenta de Expo ni EAS.
+#
+# ## Firma
+#
+# La plantilla de Expo deja `release { signingConfig signingConfigs.debug }`, o
+# sea que la APK sale firmada con la keystore de depuracion que viene en el
+# proyecto generado. Eso alcanza de sobra para instalarla y pasarsela a alguien,
+# y es la razon de que este workflow no necesite un solo secreto.
+#
+# **No sirve para la Play Store**, y conviene saber por que: esa llave es
+# publica y conocida, asi que cualquiera podria firmar una actualizacion que el
+# telefono aceptaria como si fuera tuya. Para publicar de verdad hay que generar
+# una keystore propia y guardarla en los secretos del repositorio.
+#
+# ## Como se usa
+#
+# Se dispara a mano desde la pestaña Actions, o etiquetando una version:
+#
+#     git tag v0.1.0 && git push --tags
+#
+# La APK queda siempre en la misma direccion, asi que el enlace no cambia:
+# https://github.com/<usuario>/<repo>/releases/latest/download/iceberg.apk
+
+name: APK
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    permissions:
+      # Para adjuntar la APK al release.
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Revisar tipos y pruebas
+        # Antes de compilar: una APK que no pasa las pruebas no vale la pena
+        # esperarla diez minutos.
+        run: |
+          npm run typecheck
+          npm test
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Generar el proyecto nativo
+        # `android/` no se versiona --el proyecto usa el flujo gestionado de
+        # Expo-- asi que se regenera aca en cada compilacion.
+        run: npx expo prebuild --platform android --no-install
+        working-directory: apps/mobile
+
+      - name: Compilar la APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+        working-directory: apps/mobile/android
+
+      - name: Renombrar
+        run: mv apps/mobile/android/app/build/outputs/apk/release/app-release.apk iceberg.apk
+
+      - name: Guardarla como artefacto
+        # Para poder bajarla aunque la corrida no venga de una etiqueta.
+        uses: actions/upload-artifact@v4
+        with:
+          name: iceberg-apk
+          path: iceberg.apk
+
+      - name: Publicarla en el release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: iceberg.apk
+          body: |
+            Instálala desde el teléfono. Android va a pedir permiso para
+            "instalar apps de origen desconocido": es porque no viene de la Play
+            Store, no porque haya algo raro.
+
+            Tus datos se quedan en el teléfono. La app no manda nada a ninguna
+            parte.

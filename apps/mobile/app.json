@@ -9,7 +9,6 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.nispeter.iceberg",
-      "edgeToEdgeEnabled": true,
       "backgroundColor": "#0E192A"
     },
     "web": {
