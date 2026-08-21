@@ -6,7 +6,8 @@
   "scripts": {
     "web": "expo start --web",
     "android": "expo start --android",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start": "expo start"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.11",
