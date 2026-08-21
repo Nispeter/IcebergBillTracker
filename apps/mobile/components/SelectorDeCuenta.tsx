@@ -12,35 +12,38 @@
  * y se queda ahi. El menu es donde ya viven las decisiones de "que estoy
  * mirando", y ademas se abre entero.
  *
- * ## Fichas, no una lista
+ * ## En una tarjeta hundida, y desplegable
  *
- * El primer intento aca fue una lista de filas, y el problema fue que se veia
- * **igual que la lista de destinos** justo debajo: el menu entero pasaba a ser
- * una sola columna larga donde no se distinguia "a donde voy" de "que estoy
- * mirando". Las fichas tienen otra forma --pildoras, en linea, envolviendo-- y
- * viven dentro de un panel hundido, asi que se leen como un control y no como
- * mas navegacion. De paso ocupan dos lineas en vez de cuatro.
+ * La tarjeta es lo que lo distingue de la navegacion que tiene debajo: un
+ * intento anterior lo puso como lista de filas y el menu entero paso a ser una
+ * columna larga donde no se distinguia "a donde voy" de "que estoy mirando".
+ * Otro plano, otra cosa.
  *
- * Un desplegable no servia: el menu ya es una capa sobre la pantalla, y abrir
- * otro adentro seria capa sobre capa para elegir entre tres cosas que caben a la
- * vista.
+ * El desplegable se abre **encima** de los destinos y no empujandolos: en un
+ * panel de seis filas, correrlas hacia abajo cada vez que uno mira las cuentas
+ * hace perder el lugar. La lista tambien va en el tono hundido: sobre la
+ * superficie del menu, una lista en `superficie` seria invisible.
  */
 
 import { fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
-import { useEffect } from 'react';
+import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
+import { Check } from 'phosphor-react-native/src/icons/Check';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ConDesplegable } from './ConDesplegable';
 import { Panel } from './Panel';
 import { useCuentas } from '../datos/consultas';
 import { useCuentaActiva } from '../datos/cuenta';
 
-/** Corto a proposito: en una ficha, "Todas las cuentas" ocuparia dos lineas. */
-const TODAS = 'Todas';
+/** Lo que se muestra cuando el alcance son todas juntas. */
+const TODAS = 'Todas las cuentas';
 
 export function SelectorDeCuenta(
   { theme, alCerrar }: { theme: Theme; alCerrar: () => void },
 ) {
   const cuentas = useCuentas();
   const { cuentaId, elegir } = useCuentaActiva();
+  const [abierto, setAbierto] = useState(false);
   const styles = crearEstilos(theme);
 
   /**
@@ -64,67 +67,105 @@ export function SelectorDeCuenta(
   // Sin dibujo con una sola cuenta, pero el efecto de arriba corre igual.
   if (cuentas.length < 2) return null;
 
+  const activa = cuentas.find((c) => c.id === cuentaId);
   const opciones: { valor: string | null; etiqueta: string }[] = [
     { valor: null, etiqueta: TODAS },
     ...cuentas.map((c) => ({ valor: c.id, etiqueta: c.nombre })),
   ];
 
   return (
-    <Panel theme={theme} estilo={styles.panel}>
-      <Text style={styles.titulo}>Cuenta</Text>
-      <View style={styles.fichas}>
-        {opciones.map((opcion) => {
-          const activa = opcion.valor === cuentaId;
-          return (
-            <Pressable
-              key={opcion.valor ?? 'todas'}
-              onPress={() => { elegir(opcion.valor); alCerrar(); }}
-              style={({ pressed }) => [
-                styles.ficha,
-                activa && styles.fichaActiva,
-                pressed && styles.fichaApretada,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: activa }}
-              accessibilityLabel={`Ver ${opcion.etiqueta === TODAS ? 'todas las cuentas' : opcion.etiqueta}`}
-            >
-              <Text style={activa ? styles.textoActivo : styles.texto} numberOfLines={1}>
-                {opcion.etiqueta}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </Panel>
+    <ConDesplegable
+      abierto={abierto}
+      disparador={(
+        <Panel theme={theme} estilo={styles.tarjeta}>
+          <Text style={styles.titulo}>Cuenta</Text>
+          <Pressable
+            onPress={() => setAbierto(!abierto)}
+            style={styles.disparador}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: abierto }}
+            accessibilityLabel={`Cuenta: ${activa?.nombre ?? TODAS}. Tocar para cambiar`}
+          >
+            <Text style={styles.nombre} numberOfLines={1}>{activa?.nombre ?? TODAS}</Text>
+            <CaretDown size={12} weight="bold" color={theme.silencioHondo} />
+          </Pressable>
+        </Panel>
+      )}
+      panel={(
+        <View style={styles.lista}>
+          {opciones.map((opcion) => {
+            const elegida = opcion.valor === cuentaId;
+            return (
+              <Pressable
+                key={opcion.valor ?? 'todas'}
+                onPress={() => { elegir(opcion.valor); setAbierto(false); alCerrar(); }}
+                style={({ pressed }) => [styles.opcion, pressed && styles.opcionApretada]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: elegida }}
+                accessibilityLabel={`Ver ${opcion.etiqueta}`}
+              >
+                <Text style={elegida ? styles.opcionActiva : styles.opcionTexto} numberOfLines={1}>
+                  {opcion.etiqueta}
+                </Text>
+                {elegida ? <Check size={12} weight="bold" color={theme.acentoTexto} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    />
   );
 }
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    panel: { marginBottom: spacing.md, gap: spacing.sm },
+    tarjeta: { marginBottom: spacing.md, gap: spacing.xs },
     titulo: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: 10,
       color: theme.silencioHondo,
     },
-    fichas: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    ficha: {
-      paddingVertical: 5,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radii.full,
+    disparador: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    nombre: {
+      flex: 1,
+      fontFamily: fonts.texto,
+      fontWeight: pesos.medium,
+      fontSize: fontSizes.xs,
+      color: theme.tinta,
+    },
+
+    /**
+     * La lista flotante, en el mismo tono hundido que la tarjeta.
+     *
+     * El borde no es decoracion: sobre el fondo del menu, dos superficies
+     * oscuras contiguas se funden y no se sabe donde termina una.
+     */
+    lista: {
+      marginTop: -spacing.sm,
+      backgroundColor: theme.superficieHonda,
+      borderRadius: radii.md,
       borderWidth: 1,
       borderColor: theme.hairline,
+      overflow: 'hidden',
     },
-    fichaActiva: { backgroundColor: theme.acento, borderColor: theme.acento },
-    fichaApretada: { opacity: 0.6 },
-    texto: {
+    opcion: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
+    opcionApretada: { opacity: 0.6 },
+    opcionTexto: {
+      flex: 1,
       fontFamily: fonts.texto, fontWeight: pesos.regular,
-      fontSize: 11, color: theme.silencioHondo,
+      fontSize: fontSizes.xs, color: theme.silencioHondo,
     },
-    textoActivo: {
+    opcionActiva: {
+      flex: 1,
       fontFamily: fonts.texto, fontWeight: pesos.medium,
-      fontSize: 11, color: theme.sobreAcento,
+      fontSize: fontSizes.xs, color: theme.tinta,
     },
   });
 }
