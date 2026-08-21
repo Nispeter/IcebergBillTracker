@@ -33,7 +33,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
-import { SelectorDeCuenta } from './SelectorDeCuenta';
 import { Sidebar } from './Sidebar';
 import { useEstadoDelFlotante } from '../datos/desplazamiento';
 import { useTema } from '../datos/tema';
@@ -116,10 +115,6 @@ export function Pantalla(
             </>
           )}
         </View>
-        {/* Bajo el periodo y no al lado: los dos son alcances globales, pero el
-            periodo se cambia mucho mas seguido. No se dibuja con una sola
-            cuenta. */}
-        {sinPeriodo ? null : <SelectorDeCuenta theme={theme} />}
       </View>
 
       {children}

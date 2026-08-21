@@ -287,7 +287,9 @@ export default function Ajustes() {
           theme={theme}
           titulo="Cuentas"
           ayuda={'El saldo inicial es cuánto había antes del primer movimiento que '
-            + 'registres. Sin él, el saldo de la app no cuadra con el del banco.'}
+            + 'registres. Sin él, el saldo de la app no cuadra con el del banco. '
+            + 'La estrella marca con cuál abre la app. Si una cuenta no se comparte, '
+            + 'lo dice aquí abajo y se cambia al editarla.'}
         />
         {cuentas.map((cuenta) => (
           <View key={cuenta.id} style={styles.cuenta}>
@@ -320,33 +322,13 @@ export default function Ajustes() {
                   <Text style={styles.loteDetalle}>
                     {TIPOS_DE_CUENTA_LEGIBLES[cuenta.tipo]}
                     {' · inicial '}{money.format(money.money(cuenta.saldoInicialMinor))}
+                    {cuenta.sincroniza === 0 ? ' · no se comparte' : ''}
                   </Text>
                 </View>
                 <Text style={styles.botonTexto}>Editar</Text>
               </Pressable>
             </Link>
           </View>
-        ))}
-        {/* El interruptor va aca y no dentro de "Editar cuenta": lo que se
-            decide es como se relacionan las cuentas **entre si** al compartir,
-            y eso se entiende viendolas juntas. Con una sola cuenta no aparece:
-            no hay nada que separar de nada. */}
-        {cuentas.length < 2 ? null : cuentas.map((cuenta) => (
-          <Pressable
-            key={`sinc-${cuenta.id}`}
-            onPress={() => editarCuenta(db, contexto, cuenta.id, { sincroniza: cuenta.sincroniza === 0 })}
-            style={styles.fila}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: cuenta.sincroniza === 1 }}
-            accessibilityLabel={`Incluir ${cuenta.nombre} al compartir`}
-          >
-            <Text style={styles.etiqueta} numberOfLines={1}>
-              Compartir {cuenta.nombre}
-            </Text>
-            <Text style={cuenta.sincroniza === 1 ? styles.marcaSi : styles.marcaNo}>
-              {cuenta.sincroniza === 1 ? 'Sí' : 'No'}
-            </Text>
-          </Pressable>
         ))}
         <Link href={{ pathname: '/cuenta/[id]', params: { id: 'nueva' } }} asChild>
           <Pressable
@@ -608,15 +590,6 @@ function crearEstilos(theme: Theme) {
       flex: 1, flexDirection: 'row', alignItems: 'center',
       justifyContent: 'space-between', gap: spacing.lg,
     },
-    marcaSi: {
-      fontFamily: fonts.texto, fontWeight: pesos.medium,
-      fontSize: fontSizes.xs, color: theme.acentoTexto,
-    },
-    marcaNo: {
-      fontFamily: fonts.texto, fontWeight: pesos.medium,
-      fontSize: fontSizes.xs, color: theme.silencio,
-    },
-
     // Lo irreversible no puede verse igual que lo reversible: "Borrar todos los
     // datos" tenia el mismo borde y el mismo color que "Exportar".
     botonDestructivo: { borderColor: theme.vencido },

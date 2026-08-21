@@ -51,6 +51,7 @@ export default function EditarCuenta() {
   const [saldo, setSaldo] = useState(
     cuenta === null ? '' : money.formatNumber(money.money(cuenta.saldoInicialMinor)),
   );
+  const [comparte, setComparte] = useState(cuenta === null || cuenta.sincroniza === 1);
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +65,9 @@ export default function EditarCuenta() {
   function guardar() {
     if (!puedeGuardar || saldoParseado === null) return;
     try {
-      const datos = { nombre, tipo, saldoInicialMinor: saldoParseado.amountMinor };
+      const datos = {
+        nombre, tipo, saldoInicialMinor: saldoParseado.amountMinor, sincroniza: comparte,
+      };
       if (cuenta === null) crearCuenta(db, contexto, datos);
       else editarCuenta(db, contexto, cuenta.id, datos);
       volver(router);
@@ -144,6 +147,37 @@ export default function EditarCuenta() {
           {saldo.trim() !== '' && saldoParseado === null ? (
             <Text style={styles.aviso}>No se entiende ese monto. Sin decimales: el peso no los tiene.</Text>
           ) : null}
+        </View>
+
+        {/*
+          Compartir es una propiedad de la cuenta, asi que vive donde viven las
+          demas. Estuvo un rato en la lista de Ajustes --con la idea de verlas
+          todas juntas-- y el resultado fue que cada cuenta aparecia dos veces:
+          una fila para editarla y otra para el interruptor. La lista **muestra**
+          el estado; cambiarlo se hace aca.
+        */}
+        <View style={styles.campo}>
+          <Text style={styles.etiqueta}>Al compartir</Text>
+          <View style={styles.selector}>
+            {[true, false].map((valor) => (
+              <Pressable
+                key={String(valor)}
+                onPress={() => setComparte(valor)}
+                style={[styles.opcion, comparte === valor && styles.opcionActiva]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: comparte === valor }}
+                accessibilityLabel={valor ? 'Incluir esta cuenta al compartir' : 'Dejar esta cuenta fuera'}
+              >
+                <Text style={comparte === valor ? styles.opcionTextoActivo : styles.opcionTexto}>
+                  {valor ? 'Se incluye' : 'Queda fuera'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.ayuda}>
+            Fuera, esta cuenta no sale en el archivo que le pasas a otra persona, y lo que
+            ella mande de esta cuenta tampoco entra. El respaldo la lleva igual.
+          </Text>
         </View>
 
         {error !== null ? <Text style={styles.error}>{error}</Text> : null}

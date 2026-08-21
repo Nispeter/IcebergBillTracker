@@ -5,27 +5,33 @@
  * selector con una unica opcion no es una eleccion, es una fila que ocupa: la
  * app tiene que verse igual que antes para quien no necesita esto.
  *
- * Va bajo el periodo y no al lado: los dos son alcances globales y se leen como
- * un par --que fechas y que cuenta--, pero el periodo se cambia mucho mas
- * seguido y merece la linea de arriba.
+ * ## Vive en el menu lateral
+ *
+ * Estuvo bajo el periodo, en el encabezado, y dejaba una barra de **dos lineas
+ * en todas las pantallas** para algo que casi nunca se cambia: uno mira un libro
+ * y se queda ahi. El menu es donde ya viven las decisiones de "que estoy
+ * mirando", y ademas se abre entero.
+ *
+ * Por eso mismo aca es una **lista y no un desplegable**: el menu ya es una capa
+ * sobre la pantalla, y abrir un desplegable adentro seria capa sobre capa para
+ * mostrar tres opciones que caben a la vista. Se toca la que se quiere y el menu
+ * se cierra, igual que con cualquier destino.
  */
 
-import { capas, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
-import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
-import { useEffect, useState } from 'react';
+import { fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ConDesplegable } from './ConDesplegable';
-import { ListaDeOpciones } from './SelectorDesplegable';
 import { useCuentas } from '../datos/consultas';
 import { useCuentaActiva } from '../datos/cuenta';
 
 /** Lo que se muestra cuando el alcance son todas juntas. */
 const TODAS = 'Todas las cuentas';
 
-export function SelectorDeCuenta({ theme }: { theme: Theme }) {
+export function SelectorDeCuenta(
+  { theme, alCerrar }: { theme: Theme; alCerrar: () => void },
+) {
   const cuentas = useCuentas();
   const { cuentaId, elegir } = useCuentaActiva();
-  const [abierto, setAbierto] = useState(false);
   const styles = crearEstilos(theme);
 
   /**
@@ -49,62 +55,64 @@ export function SelectorDeCuenta({ theme }: { theme: Theme }) {
   // Sin dibujo con una sola cuenta, pero el efecto de arriba corre igual.
   if (cuentas.length < 2) return null;
 
-  const activa = cuentas.find((c) => c.id === cuentaId);
-  const opciones = [
+  const opciones: { valor: string | null; etiqueta: string }[] = [
     { valor: null, etiqueta: TODAS },
     ...cuentas.map((c) => ({ valor: c.id, etiqueta: c.nombre })),
   ];
 
   return (
-    <ConDesplegable
-      abierto={abierto}
-      disparador={(
-        <Pressable
-          onPress={() => setAbierto(!abierto)}
-          style={styles.disparador}
-          accessibilityRole="button"
-          accessibilityLabel={`Cuenta: ${activa?.nombre ?? TODAS}. Tocar para cambiar`}
-          accessibilityState={{ expanded: abierto }}
-        >
-          <Text style={styles.nombre} numberOfLines={1}>{activa?.nombre ?? TODAS}</Text>
-          <CaretDown size={11} weight="bold" color={theme.silencio} />
-        </Pressable>
-      )}
-      panel={(
-        <View style={styles.panel}>
-          <ListaDeOpciones
-            theme={theme}
-            opciones={opciones}
-            seleccionado={cuentaId}
-            onElegir={(valor) => { elegir(valor); setAbierto(false); }}
-          />
-        </View>
-      )}
-    />
+    <View style={styles.bloque}>
+      <Text style={styles.titulo}>Cuenta</Text>
+      {opciones.map((opcion) => {
+        const activa = opcion.valor === cuentaId;
+        return (
+          <Pressable
+            key={opcion.valor ?? 'todas'}
+            onPress={() => { elegir(opcion.valor); alCerrar(); }}
+            style={({ pressed }) => [
+              styles.fila,
+              activa && styles.filaActiva,
+              pressed && styles.filaApretada,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: activa }}
+            accessibilityLabel={`Ver ${opcion.etiqueta}`}
+          >
+            <Text style={activa ? styles.nombreActivo : styles.nombre} numberOfLines={1}>
+              {opcion.etiqueta}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    disparador: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.xs,
-      paddingTop: spacing.xs,
-    },
-    nombre: {
+    bloque: { paddingBottom: spacing.md, gap: 1 },
+    titulo: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.xs,
+      fontSize: 10,
       color: theme.silencio,
+      paddingHorizontal: spacing.sm,
+      paddingBottom: spacing.xs,
     },
-    // El panel se abre sobre el contenido, asi que necesita fondo propio.
-    panel: {
-      backgroundColor: theme.superficie,
+    fila: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.sm,
       borderRadius: radii.sm,
-      overflow: 'hidden',
-      zIndex: capas.encabezado,
+    },
+    filaActiva: { backgroundColor: theme.superficieHonda },
+    filaApretada: { opacity: 0.6 },
+    nombre: {
+      fontFamily: fonts.texto, fontWeight: pesos.regular,
+      fontSize: fontSizes.xs, color: theme.silencio,
+    },
+    nombreActivo: {
+      fontFamily: fonts.texto, fontWeight: pesos.medium,
+      fontSize: fontSizes.xs, color: theme.tinta,
     },
   });
 }

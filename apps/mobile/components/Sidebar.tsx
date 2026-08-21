@@ -29,6 +29,7 @@ import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pinguino } from './Pinguino';
+import { SelectorDeCuenta } from './SelectorDeCuenta';
 
 interface Destino {
   readonly ruta: string;
@@ -109,6 +110,16 @@ export function Sidebar(
             <X size={14} weight="bold" color={theme.silencio} />
           </Pressable>
         </View>
+
+        {/*
+          El selector de cuenta va aca y no en el encabezado.
+          Estuvo bajo el periodo y dejaba una barra de dos lineas en todas las
+          pantallas para algo que casi nunca se cambia: uno mira un libro y se
+          queda ahi. El menu es donde ya viven las decisiones de "que estoy
+          mirando", y ademas se abre entero, asi que la lista de cuentas cabe sin
+          apretarse. No se dibuja con una sola cuenta.
+        */}
+        <SelectorDeCuenta theme={theme} alCerrar={onCerrar} />
 
         {DESTINOS.map((destino) => {
           const Icono = destino.icono;
