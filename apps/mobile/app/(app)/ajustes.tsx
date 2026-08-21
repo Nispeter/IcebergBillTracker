@@ -9,14 +9,15 @@
 import { crypto, dates, money } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, borrarTodo, contarRespaldo, crearCuenta,
-  deshacerLote, editarCuenta, exportarRespaldo, fusionarRespaldo, leerAjuste, renombrarMiembro,
+  HogarAjenoError, deshacerLote, editarCuenta, exportarRespaldo, fusionarRespaldo,
+  leerAjuste, renombrarMiembro, unirseAHogar,
   restaurarRespaldo, type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
 import {
   AIRE_PARA_EL_FLOTANTE, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
 import { Star } from 'phosphor-react-native/src/icons/Star';
@@ -39,7 +40,7 @@ export default function Ajustes() {
   const desplazamiento = useDesplazamiento();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
-  const { db, contexto } = useDatos();
+  const { db, contexto, cambiarHogar } = useDatos();
   const periodo = usePeriodo();
 
   const movimientos = useMovimientos();
@@ -51,6 +52,9 @@ export default function Ajustes() {
   const [confirmando, setConfirmando] = useState<'borrar' | 'restaurar' | null>(null);
   const [conflictos, setConflictos] = useState<readonly ConflictoLegible[]>([]);
   const [frase, setFrase] = useState('');
+  const [codigoDeHogar, setCodigoDeHogar] = useState('');
+  /** El archivo que espera confirmacion por venir de otro hogar. */
+  const [deOtroHogar, setDeOtroHogar] = useState<unknown | null>(null);
   const [nombrePropio, setNombrePropio] = useState<string | null>(null);
 
   /**
@@ -106,19 +110,57 @@ export default function Ajustes() {
     }
   }
 
+  /**
+   * Fusiona un archivo ya abierto.
+   *
+   * `permitirOtroHogar` solo llega en verdadero desde el boton de confirmar: un
+   * archivo de otro hogar se para antes de escribir nada, y la unica forma de
+   * seguir es que alguien lo diga a proposito.
+   */
+  function fusionarDatos(datos: unknown, permitirOtroHogar = false) {
+    const resultado = fusionarRespaldo(db, contexto, datos, { permitirOtroHogar });
+    setConflictos(resultado.ejemplos);
+    setDeOtroHogar(null);
+
+    const { nuevas, actualizadas, conflictos: cuantos } = resultado.total;
+    setAviso(
+      nuevas === 0 && actualizadas === 0
+        ? 'Ya estaban sincronizados: nada que traer.'
+        : `${nuevas} nuevas, ${actualizadas} actualizadas.`
+          + (cuantos === 0 ? '' : ` ${cuantos} se resolvieron por fecha.`),
+    );
+  }
+
   async function fusionar() {
     try {
       const archivo = await elegirRespaldo();
       if (archivo === null) return;
-      const resultado = fusionarRespaldo(db, contexto, abrir(archivo.datos));
-      setConflictos(resultado.ejemplos);
+      const datos = abrir(archivo.datos);
+      try {
+        fusionarDatos(datos);
+      } catch (e) {
+        if (!(e instanceof HogarAjenoError)) throw e;
+        // Se guarda para poder insistir sin volver a elegir el archivo.
+        setDeOtroHogar(datos);
+        setAviso('Ese archivo viene de otro hogar. Revisa antes de seguir.');
+      }
+    } catch (e) {
+      setAviso((e as Error).message);
+    }
+  }
 
-      const { nuevas, actualizadas, conflictos: cuantos } = resultado.total;
+  function emparejar() {
+    try {
+      const nuevo = codigoDeHogar.trim();
+      const filas = unirseAHogar(db, contexto, nuevo);
+      setCodigoDeHogar('');
+      // El contexto guarda el hogar viejo: sin apuntarlo al nuevo, las consultas
+      // seguirian filtrando por el anterior y la app se veria vacia.
+      cambiarHogar(nuevo);
       setAviso(
-        nuevas === 0 && actualizadas === 0
-          ? 'Ya estaban sincronizados: nada que traer.'
-          : `${nuevas} nuevas, ${actualizadas} actualizadas.`
-            + (cuantos === 0 ? '' : ` ${cuantos} se resolvieron por fecha.`),
+        filas === 0
+          ? 'Ya estabas en ese hogar.'
+          : `Listo. ${filas} filas quedaron en el hogar compartido.`,
       );
     } catch (e) {
       setAviso((e as Error).message);
@@ -242,7 +284,10 @@ export default function Ajustes() {
           ayuda={'Trae el respaldo del otro dispositivo sin borrar lo tuyo. Lo que esté en '
             + 'los dos se resuelve por fecha de edición, y aquí se ve qué versión quedó. '
             + 'Las cuentas que marcaste como no compartidas no salen en el archivo, y '
-            + 'tampoco entran si el otro dispositivo todavía las manda.'}
+            + 'tampoco entran si el otro dispositivo todavía las manda. '
+            + 'Compartir el hogar no es obligatorio para sincronizar, pero sirve de '
+            + 'resguardo: con el mismo código, la app distingue un archivo tuyo de uno '
+            + 'ajeno y avisa antes de mezclarlos.'}
         />
         {/* En columna y con aire: los dos textos son largos y no caben en una
             fila, pero apilados sin separacion se leian como un solo bloque. */}
@@ -264,6 +309,64 @@ export default function Ajustes() {
             <Text style={styles.botonTexto}>Exportar para compartir</Text>
           </Pressable>
         </View>
+
+        {deOtroHogar === null ? null : (
+          <View style={styles.avisoDeHogar}>
+            <Text style={styles.avisoDeHogarTexto}>
+              Ese archivo no es de tu hogar. Si sigues, sus movimientos se mezclan con los
+              tuyos y no hay forma de separarlos después.
+            </Text>
+            <View style={styles.acciones}>
+              <Pressable
+                onPress={() => { try { fusionarDatos(deOtroHogar, true); } catch (e) { setAviso((e as Error).message); } }}
+                style={[styles.botonSecundario, styles.botonDestructivo]}
+                accessibilityRole="button"
+                accessibilityLabel="Fusionar igual, aunque sea de otro hogar"
+              >
+                <Text style={styles.botonTextoDestructivo}>Fusionar igual</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setDeOtroHogar(null)}
+                style={styles.botonSecundario}
+                accessibilityRole="button"
+                accessibilityLabel="Cancelar la fusión"
+              >
+                <Text style={styles.botonTexto}>Cancelar</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        <Text style={styles.etiqueta}>Código de tu hogar</Text>
+        <Pressable
+          onPress={() => Share.share({ message: identidad.hogar ?? '' })}
+          style={styles.codigo}
+          accessibilityRole="button"
+          accessibilityLabel="Compartir el código de tu hogar"
+        >
+          <Text style={styles.codigoTexto} numberOfLines={1}>{identidad.hogar ?? '—'}</Text>
+        </Pressable>
+
+        <Text style={styles.etiqueta}>Unirme a otro hogar</Text>
+        <TextInput
+          value={codigoDeHogar}
+          onChangeText={setCodigoDeHogar}
+          placeholder="Pega aquí el código del otro teléfono"
+          placeholderTextColor={theme.silencio}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          style={styles.entradaFrase}
+          accessibilityLabel="Código del hogar al que unirse"
+        />
+        <Pressable
+          onPress={emparejar}
+          disabled={codigoDeHogar.trim() === ''}
+          style={[styles.botonSecundario, codigoDeHogar.trim() === '' && styles.apagado]}
+          accessibilityRole="button"
+          accessibilityLabel="Unirme a ese hogar"
+        >
+          <Text style={styles.botonTexto}>Unirme a ese hogar</Text>
+        </Pressable>
 
         {conflictos.length === 0 ? null : (
           <View style={styles.conflictos}>
@@ -593,6 +696,30 @@ function crearEstilos(theme: Theme) {
       flex: 1, flexDirection: 'row', alignItems: 'center',
       justifyContent: 'space-between', gap: spacing.lg,
     },
+    // Sin codigo escrito, unirse no lleva a ningun lado.
+    apagado: { opacity: 0.45 },
+    codigo: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.sm,
+      backgroundColor: theme.superficieHonda,
+    },
+    codigoTexto: {
+      fontFamily: fonts.mono, fontWeight: pesos.regular,
+      fontSize: fontSizes.xs, color: theme.tinta,
+    },
+    avisoDeHogar: {
+      gap: spacing.sm,
+      padding: spacing.md,
+      borderRadius: radii.sm,
+      borderWidth: elevation.hairlineWidth,
+      borderColor: theme.vencido,
+    },
+    avisoDeHogarTexto: {
+      fontFamily: fonts.texto, fontWeight: pesos.regular,
+      fontSize: fontSizes.xs, lineHeight: 18, color: theme.tinta,
+    },
+
     // Lo irreversible no puede verse igual que lo reversible: "Borrar todos los
     // datos" tenia el mismo borde y el mismo color que "Exportar".
     botonDestructivo: { borderColor: theme.vencido },

@@ -26,7 +26,9 @@ import {
   type Miembro, type Regla,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
+import { CLAVE_HOGAR, escribirAjuste } from './ajustes';
 import { cuentasQueNoSincronizan } from './cuentas';
+import { RepositorioError } from './movimientos';
 import { leerRespaldo, sinLasCuentas, type Respaldo } from './respaldo';
 
 /** Lo que cambió en la base, por tabla y en total. */
@@ -104,6 +106,58 @@ function quienEscribio(
 }
 
 /**
+ * Une este aparato al hogar de otro.
+ *
+ * ## Por que hace falta, si fusionar ya funcionaba
+ *
+ * Funcionaba, y conviene ser exacto: las filas remotas **adoptan el hogar
+ * local**, asi que dos telefonos que se intercambian archivos convergen sin
+ * nada de esto. Lo que no habia era una forma de saber **de donde viene** un
+ * archivo. Cualquier respaldo de cualquier persona entraba en silencio, y si
+ * alguien te manda el suyo por equivocacion sus finanzas se mezclan con las
+ * tuyas sin un solo aviso.
+ *
+ * Compartir el hogar convierte eso en una decision explicita: los dos aparatos
+ * acuerdan un identificador, y desde ahi `fusionarRespaldo` puede distinguir
+ * "esto es del hogar" de "esto viene de otra parte" y preguntar.
+ *
+ * ## Que reescribe
+ *
+ * El `householdId` de cada fila y el ajuste. **No toca `updatedAt`**, por la
+ * misma razon que la fusion: el hogar es una clave de filtro local, no parte de
+ * la identidad de la fila. Si lo tocara, unirse a un hogar haria que este
+ * aparato ganara todos los conflictos contra el otro.
+ *
+ * La identidad del **aparato** y la del **miembro** no se tocan: son de este
+ * telefono y tienen que seguir siendo distintas de las del otro.
+ */
+export function unirseAHogar(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  hogarNuevo: string,
+): number {
+  const limpio = hogarNuevo.trim();
+  if (limpio === '') throw new RepositorioError('el código del hogar no puede estar vacío');
+  if (limpio === contexto.householdId) return 0;
+
+  let filas = 0;
+  db.transaction((tx) => {
+    const base = tx as unknown as BaseDeDatos;
+    for (const { tabla } of TABLAS) {
+      const afectadas = base.select().from(tabla)
+        .where(eq(tabla.householdId, contexto.householdId)).all();
+      base.update(tabla)
+        .set({ householdId: limpio })
+        .where(eq(tabla.householdId, contexto.householdId))
+        .run();
+      filas += afectadas.length;
+    }
+    escribirAjuste(base, CLAVE_HOGAR, limpio);
+  });
+  return filas;
+}
+
+/**
  * Fusiona un respaldo ajeno con lo que hay, sin perder nada de ninguno de los dos.
  *
  * **Las filas remotas adoptan el hogar de este aparato**, por la misma razón que
@@ -111,16 +165,40 @@ function quienEscribio(
  * encontraría. El `householdId` es una clave de filtro local, no parte de la
  * identidad de la fila, y reescribirlo no toca `updatedAt`, así que la fusión
  * sigue siendo idempotente.
+ *
+ * **Un archivo de otro hogar se rechaza salvo que se insista.** Es la unica
+ * defensa contra mezclar las finanzas de otra persona con las propias por abrir
+ * el archivo equivocado: sin esto, cualquier respaldo entra en silencio y
+ * deshacerlo a mano es imposible.
  */
+export class HogarAjenoError extends RepositorioError {
+  override name = 'HogarAjenoError';
+
+  constructor(readonly hogarDelArchivo: string) {
+    super('Ese archivo viene de otro hogar, no del tuyo.');
+  }
+}
+
+export interface OpcionesDeFusion {
+  /** Fusionar igual aunque el archivo venga de otro hogar. */
+  readonly permitirOtroHogar?: boolean;
+}
+
 export function fusionarRespaldo(
   db: BaseDeDatos,
   contexto: Contexto,
   crudo: unknown,
+  opciones: OpcionesDeFusion = {},
 ): ResultadoDeSincronizacion {
+  const leido = leerRespaldo(crudo);
+  if (!opciones.permitirOtroHogar && leido.householdId !== contexto.householdId) {
+    throw new HogarAjenoError(leido.householdId);
+  }
+
   // Lo que llegue de una cuenta que este aparato marco como privada se descarta
   // antes de fusionar nada. Ver `sinLasCuentas`.
   const respaldo = sinLasCuentas(
-    leerRespaldo(crudo),
+    leido,
     cuentasQueNoSincronizan(db, contexto),
     db.select().from(reglas).where(eq(reglas.householdId, contexto.householdId)).all() as Regla[],
   );

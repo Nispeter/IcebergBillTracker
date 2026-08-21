@@ -46,6 +46,22 @@ export interface Datos {
   readonly db: Base;
   readonly contexto: Contexto;
   readonly sqlite: SQLiteDatabase;
+  /**
+   * Apunta el contexto a otro hogar, sin releer la base.
+   *
+   * Hace falta para **unirse a un hogar**: el `householdId` se lee una sola vez
+   * al arrancar y despues vive en el contexto, asi que cambiarlo en la base no
+   * alcanza --las consultas seguirian filtrando por el hogar viejo y la app se
+   * veria vacia--.
+   *
+   * **Recibe el hogar nuevo en vez de volver a leerlo**, y eso no es un atajo.
+   * La primera version releia el ajuste que `unirseAHogar` acababa de escribir y
+   * devolvia el valor viejo: en web la base vive en OPFS y la escritura tarda en
+   * verse, asi que leer en el mismo tick da lo anterior. Recien despues de
+   * recargar la pagina aparecia el hogar nuevo. Pasando el valor no hay nada que
+   * pueda quedar desfasado.
+   */
+  readonly cambiarHogar: (hogarNuevo: string) => void;
 }
 
 const ContextoDeDatos = createContext<Datos | null>(null);
@@ -156,7 +172,19 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
       // escribio.
       asegurarMiembro(db, contexto);
 
-      setDatos({ db, contexto, sqlite: conexion.sqlite });
+      setDatos({
+        db,
+        contexto,
+        sqlite: conexion.sqlite,
+        cambiarHogar: (hogarNuevo) => setDatos((antes) => (antes === null ? antes : {
+          ...antes,
+          contexto: crearContexto({
+            householdId: hogarNuevo,
+            deviceId: antes.contexto.deviceId,
+            memberId: antes.contexto.memberId,
+          }),
+        })),
+      });
     } catch (e) {
       setFallo((e as Error).message);
     }
@@ -166,7 +194,24 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
   if (fallo !== null) return error(fallo);
   if (!success || datos === null) return cargando;
 
-  return <ContextoDeDatos.Provider value={datos}>{children}</ContextoDeDatos.Provider>;
+  /**
+   * El `key` con el hogar remonta todo cuando se cambia de hogar.
+   *
+   * Sin el, cambiar el contexto no alcanza: `useLiveQuery` recibe sus
+   * dependencias explicitas --y por omision son `[]`-- asi que las consultas
+   * siguen suscritas a la version anterior y la app se ve **vacia** aunque las
+   * filas esten ahi. Es la misma trampa que ya costo una vez con los filtros.
+   *
+   * La alternativa era agregar el hogar a las dependencias de las quince
+   * consultas, y basta olvidar una para tener el mismo bug otra vez. Remontar
+   * cuesta perder el periodo y la cuenta elegidos, que despues de unirse a otro
+   * hogar es lo razonable igual.
+   */
+  return (
+    <ContextoDeDatos.Provider key={datos.contexto.householdId} value={datos}>
+      {children}
+    </ContextoDeDatos.Provider>
+  );
 }
 
 /**
