@@ -11,14 +11,26 @@
  */
 
 import { Stack } from 'expo-router';
+import { useTema } from '../../datos/tema';
 import { ProveedorDeDesplazamiento } from '../../datos/desplazamiento';
 
 export default function AppLayout() {
+  const { theme } = useTema();
+
   // El proveedor va aca y no dentro de `Pantalla`: las pantallas renderizan
   // `Pantalla`, asi que un contexto puesto ahi adentro no lo verian nunca.
   return (
     <ProveedorDeDesplazamiento>
-      <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+      {/* `contentStyle` con el fondo del tema: sin el, el contenedor de cada
+          pantalla arranca en blanco y al cambiar de vista se ve un destello.
+          En web no pasaba porque ahi no hay contenedor nativo por pantalla. */}
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'none',
+          contentStyle: { backgroundColor: theme.fondo },
+        }}
+      >
         <Stack.Screen name="index" />
         <Stack.Screen name="categorias" />
         <Stack.Screen name="calendario" />

@@ -85,7 +85,9 @@ function Contenido() {
           {/* Una sola hoja de explicaciones para toda la app: ver
               `datos/explicacion.tsx`. */}
           <ProveedorDeExplicacion theme={theme}>
-            <Stack screenOptions={{ headerShown: false }}>
+            <Stack
+              screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.fondo } }}
+            >
               <Stack.Screen name="(app)" />
               <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
               <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />

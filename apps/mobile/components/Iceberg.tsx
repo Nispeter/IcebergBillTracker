@@ -13,7 +13,7 @@
  */
 
 import { toPathData, waterlineForShare, type Point, type Theme } from '@iceberg/ui';
-import Svg, { ClipPath, Defs, G, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { View } from 'react-native';
 
 const ANCHO = 200;
@@ -65,37 +65,36 @@ export function Iceberg(
 ) {
   const linea = waterlineForShare(SILUETA, shareComprometido);
   const ancho = alto * (ANCHO / ALTO);
+  // Donde corta el degradado, en la escala 0..1 que piden los `offset`.
+  const corte = Math.min(1, Math.max(0, linea / ALTO));
 
   return (
     <View style={{ width: ancho, height: alto }}>
       <Svg width={ancho} height={alto} viewBox={`0 0 ${ANCHO} ${ALTO}`}>
         <Defs>
-          <ClipPath id="sobreElAgua">
-            <Rect x={0} y={0} width={ANCHO} height={linea} />
-          </ClipPath>
-          <ClipPath id="bajoElAgua">
-            <Rect x={0} y={linea} width={ANCHO} height={ALTO - linea} />
-          </ClipPath>
-          {/* Frio y de arriba hacia abajo: el agua se oscurece con la
-              profundidad. Los dos extremos son colores de la serie de graficos,
-              no un degradado inventado. */}
-          <LinearGradient id="profundidadAgua" x1="0" y1={linea} x2="0" y2={ALTO} gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor={agua} stopOpacity="0.85" />
-            <Stop offset="1" stopColor={profundidad} stopOpacity="1" />
+          {/*
+            Hielo arriba y agua abajo **en un solo degradado**, con dos paradas
+            en el mismo `offset` para que el cambio sea un corte y no una mezcla.
+
+            La primera version recortaba: la silueta dibujada dos veces, cada una
+            dentro de un `ClipPath` con un `Rect`. En web se veia bien y en
+            Android salia el iceberg **entero del color del agua**, porque el
+            recorte del hielo no se aplicaba y ese trozo no llegaba a pintarse.
+            Un degradado no depende de que el recorte funcione: es un relleno, y
+            un relleno se pinta igual en las dos plataformas.
+
+            Debajo del corte sigue oscureciendose con la profundidad. Los dos
+            extremos son colores de la serie de graficos, no inventados.
+          */}
+          <LinearGradient id="hieloYAgua" x1="0" y1="0" x2="0" y2={ALTO} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={theme.hieloSobreAgua} />
+            <Stop offset={corte} stopColor={theme.hieloSobreAgua} />
+            <Stop offset={corte} stopColor={agua} />
+            <Stop offset="1" stopColor={profundidad} />
           </LinearGradient>
         </Defs>
 
-        {/* Lo sumergido primero, para que la linea de agua quede encima. */}
-        <G clipPath="url(#bajoElAgua)">
-          <Path d={RUTA} fill="url(#profundidadAgua)" />
-        </G>
-
-        {/* `hieloSobreAgua` y no `gasto`: `gasto` es un color de texto y se
-            invierte con el tema, asi que en el tema claro dejaba la punta del
-            iceberg pintada de negro. */}
-        <G clipPath="url(#sobreElAgua)">
-          <Path d={RUTA} fill={theme.hieloSobreAgua} />
-        </G>
+        <Path d={RUTA} fill="url(#hieloYAgua)" />
 
         {/* La linea de agua cruza entera, no solo el ancho del hielo: es el
             nivel del mar, no un borde de la figura. Cuando la dibuja la
