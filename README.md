@@ -1,81 +1,85 @@
 # Iceberg
 
-Finanzas personales para Chile, **local-first**: tus datos viven en tu teléfono, en una
-base SQLite, y no salen de ahí salvo que tú los exportes.
+Finanzas personales para Chile. **Local-first**: tus datos viven en tu teléfono y no salen
+de ahí salvo que tú los exportes.
 
-El iceberg es la idea central. Sobre la línea de agua va el gasto **comprometido** —el
-arriendo, las cuentas, las cuotas: lo que llega igual—; debajo, el **variable**, que es
-sobre lo único que puedes decidir. La línea no está puesta a ojo: se calcula para que el
-*área* sobre ella sea exactamente la proporción del gasto comprometido.
+Sobre la línea de agua va el gasto **comprometido** —arriendo, cuentas, cuotas: lo que llega
+igual—; debajo, el **variable**, que es sobre lo único que puedes decidir. La línea no está
+puesta a ojo: se calcula para que el *área* sobre ella sea la proporción exacta.
+
+## Instalar en Android
+
+[**Descargar la APK**](https://github.com/Nispeter/IcebergBillTracker/releases/latest/download/iceberg.apk)
+· ~112 MB
+
+Android pedirá permiso para "instalar apps de origen desconocido": es porque no viene de la
+Play Store.
 
 ## Qué hace
 
-- **Importa tu cartola** del banco (`.xls` de Banco de Chile, y mapeo manual de columnas
-  para otros). Reimportar el mismo archivo no duplica nada.
-- **Categoriza sola** por comercio, con un catálogo chileno y reglas propias que puedes
-  agregar.
-- **Detecta cuentas periódicas** en tu historial y te propone crearlas.
-- **Marca lo que se sale de lo habitual** con mediana y MAD, no con promedios: un mes con
-  un gasto grande no mueve el umbral.
-- **Sincroniza entre dispositivos** por archivo, con fusión convergente y cifrado opcional.
-- **Cuentas separadas**: puedes tener un libro compartido y otro personal, y decidir por
-  cuenta cuál viaja al sincronizar.
+- Importa la cartola del banco (`.xls` de Banco de Chile; mapeo manual para otros).
+  Reimportar el mismo archivo no duplica nada.
+- Categoriza sola por comercio, con reglas propias que puedes agregar.
+- Detecta cuentas periódicas en tu historial y propone crearlas.
+- Marca lo que se sale de lo habitual con mediana y MAD, no con promedios.
+- Sincroniza entre dispositivos por archivo, con cifrado opcional.
+- Cuentas separadas: un libro compartido y otro personal, y decides cuál viaja.
 
-## Correr el proyecto
+## Desarrollo
 
-Necesitas **Node 22 o más nuevo** (`better-sqlite3` lo exige, y con Node 20 no falla con
-un mensaje sino con un segmentation fault).
+Requiere **Node 22+** (`better-sqlite3` lo exige; con Node 20 revienta con un segfault).
 
 ```bash
 npm install
-npm run movil     # Expo Go: escanea el QR con el teléfono
-npm run web       # en el navegador
-npm test          # 658 pruebas
+npm run movil       # Expo Go: escanea el QR
+npm run web         # en el navegador
+npm test            # 658 pruebas
 npm run typecheck
 ```
 
-Para el teléfono necesitas [Expo Go](https://expo.dev/go). Ojo: **`npm run movil`, no
-`npx expo start` desde la raíz** — desde ahí Expo no encuentra el punto de entrada.
+## Estructura
 
-## Cómo está armado
-
-Monorepo de npm workspaces. La regla es que la lógica no sepa de React:
+Monorepo de npm workspaces. La lógica no sabe de React.
 
 | Paquete | Qué vive ahí |
 |---|---|
-| `packages/core` | Dinero, fechas, análisis, recurrencia, parser de cartola, fusión, cifrado. Sin dependencias de UI. |
-| `packages/db` | Esquema y repositorios sobre Drizzle + SQLite. |
-| `packages/ui` | Tokens de diseño y geometría de los gráficos. **El único lugar con colores hexadecimales.** |
-| `apps/mobile` | Expo + React Native. Android y web desde el mismo código. |
-| `tools/seed` | Generador de datos de prueba verosímiles. |
+| `core` | Dinero, fechas, análisis, recurrencia, cartola, fusión, cifrado. |
+| `db` | Esquema y repositorios sobre Drizzle + SQLite. |
+| `ui` | Tokens de diseño y geometría. Único lugar con colores hexadecimales. |
+| `apps/mobile` | Expo + React Native. Android y web del mismo código. |
+| `tools/seed` | Generador de datos de prueba. |
 
-Decisiones que conviene saber antes de tocar el código:
+Cuatro decisiones que conviene saber antes de tocar el código:
 
-- **El dinero son enteros.** `money()` rechaza cualquier cosa que no sea entero seguro; el
-  peso chileno no tiene decimales y un `0.1 + 0.2` en un saldo es inaceptable.
-- **Las fechas son `YYYY-MM-DD` con aritmética en UTC**, para esquivar el horario de verano
-  chileno.
-- **Nada se borra de verdad.** Cada fila lleva lápida, que es lo que hace que un borrado
+- **El dinero son enteros.** El peso no tiene decimales y un `0.1 + 0.2` en un saldo es
+  inaceptable.
+- **Fechas `YYYY-MM-DD` con aritmética en UTC**, para esquivar el horario de verano.
+- **Nada se borra de verdad**: cada fila lleva lápida, que es lo que hace que un borrado
   viaje al sincronizar.
-- **El orden lo da un HLC** (reloj lógico híbrido): el orden lexicográfico del `updatedAt`
-  es el orden causal, y por eso la fusión converge.
+- **El orden lo da un HLC**: el orden lexicográfico de `updatedAt` es el orden causal, y por
+  eso la fusión converge.
 
-## Publicar la versión web
+## Publicar
+
+Una versión nueva es una etiqueta; el resto lo hace GitHub Actions:
 
 ```bash
-npm run exportar:web
+git tag v0.2.0 && git push --tags
 ```
 
-Deja el sitio en `dist/`. **No sirve GitHub Pages**: SQLite en el navegador necesita
-`SharedArrayBuffer`, que exige las cabeceras `Cross-Origin-Opener-Policy` y
-`Cross-Origin-Embedder-Policy`, y Pages no permite ponerlas. Sin ellas la app carga y muere
-al abrir la base.
+La APK va firmada con la llave de depuración de Expo: sirve para instalar y compartir, no
+para la Play Store.
 
-Sí funcionan Cloudflare Pages y Netlify —leen el `_headers` que va incluido en el export— y
-Vercel, con el `vercel.json` de la raíz.
+Para la versión web, `npm run exportar:web` deja el sitio en `dist/`. **GitHub Pages no
+sirve**: SQLite en el navegador necesita `SharedArrayBuffer`, que exige las cabeceras
+`Cross-Origin-Opener-Policy` y `Cross-Origin-Embedder-Policy`, y Pages no deja ponerlas.
+Cloudflare Pages y Netlify leen el `_headers` incluido; Vercel usa el `vercel.json`.
 
 ## Privacidad
 
-Las cartolas reales llevan nombre, RUT y número de cuenta. Viven en `datos-privados/`, que
-está ignorado por partida doble: el directorio y el patrón del nombre. Lo único versionado
-es una cartola **sintética** que reproduce la estructura del banco con datos inventados.
+Las cartolas reales llevan nombre, RUT y número de cuenta: viven en `datos-privados/`,
+ignorado por partida doble. Lo único versionado es una cartola **sintética**.
+
+## Licencia
+
+[MIT](LICENSE).
