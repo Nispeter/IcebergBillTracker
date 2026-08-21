@@ -13,6 +13,14 @@
  * **No se exportan los ajustes.** Ahi vive la identidad del aparato —su
  * `deviceId`— y copiarla a otro telefono no es una feature, es un error: dos
  * dispositivos con el mismo id no pueden fusionar sus cambios.
+ *
+ * ## Respaldar y compartir no son lo mismo
+ *
+ * Un respaldo lleva **todo**: si perdieras el telefono querrias de vuelta
+ * tambien lo que no compartes con nadie. El archivo que se le pasa a otra
+ * persona, en cambio, tiene que dejar fuera las cuentas marcadas como privadas.
+ * Es la misma funcion con una opcion, y el valor por omision es el seguro:
+ * exportar sin decir nada exporta todo.
  */
 
 import { and, eq, isNull } from 'drizzle-orm';
@@ -23,6 +31,7 @@ import {
   type ReglaCategoria,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
+import { cuentasQueNoSincronizan } from './cuentas';
 import { RepositorioError } from './movimientos';
 
 /**
@@ -57,8 +66,60 @@ export interface Respaldo {
   readonly miembros: readonly Miembro[];
 }
 
-export function exportarRespaldo(db: BaseDeDatos, contexto: Contexto): Respaldo {
+export interface OpcionesDeRespaldo {
+  /**
+   * Deja fuera las cuentas que no sincronizan, y todo lo que cuelga de ellas.
+   * Solo para el archivo que se comparte; un respaldo de verdad nunca lo usa.
+   */
+  readonly soloSincronizables?: boolean;
+}
+
+/**
+ * Saca del respaldo todo lo que cuelga de las cuentas dadas.
+ *
+ * Se usa en **los dos sentidos**, y ahi esta la gracia: al exportar deja fuera
+ * lo privado, y al fusionar descarta lo que llegue de una cuenta que este
+ * aparato marco como privada. Sin la segunda mitad, la marca seria una promesa
+ * a medias: bastaria que el otro lado siguiera teniendo la cuenta compartida de
+ * antes para que sus cambios volvieran a entrar.
+ *
+ * Las instancias no tienen `cuentaId`: cuelgan de una regla. Se resuelven con
+ * las reglas del propio respaldo mas las que el llamador conozca --al fusionar,
+ * las locales--. Una instancia cuya regla no se puede ubicar **se conserva**:
+ * ante la duda, no perder datos.
+ */
+export function sinLasCuentas(
+  respaldo: Respaldo,
+  fuera: ReadonlySet<string>,
+  reglasConocidas: readonly Regla[] = [],
+): Respaldo {
+  if (fuera.size === 0) return respaldo;
+
+  const reglasFuera = new Set(
+    [...respaldo.reglas, ...reglasConocidas]
+      .filter((regla) => fuera.has(regla.cuentaId))
+      .map((regla) => regla.id),
+  );
+
   return {
+    ...respaldo,
+    cuentas: respaldo.cuentas.filter((c) => !fuera.has(c.id)),
+    movimientos: respaldo.movimientos.filter((m) => !fuera.has(m.cuentaId)),
+    reglas: respaldo.reglas.filter((r) => !fuera.has(r.cuentaId)),
+    lotes: respaldo.lotes.filter((l) => !fuera.has(l.cuentaId)),
+    instancias: respaldo.instancias.filter((i) => !reglasFuera.has(i.reglaId)),
+    // `reglasCategoria` y `miembros` son del hogar, no de una cuenta: no dicen
+    // cuanto gastaste sino como se llama cada aparato y como categorizar. Viajan
+    // siempre.
+  };
+}
+
+export function exportarRespaldo(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  opciones: OpcionesDeRespaldo = {},
+): Respaldo {
+  const completo: Respaldo = {
     version: VERSION_DE_RESPALDO,
     exportadoEn: new Date().toISOString(),
     householdId: contexto.householdId,
@@ -77,6 +138,10 @@ export function exportarRespaldo(db: BaseDeDatos, contexto: Contexto): Respaldo 
     miembros: db.select().from(miembros)
       .where(eq(miembros.householdId, contexto.householdId)).all() as Miembro[],
   };
+
+  return opciones.soloSincronizables
+    ? sinLasCuentas(completo, cuentasQueNoSincronizan(db, contexto))
+    : completo;
 }
 
 /** Cuantas filas trae un respaldo, para poder decirlo antes de restaurar. */

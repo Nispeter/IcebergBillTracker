@@ -22,6 +22,8 @@ export interface CambiosDeCuenta {
   readonly nombre?: string;
   readonly tipo?: TipoDeCuenta;
   readonly saldoInicialMinor?: number;
+  /** Ver la columna en el esquema: si la cuenta viaja al sincronizar. */
+  readonly sincroniza?: boolean;
 }
 
 function validarNombre(nombre: string): string {
@@ -75,12 +77,28 @@ export function editarCuenta(
   if (cambios.saldoInicialMinor !== undefined) {
     parche.saldoInicialMinor = money.money(cambios.saldoInicialMinor, 'CLP').amountMinor;
   }
+  if (cambios.sincroniza !== undefined) parche.sincroniza = cambios.sincroniza ? 1 : 0;
 
   db.update(cuentas).set(parche).where(eq(cuentas.id, id)).run();
   return obtenerCuenta(db, contexto, id);
 }
 
 /** Borrado logico: pone la lapida, no elimina la fila. */
+/**
+ * Las cuentas que **no** viajan al sincronizar, por id.
+ *
+ * Se lee con lapidas incluidas a proposito: una cuenta borrada aca no tiene por
+ * que aceptar de vuelta los movimientos que el otro lado todavia tenga.
+ */
+export function cuentasQueNoSincronizan(
+  db: BaseDeDatos,
+  contexto: Contexto,
+): ReadonlySet<string> {
+  const filas = db.select().from(cuentas)
+    .where(eq(cuentas.householdId, contexto.householdId)).all() as Cuenta[];
+  return new Set(filas.filter((c) => c.sincroniza === 0).map((c) => c.id));
+}
+
 export function borrarCuenta(db: BaseDeDatos, contexto: Contexto, id: string): boolean {
   if (obtenerCuenta(db, contexto, id) === null) return false;
   const ahora = contexto.ahora();

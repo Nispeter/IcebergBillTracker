@@ -23,10 +23,11 @@ import { eq } from 'drizzle-orm';
 import type { Contexto } from '../contexto';
 import {
   cuentas, instancias, lotes, miembros, movimientos, reglas, reglasCategoria,
-  type Miembro,
+  type Miembro, type Regla,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
-import { leerRespaldo, type Respaldo } from './respaldo';
+import { cuentasQueNoSincronizan } from './cuentas';
+import { leerRespaldo, sinLasCuentas, type Respaldo } from './respaldo';
 
 /** Lo que cambió en la base, por tabla y en total. */
 export interface ResultadoDeSincronizacion {
@@ -116,7 +117,13 @@ export function fusionarRespaldo(
   contexto: Contexto,
   crudo: unknown,
 ): ResultadoDeSincronizacion {
-  const respaldo = leerRespaldo(crudo);
+  // Lo que llegue de una cuenta que este aparato marco como privada se descarta
+  // antes de fusionar nada. Ver `sinLasCuentas`.
+  const respaldo = sinLasCuentas(
+    leerRespaldo(crudo),
+    cuentasQueNoSincronizan(db, contexto),
+    db.select().from(reglas).where(eq(reglas.householdId, contexto.householdId)).all() as Regla[],
+  );
   adelantarReloj(contexto, respaldo);
 
   const porTabla: Record<string, sync.ResumenDeFusion> = {};

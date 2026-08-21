@@ -14,6 +14,16 @@ export const CLAVE_DISPOSITIVO = 'deviceId';
 export const CLAVE_HOGAR = 'householdId';
 export const CLAVE_MIEMBRO = 'memberId';
 export const CLAVE_SEMILLA_CARGADA = 'semillaCargada';
+/**
+ * Con que cuenta abre la app.
+ *
+ * Vive en `ajustes` y no en la fila de la cuenta a proposito: **no se
+ * sincroniza**. Cual mirar primero es preferencia de cada telefono, y no tiene
+ * por que ser la misma para las dos personas que comparten un libro.
+ *
+ * Vacio o ausente significa "todas juntas".
+ */
+export const CLAVE_CUENTA_POR_DEFECTO = 'cuentaPorDefecto';
 
 export function leerAjuste(db: BaseDeDatos, clave: string): string | null {
   const filas = db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1).all();

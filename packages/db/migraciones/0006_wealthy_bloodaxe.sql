@@ -1,0 +1,1 @@
+ALTER TABLE `cuentas` ADD `sincroniza` integer DEFAULT 1 NOT NULL;

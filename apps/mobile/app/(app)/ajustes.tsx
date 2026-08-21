@@ -9,7 +9,7 @@
 import { crypto, dates, money } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, borrarTodo, contarRespaldo, crearCuenta,
-  deshacerLote, exportarRespaldo, fusionarRespaldo, leerAjuste, renombrarMiembro,
+  deshacerLote, editarCuenta, exportarRespaldo, fusionarRespaldo, leerAjuste, renombrarMiembro,
   restaurarRespaldo, type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
 import {
@@ -19,6 +19,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
+import { Star } from 'phosphor-react-native/src/icons/Star';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
@@ -27,6 +28,7 @@ import { useDatos } from '../../datos/BaseDeDatos';
 import {
   useCuentas, useLotes, useMiembros, useMovimientos, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
+import { useCuentaActiva } from '../../datos/cuenta';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
 import { elegirRespaldo, guardarRespaldo } from '../../datos/archivo';
 import { cargarSemilla } from '../../datos/semilla';
@@ -35,6 +37,7 @@ import { useTema } from '../../datos/tema';
 export default function Ajustes() {
   const { nombre: tema, theme, alternar } = useTema();
   const desplazamiento = useDesplazamiento();
+  const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { db, contexto } = useDatos();
   const periodo = usePeriodo();
@@ -66,9 +69,17 @@ export default function Ajustes() {
 
   const vacia = movimientos.length === 0;
 
-  async function exportar() {
+  /**
+   * Guarda un archivo con lo que hay.
+   *
+   * `soloSincronizables` distingue **respaldar** de **compartir**, que no son lo
+   * mismo: un respaldo lleva todo, porque si perdieras el telefono querrias de
+   * vuelta tambien lo privado; el archivo que se le pasa a otra persona deja
+   * fuera las cuentas marcadas como que no sincronizan.
+   */
+  async function exportar(soloSincronizables = false) {
     try {
-      const respaldo = exportarRespaldo(db, contexto);
+      const respaldo = exportarRespaldo(db, contexto, { soloSincronizables });
       const dia = respaldo.exportadoEn.slice(0, 10);
       const conFrase = frase.trim() !== '';
 
@@ -77,11 +88,17 @@ export default function Ajustes() {
       const contenido = conFrase
         ? JSON.stringify(crypto.cifrar(JSON.stringify(respaldo), frase))
         : JSON.stringify(respaldo);
-      const nombre = conFrase ? `iceberg-${dia}.cifrado.json` : `iceberg-${dia}.json`;
+      const que = soloSincronizables ? 'compartir' : 'iceberg';
+      const nombre = conFrase ? `${que}-${dia}.cifrado.json` : `${que}-${dia}.json`;
 
       await guardarRespaldo(nombre, contenido);
+      const fuera = cuentas.filter((c) => c.sincroniza === 0).length;
       setAviso(
-        `Respaldo con ${contarRespaldo(respaldo)} filas guardado como ${nombre}.`
+        `${soloSincronizables ? 'Archivo' : 'Respaldo'} con ${contarRespaldo(respaldo)} `
+        + `filas guardado como ${nombre}.`
+        + (soloSincronizables && fuera > 0
+          ? ` Quedaron fuera ${fuera === 1 ? 'una cuenta' : `${fuera} cuentas`}.`
+          : '')
         + (conFrase ? ' Sin la frase no se puede abrir.' : ''),
       );
     } catch (e) {
@@ -224,7 +241,9 @@ export default function Ajustes() {
           theme={theme}
           titulo="Sincronizar"
           ayuda={'Trae el respaldo del otro dispositivo sin borrar lo tuyo. Lo que esté en '
-            + 'los dos se resuelve por fecha de edición, y aquí se ve qué versión quedó.'}
+            + 'los dos se resuelve por fecha de edición, y aquí se ve qué versión quedó. '
+            + 'Las cuentas que marcaste como no compartidas no salen en el archivo, y '
+            + 'tampoco entran si el otro dispositivo todavía las manda.'}
         />
         <Pressable
           onPress={fusionar}
@@ -233,6 +252,14 @@ export default function Ajustes() {
           accessibilityLabel="Fusionar con otro dispositivo"
         >
           <Text style={styles.botonTexto}>Fusionar con un archivo</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => exportar(true)}
+          style={styles.botonSecundario}
+          accessibilityRole="button"
+          accessibilityLabel="Exportar un archivo para compartir"
+        >
+          <Text style={styles.botonTexto}>Exportar para compartir</Text>
         </Pressable>
 
         {conflictos.length === 0 ? null : (
@@ -263,22 +290,63 @@ export default function Ajustes() {
             + 'registres. Sin él, el saldo de la app no cuadra con el del banco.'}
         />
         {cuentas.map((cuenta) => (
-          <Link key={cuenta.id} href={{ pathname: '/cuenta/[id]', params: { id: cuenta.id } }} asChild>
+          <View key={cuenta.id} style={styles.cuenta}>
+            {/* La estrella va **fuera** del `Link`: dentro, tocarla navegaria a
+                editar la cuenta en vez de marcarla. Volver a tocar la marcada la
+                desmarca, y la app vuelve a abrir con todas juntas. */}
             <Pressable
-              style={styles.cuenta}
+              onPress={() => marcarPorDefecto(porDefecto === cuenta.id ? null : cuenta.id)}
+              hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={`Editar la cuenta ${cuenta.nombre}`}
+              accessibilityState={{ selected: porDefecto === cuenta.id }}
+              accessibilityLabel={porDefecto === cuenta.id
+                ? `${cuenta.nombre} es la cuenta con la que abre la app. Tocar para quitarla`
+                : `Abrir la app con ${cuenta.nombre}`}
             >
-              <View style={styles.loteTexto}>
-                <Text style={styles.loteArchivo} numberOfLines={1}>{cuenta.nombre}</Text>
-                <Text style={styles.loteDetalle}>
-                  {TIPOS_DE_CUENTA_LEGIBLES[cuenta.tipo]}
-                  {' · inicial '}{money.format(money.money(cuenta.saldoInicialMinor))}
-                </Text>
-              </View>
-              <Text style={styles.botonTexto}>Editar</Text>
+              <Star
+                size={16}
+                weight={porDefecto === cuenta.id ? 'fill' : 'regular'}
+                color={porDefecto === cuenta.id ? theme.acentoTexto : theme.silencio}
+              />
             </Pressable>
-          </Link>
+            <Link href={{ pathname: '/cuenta/[id]', params: { id: cuenta.id } }} asChild>
+              <Pressable
+                style={styles.cuentaTocable}
+                accessibilityRole="button"
+                accessibilityLabel={`Editar la cuenta ${cuenta.nombre}`}
+              >
+                <View style={styles.loteTexto}>
+                  <Text style={styles.loteArchivo} numberOfLines={1}>{cuenta.nombre}</Text>
+                  <Text style={styles.loteDetalle}>
+                    {TIPOS_DE_CUENTA_LEGIBLES[cuenta.tipo]}
+                    {' · inicial '}{money.format(money.money(cuenta.saldoInicialMinor))}
+                  </Text>
+                </View>
+                <Text style={styles.botonTexto}>Editar</Text>
+              </Pressable>
+            </Link>
+          </View>
+        ))}
+        {/* El interruptor va aca y no dentro de "Editar cuenta": lo que se
+            decide es como se relacionan las cuentas **entre si** al compartir,
+            y eso se entiende viendolas juntas. Con una sola cuenta no aparece:
+            no hay nada que separar de nada. */}
+        {cuentas.length < 2 ? null : cuentas.map((cuenta) => (
+          <Pressable
+            key={`sinc-${cuenta.id}`}
+            onPress={() => editarCuenta(db, contexto, cuenta.id, { sincroniza: cuenta.sincroniza === 0 })}
+            style={styles.fila}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: cuenta.sincroniza === 1 }}
+            accessibilityLabel={`Incluir ${cuenta.nombre} al compartir`}
+          >
+            <Text style={styles.etiqueta} numberOfLines={1}>
+              Compartir {cuenta.nombre}
+            </Text>
+            <Text style={cuenta.sincroniza === 1 ? styles.marcaSi : styles.marcaNo}>
+              {cuenta.sincroniza === 1 ? 'Sí' : 'No'}
+            </Text>
+          </Pressable>
         ))}
         <Link href={{ pathname: '/cuenta/[id]', params: { id: 'nueva' } }} asChild>
           <Pressable
@@ -299,7 +367,9 @@ export default function Ajustes() {
         />
         <View style={styles.acciones}>
           <Pressable
-            onPress={exportar}
+            // Sin la lambda, `Pressable` le pasa el evento como primer argumento
+            // y el respaldo saldria en modo compartir por accidente.
+            onPress={() => exportar()}
             style={styles.botonSecundario}
             accessibilityRole="button"
             accessibilityLabel="Exportar respaldo"
@@ -533,6 +603,20 @@ function crearEstilos(theme: Theme) {
       gap: spacing.lg,
       paddingVertical: 5,
     },
+    // La fila de cuenta ahora lleva la estrella al lado del enlace.
+    cuentaTocable: {
+      flex: 1, flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', gap: spacing.lg,
+    },
+    marcaSi: {
+      fontFamily: fonts.texto, fontWeight: pesos.medium,
+      fontSize: fontSizes.xs, color: theme.acentoTexto,
+    },
+    marcaNo: {
+      fontFamily: fonts.texto, fontWeight: pesos.medium,
+      fontSize: fontSizes.xs, color: theme.silencio,
+    },
+
     // Lo irreversible no puede verse igual que lo reversible: "Borrar todos los
     // datos" tenia el mismo borde y el mismo color que "Exportar".
     botonDestructivo: { borderColor: theme.vencido },

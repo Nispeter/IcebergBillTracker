@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Pinguino } from '../components/Pinguino';
 import { ProveedorDeDatos } from '../datos/BaseDeDatos';
 import { useFechaDeCorte } from '../datos/consultas';
+import { ProveedorDeCuenta } from '../datos/cuenta';
 import { ProveedorDeExplicacion } from '../datos/explicacion';
 import { ProveedorDePeriodo } from '../datos/periodo';
 import { ProveedorDeTema, useTema } from '../datos/tema';
@@ -82,6 +83,8 @@ function Contenido() {
         )}
       >
         <ConPeriodo>
+          {/* La cuenta activa es un alcance global, igual que el periodo. */}
+          <ProveedorDeCuenta>
           {/* Una sola hoja de explicaciones para toda la app: ver
               `datos/explicacion.tsx`. */}
           <ProveedorDeExplicacion theme={theme}>
@@ -98,6 +101,7 @@ function Contenido() {
               <Stack.Screen name="reglas-categoria" options={{ presentation: 'modal' }} />
             </Stack>
           </ProveedorDeExplicacion>
+          </ProveedorDeCuenta>
         </ConPeriodo>
       </ProveedorDeDatos>
       </SafeAreaProvider>

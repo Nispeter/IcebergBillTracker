@@ -27,15 +27,42 @@ import {
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
 import { useDatos } from './BaseDeDatos';
+import { useCuentaActiva } from './cuenta';
 
-/** Todos los movimientos vivos del hogar, del mas nuevo al mas viejo. */
+/**
+ * Aplica el alcance de cuenta a un filtro, sin pisar lo que ya venga puesto.
+ *
+ * Que el filtro explicito gane es a proposito: una pantalla que pide una cuenta
+ * concreta --el detalle de esa cuenta-- sabe mas que el alcance global.
+ */
+function conCuentaActiva(
+  filtro: FiltroDeMovimientos,
+  cuentaId: string | null,
+): FiltroDeMovimientos {
+  if (cuentaId === null || filtro.cuentaId !== undefined) return filtro;
+  return { ...filtro, cuentaId };
+}
+
+/**
+ * Todos los movimientos vivos del hogar, del mas nuevo al mas viejo.
+ *
+ * **Respeta la cuenta activa.** Casi todo el analisis de la app cuelga de aca
+ * --el resumen, las categorias, el calendario, las anomalias-- asi que filtrar
+ * en este punto deja todas esas vistas dentro del alcance sin que ninguna tenga
+ * que acordarse.
+ */
 export function useMovimientos(limite?: number): Movimiento[] {
   const { db, contexto } = useDatos();
+  const { cuentaId } = useCuentaActiva();
   const consulta = useMemo(
-    () => consultaDeMovimientos(db, contexto, limite === undefined ? {} : { limite }),
-    [db, contexto, limite],
+    () => consultaDeMovimientos(
+      db,
+      contexto,
+      conCuentaActiva(limite === undefined ? {} : { limite }, cuentaId),
+    ),
+    [db, contexto, limite, cuentaId],
   );
-  const { data } = useLiveQuery(consulta, [limite]);
+  const { data } = useLiveQuery(consulta, [limite, cuentaId]);
   return (data ?? []) as Movimiento[];
 }
 
@@ -218,8 +245,10 @@ export function useMovimientosDeRegla(rango: dates.DateRange): ReadonlySet<strin
  * El filtro va a SQL, no a un `.filter()` sobre todo lo cargado: con 50.000
  * movimientos la diferencia deja de ser academica.
  */
-export function useMovimientosFiltrados(filtro: FiltroDeMovimientos): Movimiento[] {
+export function useMovimientosFiltrados(entrada: FiltroDeMovimientos): Movimiento[] {
   const { db, contexto } = useDatos();
+  const { cuentaId } = useCuentaActiva();
+  const filtro = conCuentaActiva(entrada, cuentaId);
   const clave = JSON.stringify(filtro);
   const consulta = useMemo(
     () => consultaDeMovimientos(db, contexto, filtro),
@@ -241,8 +270,10 @@ export function useMovimientosFiltrados(filtro: FiltroDeMovimientos): Movimiento
  * movimientos —el largo de la lista alcanza como senal— o cuando cambia el
  * filtro.
  */
-export function useResumenDeFiltro(filtro: FiltroDeMovimientos): ResumenDeFiltro {
+export function useResumenDeFiltro(entrada: FiltroDeMovimientos): ResumenDeFiltro {
   const { db, contexto } = useDatos();
+  const { cuentaId } = useCuentaActiva();
+  const filtro = conCuentaActiva(entrada, cuentaId);
   const clave = JSON.stringify(filtro);
   const consulta = useMemo(
     () => consultaDeResumen(db, contexto, filtro),
@@ -261,10 +292,22 @@ export function useCuentas(): Cuenta[] {
   return (data ?? []) as Cuenta[];
 }
 
-/** Suma de los saldos iniciales de todas las cuentas. */
+/**
+ * Saldo inicial de la cuenta activa, o suma de todas si el alcance es "todas".
+ *
+ * Tiene que seguir al alcance igual que los movimientos: un saldo que sumara
+ * todas las cuentas mientras la lista muestra una sola daria una cifra que no
+ * corresponde a nada.
+ */
 export function useSaldoInicial(): number {
   const cuentas = useCuentas();
-  return useMemo(() => cuentas.reduce((s, c) => s + c.saldoInicialMinor, 0), [cuentas]);
+  const { cuentaId } = useCuentaActiva();
+  return useMemo(
+    () => cuentas
+      .filter((c) => cuentaId === null || c.id === cuentaId)
+      .reduce((s, c) => s + c.saldoInicialMinor, 0),
+    [cuentas, cuentaId],
+  );
 }
 
 /**

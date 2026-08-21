@@ -43,6 +43,13 @@
       "when": 1787227359350,
       "tag": "0005_even_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787322188727,
+      "tag": "0006_wealthy_bloodaxe",
+      "breakpoints": true
     }
   ]
 }

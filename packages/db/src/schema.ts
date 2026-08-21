@@ -43,6 +43,17 @@ export const cuentas = sqliteTable('cuentas', {
   moneda: text('moneda').notNull().default('CLP'),
   /** Saldo con que arranca la cuenta, entero en la unidad menor. */
   saldoInicialMinor: integer('saldo_inicial_minor').notNull().default(0),
+  /**
+   * Si esta cuenta viaja al sincronizar. 1 por omision.
+   *
+   * Existe para poder tener un libro compartido y otro que no: las cuentas de la
+   * casa se comparten con quien corresponda y las personales se quedan en el
+   * telefono. La marca es **local a cada aparato** aunque viaje en la fila: lo
+   * que decide si algo entra o sale es siempre la marca del lado que exporta o
+   * fusiona, nunca la que venga en el archivo. Si no fuera asi, el otro lado
+   * podria volver a compartir una cuenta que uno acaba de sacar.
+   */
+  sincroniza: integer('sincroniza').notNull().default(1),
 }, (tabla) => [
   index('cuentas_hogar_idx').on(tabla.householdId, tabla.deletedAt),
 ]);
