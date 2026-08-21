@@ -53,6 +53,9 @@ import { useTema } from '../../datos/tema';
 /** El alto del hielo. Es la pieza mas grande de la pantalla, y tiene que serlo. */
 const ALTO_HIELO = 240;
 
+/** Lo que ocupa un porcentaje escrito. Si su franja no lo tiene, no se dibuja. */
+const ALTO_ETIQUETA = 30;
+
 export default function Resumen() {
   const { theme } = useTema();
   const desplazamiento = useDesplazamiento();
@@ -75,6 +78,20 @@ export default function Resumen() {
 
   const variable = money.subtract(a.resumen.gasto, a.fijo);
   const share = money.ratio(a.fijo, a.resumen.gasto) ?? 0;
+  const yLinea = alturaDeLineaDeAgua(share, ALTO_HIELO);
+
+  /**
+   * Donde va cada porcentaje, o `null` si no cabe.
+   *
+   * Los dos se colocan respecto de la linea de agua, y con la linea en un
+   * extremo la etiqueta se salia de la escena: en un periodo sin gastos el
+   * `share` es 0, la linea queda pegada al borde de arriba y el "0%" se dibujaba
+   * **encima del saldo**. Ademas un periodo sin un solo gasto no tiene reparto
+   * que mostrar: 0% y 100% de cero no significan nada.
+   */
+  const hayGasto = !money.isZero(a.resumen.gasto);
+  const arriba = hayGasto && yLinea >= ALTO_ETIQUETA ? yLinea - ALTO_ETIQUETA : null;
+  const abajo = hayGasto && ALTO_HIELO - yLinea >= ALTO_ETIQUETA ? yLinea + 12 : null;
 
   const detalle = cifra === null ? null
     : detalleDe(cifra, { delPeriodo, resumen: a.resumen, fijo: a.fijo, variable, desglose, deRegla });
@@ -116,7 +133,10 @@ export default function Resumen() {
               dibujarLinea={false}
             />
           </View>
-          <View style={[styles.lineaDeAgua, { top: alturaDeLineaDeAgua(share, ALTO_HIELO) }]} />
+          {/* Sin gastos no hay reparto, y sin reparto no hay nivel que marcar:
+              la linea quedaba pegada al borde de arriba, suelta bajo el saldo,
+              afirmando una division que no existe. */}
+          {hayGasto ? <View style={[styles.lineaDeAgua, { top: yLinea }]} /> : null}
 
           {/*
             Los porcentajes van **dentro** del hielo, no en la leyenda.
@@ -126,12 +146,16 @@ export default function Resumen() {
             y el agua junto a la superficie es un cian claro. Con blanco no
             servia --sobre el cian da 2,4:1--.
           */}
-          <Text style={[styles.parteEnElHielo, { top: alturaDeLineaDeAgua(share, ALTO_HIELO) - 32 }]}>
-            {Math.round(share * 100)}%
-          </Text>
-          <Text style={[styles.parteEnElHielo, { top: alturaDeLineaDeAgua(share, ALTO_HIELO) + 14 }]}>
-            {Math.round((1 - share) * 100)}%
-          </Text>
+          {arriba === null ? null : (
+            <Text style={[styles.parteEnElHielo, { top: arriba }]}>
+              {Math.round(share * 100)}%
+            </Text>
+          )}
+          {abajo === null ? null : (
+            <Text style={[styles.parteEnElHielo, { top: abajo }]}>
+              {Math.round((1 - share) * 100)}%
+            </Text>
+          )}
         </View>
 
         {/*

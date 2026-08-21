@@ -27,6 +27,7 @@ import { X } from 'phosphor-react-native/src/icons/X';
 import type { IconProps } from 'phosphor-react-native';
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pinguino } from './Pinguino';
 
 interface Destino {
@@ -50,7 +51,9 @@ const OPACIDAD_VELO = 0.82;
 export function Sidebar(
   { theme, abierta, onCerrar }: { theme: Theme; abierta: boolean; onCerrar: () => void },
 ) {
-  const styles = crearEstilos(theme);
+  // El panel ocupa la pantalla entera, asi que su marca queda bajo el reloj si
+  // no se descuenta el margen del sistema. Ver `Pantalla`.
+  const styles = crearEstilos(theme, useSafeAreaInsets());
   const router = useRouter();
   const ruta = usePathname();
 
@@ -132,7 +135,7 @@ export function Sidebar(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, margenes: { top: number }) {
   const lleno = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
   return StyleSheet.create({
     capa: { ...lleno, flexDirection: 'row', zIndex: capas.lateral },
@@ -142,7 +145,7 @@ function crearEstilos(theme: Theme) {
       width: ANCHO,
       height: '100%',
       paddingHorizontal: spacing.md,
-      paddingTop: spacing.xl,
+      paddingTop: spacing.xl + margenes.top,
       gap: 2,
       backgroundColor: theme.superficie,
       borderRightWidth: elevation.hairlineWidth,

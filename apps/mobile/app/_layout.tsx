@@ -8,6 +8,7 @@ import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Pinguino } from '../components/Pinguino';
 import { ProveedorDeDatos } from '../datos/BaseDeDatos';
 import { useFechaDeCorte } from '../datos/consultas';
@@ -51,6 +52,14 @@ function Contenido() {
   // y las hojas de @gorhom/bottom-sheet funcionen (swipe en filas, drill-down).
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/*
+        `edgeToEdgeEnabled` hace que la app dibuje **debajo** de la barra de
+        estado y de la de gestos. En web no hay ninguna de las dos, asi que esto
+        no se noto hasta abrirla en el telefono: el encabezado quedaba tapado por
+        el reloj y la señal. El proveedor mide esos margenes; quien los aplica es
+        `Pantalla`.
+      */}
+      <SafeAreaProvider>
       <ProveedorDeDatos
         cargando={
           <View style={centro}>
@@ -89,6 +98,7 @@ function Contenido() {
           </ProveedorDeExplicacion>
         </ConPeriodo>
       </ProveedorDeDatos>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

@@ -29,6 +29,7 @@ import { List } from 'phosphor-react-native/src/icons/List';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
@@ -45,7 +46,10 @@ export function Pantalla(
   },
 ) {
   const { nombre: tema, theme } = useTema();
-  const styles = crearEstilos(theme);
+  // Sin esto el encabezado se dibuja debajo del reloj y el flotante debajo de la
+  // barra de gestos: la app va a pantalla completa por `edgeToEdgeEnabled`.
+  const margenes = useSafeAreaInsets();
+  const styles = crearEstilos(theme, margenes);
   const [menuAbierto, setMenuAbierto] = useState(false);
   // Ver `FilaMovimiento`: dentro de `Link asChild` el estilo tiene que ser un
   // objeto aplanado, asi que el estado de presion se lleva a mano.
@@ -137,7 +141,7 @@ export function Pantalla(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }) {
   return StyleSheet.create({
     raiz: { flex: 1, backgroundColor: theme.fondo },
     /**
@@ -150,7 +154,7 @@ function crearEstilos(theme: Theme) {
      */
     marco: {
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
+      paddingTop: spacing.lg + margenes.top,
       paddingBottom: spacing.sm,
       maxWidth: 480,
       width: '100%',
@@ -176,7 +180,7 @@ function crearEstilos(theme: Theme) {
     flotanteCaja: {
       position: 'absolute',
       left: spacing.lg,
-      bottom: spacing.lg,
+      bottom: spacing.lg + margenes.bottom,
       zIndex: capas.flotante,
     },
     flotante: {
