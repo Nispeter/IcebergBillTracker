@@ -45,6 +45,14 @@ const palette = {
   // alcanzaba a leerse y el fondo quedaba como pizarra sucia. Se subio a 11% y
   // se corrio el matiz a 216 para que sea un azul de medianoche de verdad, y se
   // separo mas la superficie del fondo para que una hoja o un menu se despeguen.
+  /**
+   * Ojo: este valor esta **repetido a mano** en `apps/mobile/app.json`, como
+   * `backgroundColor` de la ventana de Android. Es la unica copia fuera de este
+   * archivo y no hay forma de evitarla: `app.json` es configuracion estatica y
+   * no puede importar nada. La ventana es el ultimo plano bajo la app --debajo
+   * de todo lo que React dibuja-- y en blanco asomaba en cada transicion de
+   * pantalla. Si este color cambia, hay que cambiarlo alla tambien.
+   */
   nochePolar: '#0E192A',
   superficieNoche: '#16253D',
   tintaClara: '#E6F1F8',

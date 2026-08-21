@@ -17,7 +17,6 @@ import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MapeoDeColumnas } from '../components/MapeoDeColumnas';
@@ -25,6 +24,7 @@ import { useDatos } from '../datos/BaseDeDatos';
 import { elegirCartola } from '../datos/archivo';
 import { volver } from '../datos/navegacion';
 import { useTema } from '../datos/tema';
+import { PantallaModal } from '../components/PantallaModal';
 
 interface Leido {
   readonly nombre: string;
@@ -39,7 +39,7 @@ interface Archivo {
 }
 
 export default function Importar() {
-  const { nombre: tema, theme } = useTema();
+  const { theme } = useTema();
   const styles = crearEstilos(theme);
   const { db, contexto } = useDatos();
   const router = useRouter();
@@ -120,8 +120,7 @@ export default function Importar() {
   }
 
   return (
-    <View style={styles.raiz}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <PantallaModal>
       <ScrollView contentContainerStyle={styles.contenido}>
         <View style={styles.encabezado}>
           <Text style={styles.titulo}>Importar cartola</Text>
@@ -195,7 +194,7 @@ export default function Importar() {
           </Text>
         ) : null}
       </ScrollView>
-    </View>
+    </PantallaModal>
   );
 }
 
@@ -266,7 +265,6 @@ function Dato(
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    raiz: { flex: 1, backgroundColor: theme.fondo },
     contenido: {
       paddingHorizontal: spacing.xl,
       paddingBottom: spacing.xxxl,

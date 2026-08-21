@@ -18,12 +18,12 @@ import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
+import { PantallaModal } from '../../components/PantallaModal';
 
 const NOMBRES: Record<TipoDeCuenta, string> = {
   corriente: 'Corriente',
@@ -34,7 +34,7 @@ const NOMBRES: Record<TipoDeCuenta, string> = {
 };
 
 export default function EditarCuenta() {
-  const { nombre: tema, theme } = useTema();
+  const { theme } = useTema();
   const styles = crearEstilos(theme);
   const { db, contexto } = useDatos();
   const router = useRouter();
@@ -75,16 +75,14 @@ export default function EditarCuenta() {
 
   if (!esNueva && cuenta === null) {
     return (
-      <View style={styles.raiz}>
-        <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+      <PantallaModal>
         <Text style={styles.ayuda}>Esa cuenta ya no existe.</Text>
-      </View>
+      </PantallaModal>
     );
   }
 
   return (
-    <View style={styles.raiz}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <PantallaModal>
       <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
         <View style={styles.encabezado}>
           <Text style={styles.titulo}>{esNueva ? 'Nueva cuenta' : 'Editar cuenta'}</Text>
@@ -187,13 +185,12 @@ export default function EditarCuenta() {
           </Pressable>
         )}
       </ScrollView>
-    </View>
+    </PantallaModal>
   );
 }
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    raiz: { flex: 1, backgroundColor: theme.fondo },
     contenido: {
       paddingHorizontal: spacing.xl,
       paddingBottom: spacing.xxxl,

@@ -2,16 +2,15 @@
 
 import { crearRegla, listarCuentas } from '@iceberg/db';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { View } from 'react-native';
 import { FormularioRegla, type ValoresDeRegla } from '../../components/FormularioRegla';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
+import { PantallaModal } from '../../components/PantallaModal';
 
 export default function NuevaRegla() {
-  const { nombre: tema, theme } = useTema();
+  const { theme } = useTema();
   const { db, contexto } = useDatos();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +30,7 @@ export default function NuevaRegla() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.fondo }}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <PantallaModal>
       <FormularioRegla
         theme={theme}
         titulo="Nueva cuenta periódica"
@@ -40,6 +38,6 @@ export default function NuevaRegla() {
         onCancelar={() => volver(router)}
         error={error}
       />
-    </View>
+    </PantallaModal>
   );
 }

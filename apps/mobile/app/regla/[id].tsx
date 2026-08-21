@@ -3,16 +3,16 @@
 import type { categories, dates, recurrence } from '@iceberg/core';
 import { borrarRegla, editarRegla, obtenerRegla } from '@iceberg/db';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { FormularioRegla, type ValoresDeRegla } from '../../components/FormularioRegla';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
+import { PantallaModal } from '../../components/PantallaModal';
 
 export default function EditarRegla() {
-  const { nombre: tema, theme } = useTema();
+  const { theme } = useTema();
   const { db, contexto } = useDatos();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,16 +25,14 @@ export default function EditarRegla() {
 
   if (regla === null) {
     return (
-      <View style={fondo}>
-        <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+      <PantallaModal>
         <Text style={{ padding: 24, color: theme.silencio }}>Esa cuenta periódica ya no existe.</Text>
-      </View>
+      </PantallaModal>
     );
   }
 
   return (
-    <View style={fondo}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <PantallaModal>
       <FormularioRegla
         theme={theme}
         titulo="Editar cuenta periódica"
@@ -63,6 +61,6 @@ export default function EditarRegla() {
         }}
         error={error}
       />
-    </View>
+    </PantallaModal>
   );
 }

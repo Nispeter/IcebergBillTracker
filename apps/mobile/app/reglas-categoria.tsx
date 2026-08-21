@@ -21,7 +21,6 @@ import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { Trash } from 'phosphor-react-native/src/icons/Trash';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -32,12 +31,13 @@ import { useDatos } from '../datos/BaseDeDatos';
 import { useMovimientos, useReglasDeCategoria } from '../datos/consultas';
 import { volver } from '../datos/navegacion';
 import { useTema } from '../datos/tema';
+import { PantallaModal } from '../components/PantallaModal';
 
 /** Cuantos nombres sin reconocer se ofrecen. Mas que esto es una lista, no una ayuda. */
 const SUGERENCIAS = 8;
 
 export default function ReglasDeCategoria() {
-  const { nombre: tema, theme } = useTema();
+  const { theme } = useTema();
   const styles = crearEstilos(theme);
   const { db, contexto } = useDatos();
   const router = useRouter();
@@ -94,8 +94,7 @@ export default function ReglasDeCategoria() {
   }
 
   return (
-    <View style={styles.raiz}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <PantallaModal>
       <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
         <View style={styles.encabezado}>
           <Text style={styles.titulo}>Reglas de categoría</Text>
@@ -230,13 +229,12 @@ export default function ReglasDeCategoria() {
           </>
         ) : null}
       </ScrollView>
-    </View>
+    </PantallaModal>
   );
 }
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    raiz: { flex: 1, backgroundColor: theme.fondo },
     contenido: {
       paddingHorizontal: spacing.xl,
       paddingBottom: spacing.xxxl,

@@ -4,16 +4,16 @@ import type { categories, dates } from '@iceberg/core';
 import { borrarMovimiento, editarMovimiento, obtenerMovimiento } from '@iceberg/db';
 import { fontSizes, fonts, pesos, spacing } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../../components/FormularioMovimiento';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
+import { PantallaModal } from '../../components/PantallaModal';
 
 export default function EditarMovimiento() {
-  const { nombre: tema, theme } = useTema();
+  const { theme } = useTema();
 
   const { db, contexto } = useDatos();
   const router = useRouter();
@@ -62,8 +62,7 @@ export default function EditarMovimiento() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.fondo }}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <PantallaModal>
       <FormularioMovimiento
         theme={theme}
         titulo="Editar movimiento"
@@ -79,6 +78,6 @@ export default function EditarMovimiento() {
         onBorrar={borrar}
         error={error}
       />
-    </View>
+    </PantallaModal>
   );
 }

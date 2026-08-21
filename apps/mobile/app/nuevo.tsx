@@ -2,16 +2,15 @@
 
 import { listarCuentas, crearMovimiento } from '@iceberg/db';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../components/FormularioMovimiento';
 import { useDatos } from '../datos/BaseDeDatos';
 import { useTema } from '../datos/tema';
 import { volver } from '../datos/navegacion';
+import { PantallaModal } from '../components/PantallaModal';
 
 export default function NuevoMovimiento() {
-  const { nombre: tema, theme } = useTema();
+  const { theme } = useTema();
 
   const { db, contexto } = useDatos();
   const router = useRouter();
@@ -32,8 +31,7 @@ export default function NuevoMovimiento() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.fondo }}>
-      <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
+    <PantallaModal>
       <FormularioMovimiento
         theme={theme}
         titulo="Nuevo movimiento"
@@ -41,6 +39,6 @@ export default function NuevoMovimiento() {
         onCancelar={() => volver(router)}
         error={error}
       />
-    </View>
+    </PantallaModal>
   );
 }
