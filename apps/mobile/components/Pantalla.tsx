@@ -106,7 +106,13 @@ export function Pantalla(
               <Text style={styles.marca}>ICEBERG</Text>
             </View>
           ) : (
-            <View style={styles.periodo}><BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} /></View>
+            <>
+              <View style={styles.periodo}><BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} /></View>
+              {/* Un hueco del ancho del menu, al otro lado. Sin el, el periodo se
+                  centra en el espacio que sobra despues del boton y queda corrido
+                  media hamburguesa a la derecha. */}
+              <View style={styles.boton} />
+            </>
           )}
         </View>
       </View>

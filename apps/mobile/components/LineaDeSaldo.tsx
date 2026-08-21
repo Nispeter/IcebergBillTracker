@@ -70,12 +70,22 @@ export function LineaDeSaldo(
   const valores = serie.map((d) => d.saldo.amountMinor);
   const maximo = Math.max(...valores);
   const minimo = Math.min(...valores);
-  // Un periodo sin ningun movimiento es una recta; sin este piso el divisor
-  // seria cero y todos los puntos caerian en NaN.
+  /**
+   * Un periodo sin movimientos es una recta: el saldo no cambia en todo el mes.
+   *
+   * Hay que tratarlo aparte y no solo evitar la division por cero. Con el piso de
+   * `|| 1`, la proporcion de todos los puntos daba 0 y la recta se dibujaba
+   * **pegada al borde de abajo**, como si el saldo hubiera tocado fondo. Plana va
+   * al medio, que es lo unico que se puede afirmar cuando no hay rango.
+   */
+  const plano = maximo === minimo;
   const alcance = maximo - minimo || 1;
 
   const x = (indice: number) => (indice / (serie.length - 1)) * Math.max(ancho, 1);
-  const y = (valor: number) => MARGEN + (1 - (valor - minimo) / alcance) * (ALTO - MARGEN * 2);
+  const y = (valor: number) => {
+    const parte = plano ? 0.5 : 1 - (valor - minimo) / alcance;
+    return MARGEN + parte * (ALTO - MARGEN * 2);
+  };
 
   const trazo = valores.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(v)}`).join(' ');
   const relleno = `${trazo} L${ancho},${ALTO} L0,${ALTO} Z`;
@@ -85,8 +95,15 @@ export function LineaDeSaldo(
   const cierre = serie[serie.length - 1]!;
   const cruzaCero = minimo < 0 && maximo >= 0;
 
-  /** Las marcas del eje vertical. El cero solo si la curva lo cruza. */
-  const marcas = cruzaCero ? [maximo, 0, minimo] : [maximo, minimo];
+  /**
+   * Las marcas del eje vertical. El cero solo si la curva lo cruza.
+   *
+   * Sin de-duplicar, dos marcas pueden coincidir y React recibe dos hijos con la
+   * misma `key`. Pasa en dos casos reales: un periodo sin ningun movimiento
+   * --donde el saldo no se mueve, asi que techo y piso son el mismo numero-- y
+   * uno que termina justo en cero, donde el techo **es** el cero.
+   */
+  const marcas = [...new Set(cruzaCero ? [maximo, 0, minimo] : [maximo, minimo])];
 
   return (
     <View>
