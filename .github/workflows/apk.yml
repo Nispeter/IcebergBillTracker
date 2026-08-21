@@ -50,6 +50,14 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Recompilar el binario nativo de SQLite
+        # `better-sqlite3` trae binarios precompilados, y el que baja no calza
+        # con el Node del runner: el proceso de prueba se cae **sin mensaje**,
+        # solo "Worker exited unexpectedly", y pasan unicamente los archivos que
+        # no abren la base. Compilarlo aca contra el Node que se va a usar lo
+        # resuelve; el runner ya trae las herramientas.
+        run: npm rebuild better-sqlite3 --build-from-source
+
       - name: Revisar tipos y pruebas
         # Antes de compilar: una APK que no pasa las pruebas no vale la pena
         # esperarla diez minutos.
