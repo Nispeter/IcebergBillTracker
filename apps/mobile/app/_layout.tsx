@@ -1,3 +1,8 @@
+// Primero de todo y por su efecto: instala `crypto.getRandomValues`, que Hermes
+// no trae y que `ulid` necesita para el identificador de la primera fila. Sin
+// esto la app arranca y muere en "No se pudo abrir la base".
+import '../datos/aleatorio';
+
 import { fontSizes, fonts, pesos, spacing } from '@iceberg/ui';
 import { Stack } from 'expo-router';
 import type { ReactNode } from 'react';
