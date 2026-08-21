@@ -12,20 +12,29 @@
  * y se queda ahi. El menu es donde ya viven las decisiones de "que estoy
  * mirando", y ademas se abre entero.
  *
- * Por eso mismo aca es una **lista y no un desplegable**: el menu ya es una capa
- * sobre la pantalla, y abrir un desplegable adentro seria capa sobre capa para
- * mostrar tres opciones que caben a la vista. Se toca la que se quiere y el menu
- * se cierra, igual que con cualquier destino.
+ * ## Fichas, no una lista
+ *
+ * El primer intento aca fue una lista de filas, y el problema fue que se veia
+ * **igual que la lista de destinos** justo debajo: el menu entero pasaba a ser
+ * una sola columna larga donde no se distinguia "a donde voy" de "que estoy
+ * mirando". Las fichas tienen otra forma --pildoras, en linea, envolviendo-- y
+ * viven dentro de un panel hundido, asi que se leen como un control y no como
+ * mas navegacion. De paso ocupan dos lineas en vez de cuatro.
+ *
+ * Un desplegable no servia: el menu ya es una capa sobre la pantalla, y abrir
+ * otro adentro seria capa sobre capa para elegir entre tres cosas que caben a la
+ * vista.
  */
 
 import { fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Panel } from './Panel';
 import { useCuentas } from '../datos/consultas';
 import { useCuentaActiva } from '../datos/cuenta';
 
-/** Lo que se muestra cuando el alcance son todas juntas. */
-const TODAS = 'Todas las cuentas';
+/** Corto a proposito: en una ficha, "Todas las cuentas" ocuparia dos lineas. */
+const TODAS = 'Todas';
 
 export function SelectorDeCuenta(
   { theme, alCerrar }: { theme: Theme; alCerrar: () => void },
@@ -61,58 +70,61 @@ export function SelectorDeCuenta(
   ];
 
   return (
-    <View style={styles.bloque}>
+    <Panel theme={theme} estilo={styles.panel}>
       <Text style={styles.titulo}>Cuenta</Text>
-      {opciones.map((opcion) => {
-        const activa = opcion.valor === cuentaId;
-        return (
-          <Pressable
-            key={opcion.valor ?? 'todas'}
-            onPress={() => { elegir(opcion.valor); alCerrar(); }}
-            style={({ pressed }) => [
-              styles.fila,
-              activa && styles.filaActiva,
-              pressed && styles.filaApretada,
-            ]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: activa }}
-            accessibilityLabel={`Ver ${opcion.etiqueta}`}
-          >
-            <Text style={activa ? styles.nombreActivo : styles.nombre} numberOfLines={1}>
-              {opcion.etiqueta}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+      <View style={styles.fichas}>
+        {opciones.map((opcion) => {
+          const activa = opcion.valor === cuentaId;
+          return (
+            <Pressable
+              key={opcion.valor ?? 'todas'}
+              onPress={() => { elegir(opcion.valor); alCerrar(); }}
+              style={({ pressed }) => [
+                styles.ficha,
+                activa && styles.fichaActiva,
+                pressed && styles.fichaApretada,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activa }}
+              accessibilityLabel={`Ver ${opcion.etiqueta === TODAS ? 'todas las cuentas' : opcion.etiqueta}`}
+            >
+              <Text style={activa ? styles.textoActivo : styles.texto} numberOfLines={1}>
+                {opcion.etiqueta}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Panel>
   );
 }
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
-    bloque: { paddingBottom: spacing.md, gap: 1 },
+    panel: { marginBottom: spacing.md, gap: spacing.sm },
     titulo: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: 10,
-      color: theme.silencio,
-      paddingHorizontal: spacing.sm,
-      paddingBottom: spacing.xs,
+      color: theme.silencioHondo,
     },
-    fila: {
-      paddingVertical: spacing.sm,
+    fichas: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    ficha: {
+      paddingVertical: 5,
       paddingHorizontal: spacing.sm,
-      borderRadius: radii.sm,
+      borderRadius: radii.full,
+      borderWidth: 1,
+      borderColor: theme.hairline,
     },
-    filaActiva: { backgroundColor: theme.superficieHonda },
-    filaApretada: { opacity: 0.6 },
-    nombre: {
+    fichaActiva: { backgroundColor: theme.acento, borderColor: theme.acento },
+    fichaApretada: { opacity: 0.6 },
+    texto: {
       fontFamily: fonts.texto, fontWeight: pesos.regular,
-      fontSize: fontSizes.xs, color: theme.silencio,
+      fontSize: 11, color: theme.silencioHondo,
     },
-    nombreActivo: {
+    textoActivo: {
       fontFamily: fonts.texto, fontWeight: pesos.medium,
-      fontSize: fontSizes.xs, color: theme.tinta,
+      fontSize: 11, color: theme.sobreAcento,
     },
   });
 }

@@ -169,21 +169,20 @@ export default function Ajustes() {
           ayuda={'Cada movimiento guarda quién lo escribió. Ponerle nombre a este teléfono '
             + 'hace que al sincronizar se pueda ver de quién viene cada versión.'}
         />
-        {miembros.map((miembro: Miembro) => {
-          const soyYo = miembro.id === identidadDelMiembro;
-          return (
-            <View key={miembro.id} style={styles.lote}>
-              <View style={styles.loteTexto}>
-                <Text style={styles.loteArchivo} numberOfLines={1}>{miembro.nombre}</Text>
-                <Text style={styles.loteDetalle}>
-                  {soyYo ? 'Este teléfono' : 'Otro dispositivo'}
-                </Text>
-              </View>
+        {/* Solo los **otros** dispositivos se listan. El propio no: su nombre ya
+            esta abajo, dentro del campo que lo edita, y mostrarlo dos veces era
+            la mitad del desorden de esta seccion --y un subrayado de mas--. */}
+        {miembros.filter((m: Miembro) => m.id !== identidadDelMiembro).map((miembro: Miembro) => (
+          <View key={miembro.id} style={styles.lote}>
+            <View style={styles.loteTexto}>
+              <Text style={styles.loteArchivo} numberOfLines={1}>{miembro.nombre}</Text>
+              <Text style={styles.loteDetalle}>Otro dispositivo</Text>
             </View>
-          );
-        })}
+          </View>
+        ))}
         {yo === undefined ? null : (
           <>
+            <Text style={styles.etiqueta}>Este teléfono</Text>
             <TextInput
               value={nombrePropio ?? yo.nombre}
               onChangeText={setNombrePropio}
@@ -245,22 +244,26 @@ export default function Ajustes() {
             + 'Las cuentas que marcaste como no compartidas no salen en el archivo, y '
             + 'tampoco entran si el otro dispositivo todavía las manda.'}
         />
-        <Pressable
-          onPress={fusionar}
-          style={styles.botonSecundario}
-          accessibilityRole="button"
-          accessibilityLabel="Fusionar con otro dispositivo"
-        >
-          <Text style={styles.botonTexto}>Fusionar con un archivo</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => exportar(true)}
-          style={styles.botonSecundario}
-          accessibilityRole="button"
-          accessibilityLabel="Exportar un archivo para compartir"
-        >
-          <Text style={styles.botonTexto}>Exportar para compartir</Text>
-        </Pressable>
+        {/* En columna y con aire: los dos textos son largos y no caben en una
+            fila, pero apilados sin separacion se leian como un solo bloque. */}
+        <View style={styles.accionesEnColumna}>
+          <Pressable
+            onPress={fusionar}
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel="Fusionar con otro dispositivo"
+          >
+            <Text style={styles.botonTexto}>Fusionar con un archivo</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => exportar(true)}
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel="Exportar un archivo para compartir"
+          >
+            <Text style={styles.botonTexto}>Exportar para compartir</Text>
+          </Pressable>
+        </View>
 
         {conflictos.length === 0 ? null : (
           <View style={styles.conflictos}>
@@ -639,6 +642,9 @@ function crearEstilos(theme: Theme) {
     loteDetalle: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     deshacerTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
     acciones: { flexDirection: 'row', gap: spacing.sm },
+    // Los botones se dimensionan por su contenido, asi que el contenedor los
+    // alinea a la izquierda en vez de estirarlos a lo ancho.
+    accionesEnColumna: { gap: spacing.sm, alignItems: 'flex-start' },
     entradaFrase: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
@@ -663,13 +669,13 @@ function crearEstilos(theme: Theme) {
     conflicto: { gap: 1 },
     conflictoGana: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
     conflictoPierde: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textDecorationLine: 'line-through' },
+    // Sin subrayado: la estrella, las dos lineas de texto y el "Editar" ya
+    // separan una cuenta de la siguiente.
     cuenta: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.md,
       paddingVertical: spacing.sm,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
     },
     botonSecundario: {
       paddingVertical: spacing.sm,
