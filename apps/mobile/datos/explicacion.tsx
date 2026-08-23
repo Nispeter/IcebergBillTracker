@@ -14,7 +14,7 @@
  * cuando dijo que prefiere como muestra la informacion la `i` del saldo.
  */
 
-import { fontSizes, fonts, pesos, type Theme } from '@iceberg/ui';
+import { fontSizes, fonts, pesos, trozosConEnfasis, type Theme } from '@iceberg/ui';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Hoja } from '../components/Hoja';
@@ -45,7 +45,22 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
         theme={theme}
         onCerrar={() => setAbierta(null)}
       >
-        <Text style={styles.texto}>{abierta?.texto ?? ''}</Text>
+        {/*
+          Un solo `Text` con los trozos adentro, no uno por trozo: anidados
+          heredan el estilo y siguen siendo el mismo parrafo, asi que el salto de
+          linea cae donde tiene que caer. Uno por trozo los pondria uno debajo
+          del otro.
+        */}
+        <Text style={styles.texto}>
+          {trozosConEnfasis(abierta?.texto ?? '').map((trozo, indice) => (
+            // El indice como clave es correcto aca: la lista se rehace entera
+            // cada vez que cambia el texto y no se reordena nunca.
+            // eslint-disable-next-line react/no-array-index-key
+            <Text key={indice} style={trozo.fuerte ? styles.fuerte : undefined}>
+              {trozo.texto}
+            </Text>
+          ))}
+        </Text>
       </Hoja>
     </Contexto.Provider>
   );
@@ -60,5 +75,8 @@ function crearEstilos(theme: Theme) {
       lineHeight: 22,
       color: theme.tinta,
     },
+    // Solo el peso: cambiar ademas el color haria que el enfasis pareciera un
+    // enlace, y en una hoja de ayuda no hay a donde ir.
+    fuerte: { fontWeight: pesos.semibold },
   });
 }
