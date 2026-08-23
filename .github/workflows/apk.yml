@@ -93,6 +93,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: iceberg.apk
+          # Agrega la lista de commits desde la etiqueta anterior, debajo del
+          # texto de abajo. Sirve para saber que cambio antes de instalar.
+          generate_release_notes: true
           body: |
             Instálala desde el teléfono. Android va a pedir permiso para
             "instalar apps de origen desconocido": es porque no viene de la Play
