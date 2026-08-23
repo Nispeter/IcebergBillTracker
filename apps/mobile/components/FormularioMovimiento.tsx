@@ -23,6 +23,12 @@ export interface ValoresDelFormulario {
   readonly ocurridoEn: dates.PlainDate;
   readonly nombre: string;
   readonly categoriaId: categories.CategoryId | null;
+  /**
+   * Si es un compromiso fijo. `null` deja que la app lo deduzca.
+   *
+   * Ver la columna en el esquema: la categoria es mal indicio por si sola.
+   */
+  readonly comprometido: boolean | null;
 }
 
 export interface FormularioMovimientoProps {
@@ -49,6 +55,9 @@ export function FormularioMovimiento({
   const [fecha, setFecha] = useState<string>(inicial?.ocurridoEn ?? dates.today());
   const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(
     inicial?.categoriaId ?? null,
+  );
+  const [comprometido, setComprometido] = useState<boolean | null>(
+    inicial?.comprometido ?? null,
   );
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
   const [eligiendoCategoria, setEligiendoCategoria] = useState(false);
@@ -180,6 +189,45 @@ export function FormularioMovimiento({
         </Campo>
       ) : null}
 
+      {/*
+        Que clase de gasto es, no de que rubro.
+        Va pegado a la categoria porque es la pregunta que sigue, y porque la
+        categoria sola no alcanza: dentro de vivienda estan el arriendo --que
+        llega igual-- y un desatornillador que uno decidio comprar.
+
+        Sin tocar nada queda en automatico: la app deduce por la regla que lo
+        creo y por la categoria. Elegir cualquiera de los dos lo fija.
+      */}
+      {pideCategoria ? (
+        <Campo styles={styles} etiqueta="Qué clase de gasto">
+          <View style={styles.selector}>
+            {[
+              { valor: null, texto: 'Automático' },
+              { valor: true, texto: 'Comprometido' },
+              { valor: false, texto: 'Variable' },
+            ].map((opcion) => (
+              <Pressable
+                key={String(opcion.valor)}
+                onPress={() => setComprometido(opcion.valor)}
+                style={[styles.opcion, comprometido === opcion.valor && styles.opcionActiva]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: comprometido === opcion.valor }}
+                accessibilityLabel={opcion.texto}
+              >
+                <Text style={comprometido === opcion.valor ? styles.opcionTextoActivo : styles.opcionTexto}>
+                  {opcion.texto}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.ayuda}>
+            Comprometido llega igual —arriendo, cuentas, cuotas—. Variable es lo que
+            decides tú. En automático se deduce de la categoría y de si nació de una
+            cuenta periódica.
+          </Text>
+        </Campo>
+      ) : null}
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Pressable
@@ -191,6 +239,7 @@ export function FormularioMovimiento({
             ocurridoEn: fechaParseada,
             nombre,
             categoriaId: pideCategoria ? categoriaId : null,
+            comprometido: pideCategoria ? comprometido : null,
           });
         }}
         disabled={!puedeGuardar}

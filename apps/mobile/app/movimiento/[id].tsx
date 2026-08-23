@@ -72,6 +72,8 @@ export default function EditarMovimiento() {
           ocurridoEn: movimiento.ocurridoEn as dates.PlainDate,
           nombre: movimiento.nombre,
           categoriaId: movimiento.categoriaId as categories.CategoryId | null,
+          // La columna guarda 0, 1 o nulo; el formulario habla en booleanos.
+          comprometido: movimiento.comprometido === null ? null : movimiento.comprometido === 1,
         }}
         onGuardar={guardar}
         onCancelar={() => volver(router)}

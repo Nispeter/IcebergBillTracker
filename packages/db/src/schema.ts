@@ -82,6 +82,20 @@ export const movimientos = sqliteTable('movimientos', {
    * dispositivo, la fila entra igual y la UI muestra el id crudo.
    */
   categoriaId: text('categoria_id'),
+  /**
+   * Si este gasto es un compromiso fijo. **Nulo significa "deducilo tu"**.
+   *
+   * La deduccion mira si el movimiento nacio de una cuenta periodica y, si no,
+   * su categoria. Funciona de entrada pero se equivoca seguido, porque la
+   * categoria es mal indicio: dentro de vivienda conviven el arriendo --que
+   * llega igual-- y un desatornillador que uno decidio comprar. Son la misma
+   * categoria y no son la misma clase de gasto.
+   *
+   * Por eso la columna admite tres estados y no dos: `null` deja que la app
+   * decida, `1` y `0` son la persona diciendo que no. Un movimiento nuevo nace
+   * en `null`, asi que nada cambia hasta que alguien corrija algo.
+   */
+  comprometido: integer('comprometido'),
   notas: text('notas'),
   /** El lote de importacion del que vino, o null si se creo a mano. */
   loteId: text('lote_id'),

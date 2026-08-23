@@ -210,6 +210,10 @@ export function esGastoComprometido(
   movimiento: Movimiento,
   deRegla: ReadonlySet<string>,
 ): boolean {
+  // La marca del movimiento gana sobre todo lo demas, incluso sobre haber
+  // nacido de una regla: si alguien se tomo el trabajo de corregirlo, sabe mas
+  // que cualquier deduccion nuestra.
+  if (movimiento.comprometido !== null) return movimiento.comprometido === 1;
   return deRegla.has(movimiento.id) || esComprometido(movimiento.categoriaId);
 }
 

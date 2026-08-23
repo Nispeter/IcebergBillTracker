@@ -1,0 +1,1 @@
+ALTER TABLE `movimientos` ADD `comprometido` integer;

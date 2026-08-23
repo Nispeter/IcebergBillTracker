@@ -50,6 +50,13 @@
       "when": 1787322188727,
       "tag": "0006_wealthy_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1787454205700,
+      "tag": "0007_orange_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

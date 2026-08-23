@@ -24,6 +24,8 @@ export interface DatosDeMovimiento {
   readonly ocurridoEn: dates.PlainDate;
   readonly nombre: string;
   readonly categoriaId?: string | null;
+  /** Ver la columna: `null` deja que la app lo deduzca. */
+  readonly comprometido?: boolean | null;
   readonly notas?: string | null;
 }
 
@@ -34,6 +36,7 @@ export interface CambiosDeMovimiento {
   readonly ocurridoEn?: dates.PlainDate;
   readonly nombre?: string;
   readonly categoriaId?: string | null;
+  readonly comprometido?: boolean | null;
   readonly notas?: string | null;
 }
 
@@ -85,6 +88,10 @@ export function crearMovimiento(
     ocurridoEn: datos.ocurridoEn,
     nombre: validarNombre(datos.nombre),
     categoriaId: datos.categoriaId ?? null,
+    // Nulo salvo que alguien lo diga: por omision la app lo deduce.
+    comprometido: datos.comprometido === undefined || datos.comprometido === null
+      ? null
+      : Number(datos.comprometido),
     notas: datos.notas ?? null,
     // Lo cargado a mano no viene de ningun archivo.
     loteId: null,
@@ -182,6 +189,9 @@ export function editarMovimiento(
   if (cambios.ocurridoEn !== undefined) parche.ocurridoEn = cambios.ocurridoEn;
   if (cambios.nombre !== undefined) parche.nombre = validarNombre(cambios.nombre);
   if (cambios.categoriaId !== undefined) parche.categoriaId = cambios.categoriaId;
+  if (cambios.comprometido !== undefined) {
+    parche.comprometido = cambios.comprometido === null ? null : Number(cambios.comprometido);
+  }
   if (cambios.notas !== undefined) parche.notas = cambios.notas;
 
   db.update(movimientos).set(parche).where(eq(movimientos.id, id)).run();
