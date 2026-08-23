@@ -38,7 +38,7 @@
  * pone su propio `cuentaId` en el filtro y ese gana.
  */
 
-import { CLAVE_CUENTA_POR_DEFECTO, escribirAjuste, leerAjuste } from '@iceberg/db';
+import { CLAVE_CUENTA_POR_DEFECTO, escribirAjuste, leerAjuste, listarCuentas } from '@iceberg/db';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useDatos } from './BaseDeDatos';
 
@@ -60,13 +60,28 @@ const Contexto = createContext<ValorDeCuenta>({
 });
 
 export function ProveedorDeCuenta({ children }: { children: ReactNode }) {
-  const { db } = useDatos();
+  const { db, contexto } = useDatos();
 
-  // La lectura va dentro del inicializador: `useState` solo lo corre en el
-  // primer render, y si no seria una consulta a la base en cada uno.
-  const [cuentaId, elegir] = useState<string | null>(
-    () => leerAjuste(db, CLAVE_CUENTA_POR_DEFECTO) || null,
-  );
+  /**
+   * Con que cuenta abrir cuando nadie eligio estrella.
+   *
+   * **La primera creada, no "todas".** El consolidado es la vista rara: quien
+   * tiene dos libros separados quiere ver uno, y arrancar sumandolos obliga a
+   * elegir en cada arranque. Y quien tiene una sola cuenta --la mayoria-- no
+   * nota ninguna diferencia, porque una cuenta sumada es esa misma cuenta.
+   *
+   * Se listan aca con `listarCuentas`, que es una funcion suelta sobre la base y
+   * no un hook: usar `useCuentas` traeria el ciclo que este archivo evita.
+   */
+  const inicial = () => {
+    const guardada = leerAjuste(db, CLAVE_CUENTA_POR_DEFECTO);
+    if (guardada) return guardada;
+    return listarCuentas(db, contexto)[0]?.id ?? null;
+  };
+
+  // Dentro del inicializador: `useState` solo lo corre en el primer render, y si
+  // no seria una consulta a la base en cada uno.
+  const [cuentaId, elegir] = useState<string | null>(inicial);
   const [porDefecto, setPorDefecto] = useState<string | null>(
     () => leerAjuste(db, CLAVE_CUENTA_POR_DEFECTO) || null,
   );

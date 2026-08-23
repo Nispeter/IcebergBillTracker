@@ -39,7 +39,11 @@ function crearEstilos(theme: Theme) {
     panel: {
       backgroundColor: theme.superficieHonda,
       borderRadius: radii.md,
-      paddingVertical: spacing.sm,
+      // Mas abajo que arriba, y no por capricho: la ultima fila quedaba pegada
+      // al borde del panel mientras la primera tenia el titulo de la seccion
+      // dandole aire. Sin esto el grupo se lee cortado por abajo.
+      paddingTop: spacing.md,
+      paddingBottom: spacing.lg,
       paddingHorizontal: spacing.md,
     },
   });

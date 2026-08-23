@@ -77,26 +77,50 @@ export default function DiaADia() {
         <Titulo
           texto="Por día de la semana"
           theme={theme}
-          ayuda={'Promedio por vez que cayó ese día dentro del período. Un mes tiene '
-            + 'cuatro o cinco de cada uno, así que sumar sin promediar haría ganar '
-            + 'siempre al día que se repitió más veces.'}
+          ayuda={'La barra y la cifra grande son el **promedio por vez** que cayó ese '
+            + 'día en el período. Se promedia porque un mes tiene cuatro o cinco de cada '
+            + 'uno, y sumar sin promediar haría ganar siempre al que se repitió más.\n\n'
+            + 'Debajo va cuántas veces cayó y cuánto suma en total: son los que dicen si '
+            + 'un promedio alto es un hábito o una sola compra grande.\n\n'
+            + 'El día marcado es el de mayor promedio.'}
         />
 
-        {porDiaDeSemana.map((fila) => (
-          <View key={fila.dia} style={styles.filaSemana}>
-            <Text style={styles.nombreDia}>{NOMBRES[fila.dia - 1]}</Text>
-            <View style={styles.pista}>
-              <View
-                style={[
-                  styles.relleno,
-                  { flex: Math.max(fila.promedio.amountMinor / mayorPromedio, 0.001) },
-                ]}
-              />
-              <View style={{ flex: Math.max(1 - (fila.promedio.amountMinor / mayorPromedio), 0.001) }} />
+        {/*
+          Cada fila dice tres cosas y no una.
+          El promedio solo no se puede interpretar: 142.400 un miercoles puede ser
+          cinco miercoles parecidos o uno solo con el arriendo. El total y las
+          veces son lo que distingue un habito de una casualidad, y el analisis ya
+          los calculaba --`gastoPorDiaDeSemana` devuelve `total` y `cantidad`--;
+          la pantalla simplemente los tiraba a la basura.
+        */}
+        {porDiaDeSemana.map((fila) => {
+          const parte = fila.promedio.amountMinor / mayorPromedio;
+          const esElMayor = fila.promedio.amountMinor === mayorPromedio && mayorPromedio > 1;
+          return (
+            <View key={fila.dia} style={styles.diaSemana}>
+              <View style={styles.filaSemana}>
+                <Text style={esElMayor ? styles.nombreDiaMayor : styles.nombreDia}>
+                  {NOMBRES[fila.dia - 1]}
+                </Text>
+                <View style={styles.pista}>
+                  <View style={[
+                    styles.relleno,
+                    esElMayor && styles.rellenoMayor,
+                    { flex: Math.max(parte, 0.001) },
+                  ]} />
+                  <View style={{ flex: Math.max(1 - parte, 0.001) }} />
+                </View>
+                <Text style={styles.montoDia}>{money.formatNumber(fila.promedio)}</Text>
+              </View>
+              <Text style={styles.detalleDia}>
+                {fila.cantidad === 0
+                  ? 'no cayó ninguno en este período'
+                  : `${fila.cantidad} ${fila.cantidad === 1 ? 'vez' : 'veces'}`
+                    + ` · ${money.format(fila.total)} en total`}
+              </Text>
             </View>
-            <Text style={styles.montoDia}>{money.formatNumber(fila.promedio)}</Text>
-          </View>
-        ))}
+          );
+        })}
 
         <Titulo texto="Detalle" theme={theme} />
         <Panel theme={theme}>
@@ -135,8 +159,19 @@ function crearEstilos(theme: Theme) {
 
     // Elevada para que la burbuja de la ayuda tape lo que viene debajo.
 
-    filaSemana: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 3 },
+    diaSemana: { paddingVertical: 5 },
+    filaSemana: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     nombreDia: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    // El dia mas caro se marca: es lo que uno viene a buscar a este grafico.
+    nombreDiaMayor: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    rellenoMayor: { backgroundColor: theme.acento },
+    detalleDia: {
+      marginLeft: 72 + spacing.sm,
+      fontFamily: fonts.texto,
+      fontWeight: pesos.regular,
+      fontSize: 10,
+      color: theme.silencio,
+    },
     pista: { flex: 1, flexDirection: 'row', height: 6 },
     relleno: { backgroundColor: charts[0], borderRadius: radii.sm },
     montoDia: { width: 62, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
