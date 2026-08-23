@@ -6,9 +6,9 @@
  * depurar cuando algo no cuadra entre dos telefonos.
  */
 
-import { crypto, dates, money } from '@iceberg/core';
+import { categories, crypto, dates, money } from '@iceberg/core';
 import {
-  CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, borrarTodo, contarRespaldo, crearCuenta,
+  CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, escribirAjuste, borrarTodo, contarRespaldo, crearCuenta,
   HogarAjenoError, deshacerLote, editarCuenta, exportarRespaldo, fusionarRespaldo,
   leerAjuste, renombrarMiembro, unirseAHogar,
   restaurarRespaldo, type ConflictoLegible, type Lote, type Miembro,
@@ -21,6 +21,7 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
 import { Star } from 'phosphor-react-native/src/icons/Star';
+import { Interruptor } from '../../components/Interruptor';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
@@ -30,6 +31,7 @@ import {
   useCuentas, useLotes, useMiembros, useMovimientos, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
 import { useCuentaActiva } from '../../datos/cuenta';
+import { useComprometidas } from '../../datos/consultas';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
 import { elegirRespaldo, guardarRespaldo } from '../../datos/archivo';
 import { cargarSemilla } from '../../datos/semilla';
@@ -40,6 +42,7 @@ export default function Ajustes() {
   const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
+  const comprometidas = useComprometidas();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { db, contexto, cambiarHogar } = useDatos();
   const periodo = usePeriodo();
@@ -464,6 +467,46 @@ export default function Ajustes() {
         <Seccion
           styles={styles}
           theme={theme}
+          titulo="Categorías"
+          ayuda={'Cada categoría trae un tipo por omisión, y es solo eso: una suposición '
+            + 'para no tener que clasificar a mano cada gasto.\n\n'
+            + 'Comprometido es lo que llega igual --arriendo, cuentas, cuotas--; variable '
+            + 'es lo que decides tú.\n\n'
+            + 'Cámbialas si no te calzan: hay quien paga el arriendo con tarjeta y lo '
+            + 'lleva en Deudas, y quien ahorra cuando sobra en vez de todos los meses.\n\n'
+            + 'Un gasto suelto se puede corregir sin tocar esto, con el interruptor que '
+            + 'está al lado de la categoría al crearlo o editarlo.'}
+        />
+        <Panel theme={theme}>
+          {categories.CATEGORIES.map((categoria) => {
+            const esCompromiso = comprometidas.has(categoria.id);
+            return (
+              <View key={categoria.id} style={styles.fila}>
+                <Text style={styles.etiqueta} numberOfLines={1}>{categoria.nombre}</Text>
+                <View style={styles.claseDeCategoria}>
+                  <Text style={styles.etiqueta}>
+                    {esCompromiso ? 'Comprometido' : 'Variable'}
+                  </Text>
+                  <Interruptor
+                    theme={theme}
+                    encendido={esCompromiso}
+                    accesible={`${categoria.nombre}: ${esCompromiso ? 'comprometido' : 'variable'}`}
+                    onCambiar={(valor) => {
+                      const siguiente = new Set(comprometidas);
+                      if (valor) siguiente.add(categoria.id);
+                      else siguiente.delete(categoria.id);
+                      escribirAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS, JSON.stringify([...siguiente]));
+                    }}
+                  />
+                </View>
+              </View>
+            );
+          })}
+        </Panel>
+
+        <Seccion
+          styles={styles}
+          theme={theme}
           titulo="Respaldo"
           ayuda={'Exportar guarda todo en un archivo: hazlo antes de cambiar de teléfono '
             + 'o de borrar la app, porque la base vive solo aquí y no hay copia en ninguna '
@@ -750,6 +793,8 @@ function crearEstilos(theme: Theme) {
       fontFamily: fonts.texto, fontWeight: pesos.regular,
       fontSize: fontSizes.xs, lineHeight: 18, color: theme.tinta,
     },
+
+    claseDeCategoria: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 
     // Lo irreversible no puede verse igual que lo reversible: "Borrar todos los
     // datos" tenia el mismo borde y el mismo color que "Exportar".

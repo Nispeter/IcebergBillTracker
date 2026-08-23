@@ -44,7 +44,7 @@ import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import {
-  esGastoComprometido, useAnalisisDeRango, useAnomalias, useDesgloseDelSaldo,
+  esGastoComprometido, useAnalisisDeRango, useAnomalias, useComprometidas, useDesgloseDelSaldo,
   useMovimientosDeRegla, useMovimientosFiltrados, useSaldoInicial, type DesgloseDelSaldo,
 } from '../../datos/consultas';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
@@ -76,6 +76,7 @@ export default function Resumen() {
   const anomalias = useAnomalias();
   const deRegla = useMovimientosDeRegla(rango);
   const [cifra, setCifra] = useState<Cifra | null>(null);
+  const comprometidas = useComprometidas();
 
   const variable = money.subtract(a.resumen.gasto, a.fijo);
   const share = money.ratio(a.fijo, a.resumen.gasto) ?? 0;
@@ -105,7 +106,9 @@ export default function Resumen() {
     : null;
 
   const detalle = cifra === null ? null
-    : detalleDe(cifra, { delPeriodo, resumen: a.resumen, fijo: a.fijo, variable, desglose, deRegla });
+    : detalleDe(cifra, {
+      delPeriodo, resumen: a.resumen, fijo: a.fijo, variable, desglose, deRegla, comprometidas,
+    });
 
   return (
     <Pantalla>
@@ -279,9 +282,10 @@ function detalleDe(
     variable: money.Money;
     desglose: DesgloseDelSaldo;
     deRegla: ReadonlySet<string>;
+    comprometidas: ReadonlySet<string>;
   },
 ): Detalle {
-  const { delPeriodo, resumen, fijo, variable, desglose, deRegla } = datos;
+  const { delPeriodo, resumen, fijo, variable, desglose, deRegla, comprometidas } = datos;
   const mayorPrimero = (lista: readonly Movimiento[]) =>
     [...lista].sort((x, y) => y.montoMinor - x.montoMinor);
   const gastos = delPeriodo.filter((m) => m.tipo === 'gasto');
@@ -313,7 +317,7 @@ function detalleDe(
         ],
       };
     case 'comprometido': {
-      const lista = gastos.filter((m) => esGastoComprometido(m, deRegla));
+      const lista = gastos.filter((m) => esGastoComprometido(m, deRegla, comprometidas));
       return {
         total: fijo,
         formula: 'Lo que llega igual: todo gasto que nació de una cuenta periódica, más '
@@ -322,7 +326,7 @@ function detalleDe(
       };
     }
     case 'variable': {
-      const lista = gastos.filter((m) => !esGastoComprometido(m, deRegla));
+      const lista = gastos.filter((m) => !esGastoComprometido(m, deRegla, comprometidas));
       return {
         total: variable,
         formula: 'Todo el gasto que no es un compromiso fijo: lo que decides tú, uno por uno.',

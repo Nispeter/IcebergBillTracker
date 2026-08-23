@@ -9,11 +9,17 @@
 import { categories, dates, money } from '@iceberg/core';
 import type { TipoDeMovimiento } from '@iceberg/db';
 import {
+  capas,
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  type StyleProp, type ViewStyle,
+} from 'react-native';
 import { ConDesplegable } from './ConDesplegable';
+import { Interruptor } from './Interruptor';
+import { esComprometido, useComprometidas } from '../datos/consultas';
 import { ChipDisparador, ListaDeOpciones } from './SelectorDesplegable';
 import { iconoDeCategoria } from './iconos';
 
@@ -56,9 +62,19 @@ export function FormularioMovimiento({
   const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(
     inicial?.categoriaId ?? null,
   );
+  /**
+   * `null` significa **que nadie lo toco**, no "variable".
+   *
+   * Mientras siga nulo, el interruptor muestra lo que la app deduce y al guardar
+   * se manda nulo, asi que la deduccion sigue mandando y el movimiento se
+   * reclasifica solo si cambia de categoria. En cuanto alguien lo mueve, la
+   * decision queda fija.
+   */
   const [comprometido, setComprometido] = useState<boolean | null>(
     inicial?.comprometido ?? null,
   );
+  const comprometidas = useComprometidas();
+  const esCompromisoAhora = comprometido ?? esComprometido(categoriaId, comprometidas);
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
   const [eligiendoCategoria, setEligiendoCategoria] = useState(false);
 
@@ -154,7 +170,7 @@ export function FormularioMovimiento({
       </Campo>
 
       {pideCategoria ? (
-        <Campo styles={styles} etiqueta="Categoría">
+        <Campo styles={styles} etiqueta="Categoría" estilo={styles.campoDeCategoria}>
           <ConDesplegable
             abierto={eligiendoCategoria}
             disparador={(
@@ -172,6 +188,25 @@ export function FormularioMovimiento({
                       : `Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`
                   }
                 />
+                {/*
+                  Al otro extremo de la misma fila: la categoria dice de que
+                  rubro es y el interruptor que clase de gasto es. Son la misma
+                  pregunta mirada de dos maneras, y separarlas en dos secciones
+                  hacia parecer que una dependia de la otra.
+                */}
+                <View style={styles.claseDeGasto}>
+                  <Text style={styles.claseTexto}>
+                    {esCompromisoAhora ? 'Comprometido' : 'Variable'}
+                  </Text>
+                  <Interruptor
+                    theme={theme}
+                    encendido={esCompromisoAhora}
+                    onCambiar={setComprometido}
+                    accesible={esCompromisoAhora
+                      ? 'Comprometido. Tocar para marcarlo como variable'
+                      : 'Variable. Tocar para marcarlo como comprometido'}
+                  />
+                </View>
               </View>
             )}
             panel={(
@@ -186,45 +221,6 @@ export function FormularioMovimiento({
               />
             )}
           />
-        </Campo>
-      ) : null}
-
-      {/*
-        Que clase de gasto es, no de que rubro.
-        Va pegado a la categoria porque es la pregunta que sigue, y porque la
-        categoria sola no alcanza: dentro de vivienda estan el arriendo --que
-        llega igual-- y un desatornillador que uno decidio comprar.
-
-        Sin tocar nada queda en automatico: la app deduce por la regla que lo
-        creo y por la categoria. Elegir cualquiera de los dos lo fija.
-      */}
-      {pideCategoria ? (
-        <Campo styles={styles} etiqueta="Qué clase de gasto">
-          <View style={styles.selector}>
-            {[
-              { valor: null, texto: 'Automático' },
-              { valor: true, texto: 'Comprometido' },
-              { valor: false, texto: 'Variable' },
-            ].map((opcion) => (
-              <Pressable
-                key={String(opcion.valor)}
-                onPress={() => setComprometido(opcion.valor)}
-                style={[styles.opcion, comprometido === opcion.valor && styles.opcionActiva]}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: comprometido === opcion.valor }}
-                accessibilityLabel={opcion.texto}
-              >
-                <Text style={comprometido === opcion.valor ? styles.opcionTextoActivo : styles.opcionTexto}>
-                  {opcion.texto}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.ayuda}>
-            Comprometido llega igual —arriendo, cuentas, cuotas—. Variable es lo que
-            decides tú. En automático se deduce de la categoría y de si nació de una
-            cuenta periódica.
-          </Text>
         </Campo>
       ) : null}
 
@@ -273,9 +269,12 @@ export function FormularioMovimiento({
 
 type Estilos = ReturnType<typeof crearEstilos>;
 
-function Campo({ styles, etiqueta, children }: { styles: Estilos; etiqueta: string; children: ReactNode }) {
+function Campo(
+  { styles, etiqueta, children, estilo }:
+  { styles: Estilos; etiqueta: string; children: ReactNode; estilo?: StyleProp<ViewStyle> },
+) {
   return (
-    <View style={styles.campo}>
+    <View style={[styles.campo, estilo]}>
       <Text style={styles.etiqueta}>{etiqueta}</Text>
       {children}
     </View>
@@ -315,7 +314,22 @@ function crearEstilos(theme: Theme) {
     opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.fondo },
 
     campo: { gap: spacing.sm },
-    filaChip: { flexDirection: 'row' },
+    /**
+     * Elevado para que la lista de categorias se abra **encima** de lo que
+     * sigue. `ConDesplegable` ya se eleva, pero solo compite dentro de su propio
+     * contexto de apilado: sin esto, el interruptor y el boton de guardar
+     * --que vienen despues en el orden del documento-- se dibujaban sobre la
+     * lista abierta.
+     */
+    campoDeCategoria: { zIndex: capas.desplegable },
+    filaChip: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    claseDeGasto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    claseTexto: {
+      fontFamily: fonts.texto,
+      fontWeight: pesos.regular,
+      fontSize: fontSizes.xs,
+      color: theme.silencio,
+    },
     etiqueta: {
       fontFamily: fonts.texto,
       fontWeight: pesos.medium,

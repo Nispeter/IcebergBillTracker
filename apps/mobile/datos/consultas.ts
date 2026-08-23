@@ -22,6 +22,7 @@ import {
   consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
   consultaDeResumen, resumenDesde,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
+  CLAVE_CATEGORIAS_COMPROMETIDAS, consultaDeAjuste,
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
@@ -148,6 +149,7 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
   const movimientos = useMovimientos();
   const claveRango = `${rango.kind}:${rango.start}:${rango.end}`;
   const deRegla = useMovimientosDeRegla(rango);
+  const comprometidas = useComprometidas();
 
   return useMemo(() => {
     const analizables: analytics.MovimientoAnalizable[] = movimientos.map((m) => ({
@@ -174,13 +176,13 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
         movimientos
           .filter((m) => m.tipo === 'gasto'
             && dates.containsDate(rango, m.ocurridoEn as dates.PlainDate)
-            && esGastoComprometido(m, deRegla))
+            && esGastoComprometido(m, deRegla, comprometidas))
           .reduce((s, m) => s + m.montoMinor, 0),
         'CLP',
       ),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movimientos, deRegla, claveRango, hoy]);
+  }, [movimientos, deRegla, comprometidas, claveRango, hoy]);
 }
 
 /**
@@ -192,11 +194,44 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
  * entero bajo el agua. A medida que el usuario crea sus reglas, esta mitad va
  * pesando menos sola.
  */
-const COMPROMETIDAS = new Set(['vivienda', 'servicios', 'deudas', 'ahorros', 'impuestos']);
+export const COMPROMETIDAS_POR_OMISION: readonly string[] = [
+  'vivienda', 'servicios', 'deudas', 'ahorros', 'impuestos',
+];
+
+/**
+ * Que categorias cuentan como compromiso, segun lo que haya elegido el usuario.
+ *
+ * Reactiva a proposito: se edita en Ajustes y el Resumen tiene que recalcular
+ * sin que haya que salir y volver a entrar.
+ */
+export function useComprometidas(): ReadonlySet<string> {
+  const { db } = useDatos();
+  const consulta = useMemo(
+    () => consultaDeAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS),
+    [db],
+  );
+  const { data } = useLiveQuery(consulta);
+  const crudo = data?.[0]?.valor;
+
+  return useMemo(() => {
+    if (crudo === undefined) return new Set(COMPROMETIDAS_POR_OMISION);
+    try {
+      const lista = JSON.parse(crudo) as unknown;
+      // Una lista vacia es una eleccion valida --"ninguna categoria es
+      // compromiso por si sola"--, asi que no se cae de vuelta a la de omision.
+      return Array.isArray(lista) ? new Set(lista.map(String)) : new Set(COMPROMETIDAS_POR_OMISION);
+    } catch {
+      return new Set(COMPROMETIDAS_POR_OMISION);
+    }
+  }, [crudo]);
+}
 
 /** Si un gasto de esa categoria cuenta como compromiso fijo. */
-export function esComprometido(categoriaId: string | null): boolean {
-  return categoriaId !== null && COMPROMETIDAS.has(categoriaId);
+export function esComprometido(
+  categoriaId: string | null,
+  comprometidas: ReadonlySet<string> = new Set(COMPROMETIDAS_POR_OMISION),
+): boolean {
+  return categoriaId !== null && comprometidas.has(categoriaId);
 }
 
 /**
@@ -209,12 +244,13 @@ export function esComprometido(categoriaId: string | null): boolean {
 export function esGastoComprometido(
   movimiento: Movimiento,
   deRegla: ReadonlySet<string>,
+  comprometidas?: ReadonlySet<string>,
 ): boolean {
   // La marca del movimiento gana sobre todo lo demas, incluso sobre haber
   // nacido de una regla: si alguien se tomo el trabajo de corregirlo, sabe mas
   // que cualquier deduccion nuestra.
   if (movimiento.comprometido !== null) return movimiento.comprometido === 1;
-  return deRegla.has(movimiento.id) || esComprometido(movimiento.categoriaId);
+  return deRegla.has(movimiento.id) || esComprometido(movimiento.categoriaId, comprometidas);
 }
 
 /**

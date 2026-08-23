@@ -25,9 +25,33 @@ export const CLAVE_SEMILLA_CARGADA = 'semillaCargada';
  */
 export const CLAVE_CUENTA_POR_DEFECTO = 'cuentaPorDefecto';
 
+/**
+ * Que categorias cuentan como compromiso fijo, en JSON.
+ *
+ * Era una lista fija en el codigo --vivienda, servicios, deudas, ahorros,
+ * impuestos-- y es una suposicion que no le calza a todo el mundo: hay quien
+ * paga el arriendo con tarjeta y lo lleva en deudas, y quien ahorra cuando
+ * sobra en vez de todos los meses.
+ *
+ * Ausente significa "usa la lista de siempre", asi que nadie tiene que
+ * configurar nada para que la app siga funcionando igual.
+ */
+export const CLAVE_CATEGORIAS_COMPROMETIDAS = 'categoriasComprometidas';
+
 export function leerAjuste(db: BaseDeDatos, clave: string): string | null {
   const filas = db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1).all();
   return filas[0]?.valor ?? null;
+}
+
+/**
+ * La consulta sin ejecutar de un ajuste, para poder observarla.
+ *
+ * `leerAjuste` sirve para leer una vez; esta es para que una pantalla se entere
+ * cuando el valor cambia, que es lo que hace falta cuando se edita en Ajustes y
+ * el Resumen tiene que recalcular.
+ */
+export function consultaDeAjuste(db: BaseDeDatos, clave: string) {
+  return db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1);
 }
 
 export function escribirAjuste(db: BaseDeDatos, clave: string, valor: string): void {
