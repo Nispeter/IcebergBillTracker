@@ -68,7 +68,7 @@ describe('el catalogo', () => {
   it('todas las categorias que nombra existen', () => {
     const validas = new Set(CATEGORIES.map((c) => c.id));
     for (const regla of REGLAS_CHILE) {
-      expect(validas.has(regla.categoriaId), regla.patron).toBe(true);
+      expect(validas.has(regla.categoriaId as CategoryId), regla.patron).toBe(true);
     }
   });
 

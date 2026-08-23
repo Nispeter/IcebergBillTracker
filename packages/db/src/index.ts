@@ -11,3 +11,4 @@ export * from './repositorios/reglasDeCategoria';
 export * from './repositorios/sincronizacion';
 export * from './repositorios/carpeta';
 export * from './repositorios/miembros';
+export * from './repositorios/categorias';

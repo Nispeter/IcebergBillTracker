@@ -21,7 +21,15 @@ import type { CategoryId } from '../categories/index';
 export interface ReglaDeCategoria {
   /** Se busca como subcadena dentro de la descripcion normalizada. */
   readonly patron: string;
-  readonly categoriaId: CategoryId;
+  /**
+   * `string` y no `CategoryId`.
+   *
+   * Las reglas que trae la app apuntan siempre al catalogo, pero las que
+   * escribe el usuario pueden apuntar a una categoria **propia** del hogar, y
+   * esas no estan en la union. Aca el id no se interpreta: entra por un lado y
+   * sale por el otro.
+   */
+  readonly categoriaId: string;
 }
 
 /**
@@ -225,7 +233,7 @@ export const REGLAS_CHILE: readonly ReglaDeCategoria[] = [
 export function categorizar(
   descripcion: string,
   reglas: readonly ReglaDeCategoria[] = REGLAS_CHILE,
-): CategoryId | null {
+): string | null {
   const texto = normalizar(descripcion);
   if (texto === '') return null;
 

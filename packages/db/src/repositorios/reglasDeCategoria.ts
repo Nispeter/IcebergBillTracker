@@ -20,11 +20,13 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { columnasEditadas, columnasNuevas, type Contexto } from '../contexto';
 import { movimientos, reglasCategoria, type Movimiento, type ReglaCategoria } from '../schema';
 import type { BaseDeDatos } from '../tipos';
+import { listarCategorias } from './categorias';
 import { RepositorioError } from './movimientos';
 
 export interface DatosDeReglaCategoria {
   readonly patron: string;
-  readonly categoriaId: categories.CategoryId;
+  /** `string` y no `CategoryId`: puede ser una categoria propia del hogar. */
+  readonly categoriaId: string;
 }
 
 export function crearReglaDeCategoria(
@@ -36,7 +38,10 @@ export function crearReglaDeCategoria(
   // mayusculas o tildes no calzaria nunca y el usuario no tendria como saberlo.
   const patron = rules.normalizar(datos.patron);
   if (patron === '') throw new RepositorioError('el patrón no puede estar vacío');
-  if (categories.categoryById(datos.categoriaId) === null) {
+  // Las propias cuentan igual que las de la app: si alguien creo "mascotas",
+  // poder escribir "si dice VETERINARIA, es mascotas" es justamente el motivo.
+  if (categories.categoryById(datos.categoriaId) === null
+    && !listarCategorias(db, contexto).some((c) => c.id === datos.categoriaId)) {
     throw new RepositorioError(`no existe la categoría ${datos.categoriaId}`);
   }
   if (listarReglasDeCategoria(db, contexto).some((r) => r.patron === patron)) {
@@ -95,7 +100,7 @@ export function catalogoDe(
   return [
     ...listarReglasDeCategoria(db, contexto).map((r) => ({
       patron: r.patron,
-      categoriaId: r.categoriaId as categories.CategoryId,
+      categoriaId: r.categoriaId,
     })),
     ...rules.REGLAS_CHILE,
   ];
@@ -105,7 +110,7 @@ export function catalogoDe(
 export function sinCategoriaQueSeReconocen(
   db: BaseDeDatos,
   contexto: Contexto,
-): { movimiento: Movimiento; categoriaId: categories.CategoryId }[] {
+): { movimiento: Movimiento; categoriaId: string }[] {
   const catalogo = catalogoDe(db, contexto);
   const pendientes = db.select().from(movimientos)
     .where(and(
@@ -116,7 +121,7 @@ export function sinCategoriaQueSeReconocen(
     )!)
     .all() as Movimiento[];
 
-  const salida: { movimiento: Movimiento; categoriaId: categories.CategoryId }[] = [];
+  const salida: { movimiento: Movimiento; categoriaId: string }[] = [];
   for (const movimiento of pendientes) {
     const categoriaId = rules.categorizar(movimiento.nombre, catalogo);
     if (categoriaId !== null) salida.push({ movimiento, categoriaId });

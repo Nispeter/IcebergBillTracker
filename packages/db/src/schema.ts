@@ -218,6 +218,30 @@ export const instancias = sqliteTable('instancias', {
  * Se sincroniza como todo lo demas, asi que cuando dos telefonos intercambian,
  * cada uno aprende el nombre del otro.
  */
+/**
+ * Categorias que agrega el usuario, ademas de las doce que trae la app.
+ *
+ * Las doce viven en `core/categories` y existen siempre: son el piso comun que
+ * la app garantiza. Esta tabla es lo que alguien suma encima --"mascotas",
+ * "auto", "el gimnasio"-- porque ninguna lista fija le calza a todo el mundo.
+ *
+ * **El id es el nombre normalizado**, no un ULID, y eso es a proposito. Primero
+ * porque cualquier pantalla que no conozca la categoria muestra el id, y
+ * "mascotas" se lee bien mientras que un ULID no dice nada. Y segundo porque si
+ * dos personas del mismo hogar crean "Mascotas" cada una por su lado, las dos
+ * filas tienen el mismo id y la fusion las junta en una sola en vez de dejar la
+ * categoria duplicada.
+ *
+ * Se sincronizan: si no, el otro telefono recibiria movimientos con una
+ * categoria que no sabe nombrar.
+ */
+export const categorias = sqliteTable('categorias', {
+  ...sincronizable,
+  nombre: text('nombre').notNull(),
+}, (tabla) => [
+  index('categorias_hogar_idx').on(tabla.householdId, tabla.deletedAt),
+]);
+
 export const miembros = sqliteTable('miembros', {
   ...sincronizable,
   nombre: text('nombre').notNull(),
@@ -283,4 +307,5 @@ export type LoteInsert = typeof lotes.$inferInsert;
 export type ReglaCategoria = typeof reglasCategoria.$inferSelect;
 export type ReglaCategoriaInsert = typeof reglasCategoria.$inferInsert;
 export type Miembro = typeof miembros.$inferSelect;
+export type Categoria = typeof categorias.$inferSelect;
 export type MiembroInsert = typeof miembros.$inferInsert;

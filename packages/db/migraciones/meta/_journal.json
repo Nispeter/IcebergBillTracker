@@ -57,6 +57,13 @@
       "when": 1787454205700,
       "tag": "0007_orange_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787517927828,
+      "tag": "0008_clean_leech",
+      "breakpoints": true
     }
   ]
 }

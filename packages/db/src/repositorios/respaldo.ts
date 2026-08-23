@@ -26,9 +26,9 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Contexto } from '../contexto';
 import {
-  cuentas, instancias, lotes, miembros, movimientos, reglas, reglasCategoria,
-  type Cuenta, type Instancia, type Lote, type Miembro, type Movimiento, type Regla,
-  type ReglaCategoria,
+  categorias, cuentas, instancias, lotes, miembros, movimientos, reglas, reglasCategoria,
+  type Categoria, type Cuenta, type Instancia, type Lote, type Miembro, type Movimiento,
+  type Regla, type ReglaCategoria,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
 import { cuentasQueNoSincronizan } from './cuentas';
@@ -48,7 +48,7 @@ import { RepositorioError } from './movimientos';
  * Un archivo viejo se sigue leyendo, con las tablas que no traia vacias:
  * agregar una tabla no invalida lo anterior.
  */
-export const VERSION_DE_RESPALDO = 3;
+export const VERSION_DE_RESPALDO = 4;
 
 export interface Respaldo {
   readonly version: number;
@@ -64,6 +64,8 @@ export interface Respaldo {
   readonly reglasCategoria: readonly ReglaCategoria[];
   /** Quien escribe en el hogar. Vacio en respaldos anteriores a la version 3. */
   readonly miembros: readonly Miembro[];
+  /** Las categorias propias. Vacio en respaldos anteriores a la version 4. */
+  readonly categorias: readonly Categoria[];
 }
 
 export interface OpcionesDeRespaldo {
@@ -108,9 +110,13 @@ export function sinLasCuentas(
     reglas: respaldo.reglas.filter((r) => !fuera.has(r.cuentaId)),
     lotes: respaldo.lotes.filter((l) => !fuera.has(l.cuentaId)),
     instancias: respaldo.instancias.filter((i) => !reglasFuera.has(i.reglaId)),
-    // `reglasCategoria` y `miembros` son del hogar, no de una cuenta: no dicen
-    // cuanto gastaste sino como se llama cada aparato y como categorizar. Viajan
-    // siempre.
+    // `reglasCategoria`, `miembros` y `categorias` son del hogar, no de una
+    // cuenta: no dicen cuanto gastaste sino como se llama cada aparato y como
+    // clasificar. Viajan siempre.
+    //
+    // Las categorias ademas **tienen que** viajar aunque venga solo lo
+    // compartido: si no, el otro telefono recibiria movimientos de una categoria
+    // que no sabe nombrar y mostraria el id pelado.
   };
 }
 
@@ -137,6 +143,8 @@ export function exportarRespaldo(
       .where(eq(reglasCategoria.householdId, contexto.householdId)).all() as ReglaCategoria[],
     miembros: db.select().from(miembros)
       .where(eq(miembros.householdId, contexto.householdId)).all() as Miembro[],
+    categorias: db.select().from(categorias)
+      .where(eq(categorias.householdId, contexto.householdId)).all() as Categoria[],
   };
 
   return opciones.soloSincronizables
@@ -182,6 +190,7 @@ export function leerRespaldo(crudo: unknown): Respaldo {
     ...posible,
     reglasCategoria: Array.isArray(posible.reglasCategoria) ? posible.reglasCategoria : [],
     miembros: Array.isArray(posible.miembros) ? posible.miembros : [],
+    categorias: Array.isArray(posible.categorias) ? posible.categorias : [],
   } as Respaldo;
 }
 
@@ -205,6 +214,7 @@ export function borrarTodo(db: BaseDeDatos, contexto: Contexto): void {
     base.delete(reglasCategoria)
       .where(eq(reglasCategoria.householdId, contexto.householdId)).run();
     base.delete(miembros).where(eq(miembros.householdId, contexto.householdId)).run();
+    base.delete(categorias).where(eq(categorias.householdId, contexto.householdId)).run();
     base.delete(cuentas).where(eq(cuentas.householdId, contexto.householdId)).run();
   });
 }
@@ -238,7 +248,7 @@ export function restaurarRespaldo(
   // contra lo restaurado. Ver `Contexto.recibir`.
   for (const fila of [...respaldo.cuentas, ...respaldo.movimientos, ...respaldo.reglas,
     ...respaldo.instancias, ...respaldo.lotes, ...respaldo.reglasCategoria,
-    ...respaldo.miembros]) {
+    ...respaldo.miembros, ...respaldo.categorias]) {
     contexto.recibir(fila.updatedAt);
   }
 

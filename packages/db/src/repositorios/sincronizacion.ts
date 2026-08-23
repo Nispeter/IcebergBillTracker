@@ -22,7 +22,7 @@ import { sync } from '@iceberg/core';
 import { eq } from 'drizzle-orm';
 import type { Contexto } from '../contexto';
 import {
-  cuentas, instancias, lotes, miembros, movimientos, reglas, reglasCategoria,
+  categorias, cuentas, instancias, lotes, miembros, movimientos, reglas, reglasCategoria,
   type Miembro, type Regla,
 } from '../schema';
 import type { BaseDeDatos } from '../tipos';
@@ -66,6 +66,7 @@ const TABLAS = [
   { nombre: 'movimientos', tabla: movimientos, de: (r: Respaldo) => r.movimientos },
   { nombre: 'reglas de categoría', tabla: reglasCategoria, de: (r: Respaldo) => r.reglasCategoria },
   { nombre: 'miembros', tabla: miembros, de: (r: Respaldo) => r.miembros },
+  { nombre: 'categorías', tabla: categorias, de: (r: Respaldo) => r.categorias },
 ] as const;
 
 const VACIO: sync.ResumenDeFusion = {
