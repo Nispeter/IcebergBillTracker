@@ -22,7 +22,9 @@ Play Store.
 - Categoriza sola por comercio, con reglas propias que puedes agregar.
 - Detecta cuentas periódicas en tu historial y propone crearlas.
 - Marca lo que se sale de lo habitual con mediana y MAD, no con promedios.
-- Sincroniza entre dispositivos por archivo, con cifrado opcional.
+- Sincroniza con otro teléfono por una carpeta compartida --de Drive, de Dropbox, la que
+  sea--, con cifrado opcional. Sin servidor ni cuenta: cada aparato escribe su propio
+  archivo y lee los de los demás.
 - Cuentas separadas: un libro compartido y otro personal, y decides cuál viaja.
 
 ## Desarrollo

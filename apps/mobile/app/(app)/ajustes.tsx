@@ -8,10 +8,10 @@
 
 import { categories, crypto, dates, money } from '@iceberg/core';
 import {
-  CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO, escribirAjuste, borrarTodo, contarRespaldo, crearCuenta,
-  HogarAjenoError, deshacerLote, editarCuenta, exportarRespaldo, fusionarRespaldo,
-  leerAjuste, renombrarMiembro, unirseAHogar,
-  restaurarRespaldo, type ConflictoLegible, type Lote, type Miembro,
+  CLAVE_CARPETA, CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_DISPOSITIVO, CLAVE_HOGAR,
+  CLAVE_MIEMBRO, escribirAjuste, borrarTodo, crearCuenta,
+  deshacerLote, editarCuenta, leerAjuste, renombrarMiembro, unirseAHogar,
+  type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
 import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
@@ -33,7 +33,10 @@ import {
 import { useCuentaActiva } from '../../datos/cuenta';
 import { useComprometidas } from '../../datos/consultas';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
-import { elegirRespaldo, guardarRespaldo } from '../../datos/archivo';
+import {
+  CarpetaPerdidaError, HAY_CARPETA, elegirCarpeta, nombreDeCarpeta,
+} from '../../datos/carpeta';
+import { sincronizarCarpeta } from '../../datos/sincronizar';
 import { cargarSemilla } from '../../datos/semilla';
 import { useTema } from '../../datos/tema';
 
@@ -53,103 +56,67 @@ export default function Ajustes() {
   const lotes = useLotes();
   const miembros = useMiembros();
   const [aviso, setAviso] = useState<string | null>(null);
-  const [confirmando, setConfirmando] = useState<'borrar' | 'restaurar' | null>(null);
+  const [confirmando, setConfirmando] = useState<'borrar' | null>(null);
   const [conflictos, setConflictos] = useState<readonly ConflictoLegible[]>([]);
   const [frase, setFrase] = useState('');
   const [codigoDeHogar, setCodigoDeHogar] = useState('');
-  /** El archivo que espera confirmacion por venir de otro hogar. */
-  const [deOtroHogar, setDeOtroHogar] = useState<unknown | null>(null);
+  /** La carpeta compartida, o `null` si todavia no se eligio ninguna. */
+  const [carpeta, setCarpeta] = useState<string | null>(
+    () => leerAjuste(db, CLAVE_CARPETA) || null,
+  );
+  const [sincronizando, setSincronizando] = useState(false);
+  /** Archivos de la ultima pasada que se saltaron por venir de otro hogar. */
+  const [ajenosEnCarpeta, setAjenosEnCarpeta] = useState(0);
   const [nombrePropio, setNombrePropio] = useState<string | null>(null);
-
-  /**
-   * Abre un archivo elegido, descifrandolo si hace falta.
-   *
-   * Un archivo cifrado y uno en claro se distinguen por su forma, asi que no hay
-   * que preguntarle al usuario cual es: se mira y se actua.
-   */
-  function abrir(datos: unknown): unknown {
-    if (!crypto.esSobre(datos)) return datos;
-    if (frase.trim() === '') {
-      throw new Error('Ese archivo está cifrado. Escribe la frase y vuelve a intentar.');
-    }
-    return JSON.parse(crypto.descifrar(datos, frase)) as unknown;
-  }
 
   const vacia = movimientos.length === 0;
 
-  /**
-   * Guarda un archivo con lo que hay.
-   *
-   * `soloSincronizables` distingue **respaldar** de **compartir**, que no son lo
-   * mismo: un respaldo lleva todo, porque si perdieras el telefono querrias de
-   * vuelta tambien lo privado; el archivo que se le pasa a otra persona deja
-   * fuera las cuentas marcadas como que no sincronizan.
-   */
-  async function exportar(soloSincronizables = false) {
+  /** Abre el selector del sistema y recuerda la carpeta elegida. */
+  async function elegir() {
     try {
-      const respaldo = exportarRespaldo(db, contexto, { soloSincronizables });
-      const dia = respaldo.exportadoEn.slice(0, 10);
-      const conFrase = frase.trim() !== '';
-
-      // Se cifra solo si hay frase. Pedirla siempre haria que alguien que solo
-      // quiere un respaldo local invente una y la olvide.
-      const contenido = conFrase
-        ? JSON.stringify(crypto.cifrar(JSON.stringify(respaldo), frase))
-        : JSON.stringify(respaldo);
-      const que = soloSincronizables ? 'compartir' : 'iceberg';
-      const nombre = conFrase ? `${que}-${dia}.cifrado.json` : `${que}-${dia}.json`;
-
-      await guardarRespaldo(nombre, contenido);
-      const fuera = cuentas.filter((c) => c.sincroniza === 0).length;
-      setAviso(
-        `${soloSincronizables ? 'Archivo' : 'Respaldo'} con ${contarRespaldo(respaldo)} `
-        + `filas guardado como ${nombre}.`
-        + (soloSincronizables && fuera > 0
-          ? ` Quedaron fuera ${fuera === 1 ? 'una cuenta' : `${fuera} cuentas`}.`
-          : '')
-        + (conFrase ? ' Sin la frase no se puede abrir.' : ''),
-      );
+      const elegida = await elegirCarpeta();
+      if (elegida === null) return;
+      escribirAjuste(db, CLAVE_CARPETA, elegida);
+      setCarpeta(elegida);
+      setAviso('Carpeta lista. Ahora toca Sincronizar.');
     } catch (e) {
       setAviso((e as Error).message);
     }
   }
 
   /**
-   * Fusiona un archivo ya abierto.
+   * Una pasada por la carpeta: traer lo de los otros y dejar lo propio al dia.
    *
-   * `permitirOtroHogar` solo llega en verdadero desde el boton de confirmar: un
-   * archivo de otro hogar se para antes de escribir nada, y la unica forma de
-   * seguir es que alguien lo diga a proposito.
+   * `permitirOtroHogar` solo llega en verdadero desde el boton de confirmar. Un
+   * archivo de otro hogar se salta sin escribir nada, y la unica forma de que
+   * entre es que alguien lo diga a proposito.
    */
-  function fusionarDatos(datos: unknown, permitirOtroHogar = false) {
-    const resultado = fusionarRespaldo(db, contexto, datos, { permitirOtroHogar });
-    setConflictos(resultado.ejemplos);
-    setDeOtroHogar(null);
-
-    const { nuevas, actualizadas, conflictos: cuantos } = resultado.total;
-    setAviso(
-      nuevas === 0 && actualizadas === 0
-        ? 'Ya estaban sincronizados: nada que traer.'
-        : `${nuevas} nuevas, ${actualizadas} actualizadas.`
-          + (cuantos === 0 ? '' : ` ${cuantos} se resolvieron por fecha.`),
-    );
-  }
-
-  async function fusionar() {
+  async function sincronizar(permitirOtroHogar = false) {
+    if (carpeta === null) return;
+    setSincronizando(true);
     try {
-      const archivo = await elegirRespaldo();
-      if (archivo === null) return;
-      const datos = abrir(archivo.datos);
-      try {
-        fusionarDatos(datos);
-      } catch (e) {
-        if (!(e instanceof HogarAjenoError)) throw e;
-        // Se guarda para poder insistir sin volver a elegir el archivo.
-        setDeOtroHogar(datos);
-        setAviso('Ese archivo viene de otro hogar. Revisa antes de seguir.');
-      }
+      const r = await sincronizarCarpeta(db, contexto, carpeta, { frase, permitirOtroHogar });
+      setConflictos(r.ejemplos);
+      setAjenosEnCarpeta(r.ajenos);
+
+      const { nuevas, actualizadas, conflictos: cuantos } = r.total;
+      const cambios = nuevas === 0 && actualizadas === 0
+        ? 'Ya estaban al día: nada que traer.'
+        : `${nuevas} nuevas, ${actualizadas} actualizadas.`
+          + (cuantos === 0 ? '' : ` ${cuantos} se resolvieron por fecha.`);
+      setAviso(
+        cambios
+        + (r.ajenos === 0 ? '' : ` Se saltaron ${r.ajenos} de otro hogar.`)
+        + (r.cerrados === 0 ? '' : ` ${r.cerrados} no se pudieron abrir con esa frase.`),
+      );
     } catch (e) {
+      if (e instanceof CarpetaPerdidaError) {
+        escribirAjuste(db, CLAVE_CARPETA, '');
+        setCarpeta(null);
+      }
       setAviso((e as Error).message);
+    } finally {
+      setSincronizando(false);
     }
   }
 
@@ -166,19 +133,6 @@ export default function Ajustes() {
           ? 'Ya estabas en ese hogar.'
           : `Listo. ${filas} filas quedaron en el hogar compartido.`,
       );
-    } catch (e) {
-      setAviso((e as Error).message);
-    }
-  }
-
-  async function restaurar() {
-    try {
-      const archivo = await elegirRespaldo();
-      if (archivo === null) return;
-      const filas = restaurarRespaldo(db, contexto, abrir(archivo.datos));
-      setConfirmando(null);
-      setConflictos([]);
-      setAviso(`Restauradas ${filas} filas desde ${archivo.nombre}.`);
     } catch (e) {
       setAviso((e as Error).message);
     }
@@ -294,62 +248,96 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Sincronizar"
-          ayuda={'Para compartir cuentas con otra persona, una sola vez:\n\n'
-            + '1. Toca tu código de hogar para enviárselo.\n'
-            + '2. Esa persona lo pega en "Unirme a otro hogar".\n\n'
-            + 'Desde ahí, cada vez que quieran ponerse al día:\n\n'
-            + '3. Uno toca "Exportar para compartir" y manda el archivo.\n'
-            + '4. El otro toca "Fusionar con un archivo" y lo elige.\n\n'
-            + 'Fusionar no borra nada: junta los dos lados. Si el mismo movimiento se '
+          ayuda={'Eliges **una carpeta** —de Drive, de Dropbox, del teléfono— y cada '
+            + 'aparato escribe ahí su propio archivo. Tu nube los sincroniza como '
+            + 'sincroniza cualquier archivo tuyo, y al tocar Sincronizar la app lee los '
+            + 'de los demás.\n\n'
+            + 'No hay servidor ni cuenta que crear: la app nunca habla con la nube, solo '
+            + 'con la carpeta que le señalaste.\n\n'
+            + 'Para compartir con otra persona, una sola vez:\n\n'
+            + '1. Los dos eligen la **misma** carpeta compartida.\n'
+            + '2. Toca tu código de hogar para enviárselo.\n'
+            + '3. Esa persona lo pega en "Unirme a otro hogar".\n\n'
+            + 'Desde ahí, cada uno toca Sincronizar cuando quiera ponerse al día.\n\n'
+            + 'Sincronizar no borra nada: junta los dos lados. Si el mismo movimiento se '
             + 'editó en los dos, gana la edición más nueva y abajo queda anotado cuál se '
             + 'descartó.\n\n'
-            + 'Compartir el hogar no es obligatorio, pero es lo que le permite a la app '
-            + 'avisarte si el archivo viene de otra persona antes de mezclarlo. Las '
-            + 'cuentas marcadas como no compartidas no salen ni entran.'}
+            + 'Las cuentas marcadas como no compartidas no salen ni entran. Esa carpeta '
+            + 'es también tu única copia fuera del teléfono, así que lo que dejes sin '
+            + 'compartir no queda respaldado en ninguna parte.\n\n'
+            + 'Nadie avisa cuando el otro escribe: hay que tocar Sincronizar. Si escribes '
+            + 'una frase de cifrado, los archivos salen cifrados y los dos tienen que '
+            + 'usar la misma.'}
         />
-        {/* En columna y con aire: los dos textos son largos y no caben en una
-            fila, pero apilados sin separacion se leian como un solo bloque. */}
-        <View style={styles.accionesEnColumna}>
+        {!HAY_CARPETA ? (
+          <Text style={styles.nota}>
+            Este navegador no sabe abrir una carpeta. Usa la app del teléfono para
+            sincronizar.
+          </Text>
+        ) : carpeta === null ? (
           <Pressable
-            onPress={fusionar}
+            onPress={elegir}
             style={styles.botonSecundario}
             accessibilityRole="button"
-            accessibilityLabel="Fusionar con otro dispositivo"
+            accessibilityLabel="Elegir la carpeta compartida"
           >
-            <Text style={styles.botonTexto}>Fusionar con un archivo</Text>
+            <Text style={styles.botonTexto}>Elegir carpeta compartida</Text>
           </Pressable>
-          <Pressable
-            onPress={() => exportar(true)}
-            style={styles.botonSecundario}
-            accessibilityRole="button"
-            accessibilityLabel="Exportar un archivo para compartir"
-          >
-            <Text style={styles.botonTexto}>Exportar para compartir</Text>
-          </Pressable>
-        </View>
+        ) : (
+          <>
+            <Text style={styles.etiqueta}>Carpeta</Text>
+            <Text style={styles.valor} numberOfLines={1}>{nombreDeCarpeta(carpeta)}</Text>
+            {/* En columna y con aire: apilados sin separacion los dos botones se
+                leian como un solo bloque. */}
+            <View style={styles.accionesEnColumna}>
+              <Pressable
+                onPress={() => sincronizar()}
+                disabled={sincronizando}
+                style={[styles.botonSecundario, sincronizando && styles.apagado]}
+                accessibilityRole="button"
+                accessibilityLabel="Sincronizar con la carpeta"
+              >
+                <Text style={styles.botonTexto}>
+                  {sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={elegir}
+                style={styles.botonSecundario}
+                accessibilityRole="button"
+                accessibilityLabel="Cambiar la carpeta compartida"
+              >
+                <Text style={styles.botonTexto}>Cambiar carpeta</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
 
-        {deOtroHogar === null ? null : (
+        {ajenosEnCarpeta === 0 ? null : (
           <View style={styles.avisoDeHogar}>
             <Text style={styles.avisoDeHogarTexto}>
-              Ese archivo no es de tu hogar. Si sigues, sus movimientos se mezclan con los
-              tuyos y no hay forma de separarlos después.
+              {ajenosEnCarpeta === 1
+                ? 'Hay un archivo en la carpeta que no es de tu hogar. '
+                : 'Hay ' + ajenosEnCarpeta + ' archivos en la carpeta que no son de tu hogar. '}
+              Lo que corresponde es unirte a ese hogar con el código. Si los mezclas igual,
+              sus movimientos quedan con los tuyos y no hay forma de separarlos después.
             </Text>
             <View style={styles.acciones}>
               <Pressable
-                onPress={() => { try { fusionarDatos(deOtroHogar, true); } catch (e) { setAviso((e as Error).message); } }}
+                onPress={() => sincronizar(true)}
                 style={[styles.botonSecundario, styles.botonDestructivo]}
                 accessibilityRole="button"
-                accessibilityLabel="Fusionar igual, aunque sea de otro hogar"
+                accessibilityLabel="Mezclar igual, aunque sean de otro hogar"
               >
-                <Text style={styles.botonTextoDestructivo}>Fusionar igual</Text>
+                <Text style={styles.botonTextoDestructivo}>Mezclar igual</Text>
               </Pressable>
               <Pressable
-                onPress={() => setDeOtroHogar(null)}
+                onPress={() => setAjenosEnCarpeta(0)}
                 style={styles.botonSecundario}
                 accessibilityRole="button"
-                accessibilityLabel="Cancelar la fusión"
+                accessibilityLabel="Dejarlos fuera"
               >
-                <Text style={styles.botonTexto}>Cancelar</Text>
+                <Text style={styles.botonTexto}>Dejarlos fuera</Text>
               </Pressable>
             </View>
           </View>
@@ -503,41 +491,6 @@ export default function Ajustes() {
             );
           })}
         </Panel>
-
-        <Seccion
-          styles={styles}
-          theme={theme}
-          titulo="Respaldo"
-          ayuda={'Exportar guarda todo en un archivo: hazlo antes de cambiar de teléfono '
-            + 'o de borrar la app, porque la base vive solo aquí y no hay copia en ninguna '
-            + 'nube.\n\n'
-            + 'Restaurar **reemplaza** lo que haya, no mezcla. Úsalo en un teléfono nuevo. '
-            + 'Para juntar dos que ya tienen datos, lo que corresponde es Sincronizar.\n\n'
-            + 'Si escribes una frase de cifrado, el archivo sale cifrado y sin esa frase no '
-            + 'se puede abrir.'}
-        />
-        <View style={styles.acciones}>
-          <Pressable
-            // Sin la lambda, `Pressable` le pasa el evento como primer argumento
-            // y el respaldo saldria en modo compartir por accidente.
-            onPress={() => exportar()}
-            style={styles.botonSecundario}
-            accessibilityRole="button"
-            accessibilityLabel="Exportar respaldo"
-          >
-            <Text style={styles.botonTexto}>Exportar</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => (confirmando === 'restaurar' ? restaurar() : setConfirmando('restaurar'))}
-            style={styles.botonSecundario}
-            accessibilityRole="button"
-            accessibilityLabel={confirmando === 'restaurar' ? 'Confirmar restauración' : 'Restaurar respaldo'}
-          >
-            <Text style={confirmando === 'restaurar' ? styles.botonTextoAlerta : styles.botonTexto}>
-              {confirmando === 'restaurar' ? 'Elegir archivo y reemplazar' : 'Restaurar'}
-            </Text>
-          </Pressable>
-        </View>
 
         <Seccion
           styles={styles}
