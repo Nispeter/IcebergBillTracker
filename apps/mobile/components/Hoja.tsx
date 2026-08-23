@@ -26,6 +26,7 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/botto
 import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function Hoja(
   { abierta, titulo, theme, onCerrar, children }:
@@ -37,7 +38,11 @@ export function Hoja(
     children: ReactNode;
   },
 ) {
-  const styles = crearEstilos(theme);
+  // El aire de abajo no puede ser una constante: la hoja termina justo donde
+  // empiezan los botones o la barra de gestos de Android, que los tapan. Cuanto
+  // miden lo sabe el sistema, no nosotros.
+  const insets = useSafeAreaInsets();
+  const styles = crearEstilos(theme, insets.bottom);
   const hoja = useRef<BottomSheet>(null);
   const [montada, setMontada] = useState(false);
 
@@ -83,13 +88,15 @@ export function Hoja(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, aireDelSistema: number) {
   return StyleSheet.create({
     fondo: { backgroundColor: theme.superficie },
     tirador: { backgroundColor: theme.hairline, width: 36 },
     contenido: {
       paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xxl,
+      // `xxxl` y no `xxl`: con el aire justo, la ultima linea quedaba pegada al
+      // borde y en un telefono se leia como si el texto siguiera mas abajo.
+      paddingBottom: spacing.xxxl + aireDelSistema,
       gap: spacing.sm,
       maxWidth: 480,
       width: '100%',

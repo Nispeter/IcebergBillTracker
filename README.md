@@ -20,6 +20,8 @@ Play Store.
 - Importa la cartola del banco (`.xls` de Banco de Chile; mapeo manual para otros).
   Reimportar el mismo archivo no duplica nada.
 - Categoriza sola por comercio, con reglas propias que puedes agregar.
+- Doce categorías de fábrica más las que agregues tú, y decides cuáles cuentan como
+  gasto comprometido.
 - Detecta cuentas periódicas en tu historial y propone crearlas.
 - Marca lo que se sale de lo habitual con mediana y MAD, no con promedios.
 - Sincroniza con otro teléfono por una carpeta compartida --de Drive, de Dropbox, la que

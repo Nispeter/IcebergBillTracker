@@ -7,7 +7,7 @@
  * signo menos. Con un solo componente, esa decision vive en un solo lugar.
  */
 
-import { categories, dates, money } from '@iceberg/core';
+import { dates, money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
   fontSizes, fonts, pesos, spacing, type Theme,
@@ -16,6 +16,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
+import { useCategorias } from '../datos/catalogo';
 
 /** Lo que dice el `?` de las pantallas que muestran el punto. */
 export const EXPLICACION_ANOMALIA = 'El punto ámbar marca un gasto muy por encima de lo que '
@@ -23,11 +24,16 @@ export const EXPLICACION_ANOMALIA = 'El punto ámbar marca un gasto muy por enci
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-/** Lo que va bajo el nombre. Depende del **tipo**, no de si hay categoria. */
-function subtitulo(tx: Movimiento): string {
+/**
+ * Lo que va bajo el nombre. Depende del **tipo**, no de si hay categoria.
+ *
+ * El nombre lo resuelve el catalogo y no `categories` a secas: una categoria
+ * propia no esta en el catalogo de la app y saldria como id pelado.
+ */
+function subtitulo(tx: Movimiento, nombreDeCategoria: (id: string | null) => string): string {
   if (tx.tipo === 'ingreso') return 'Ingreso';
   if (tx.tipo === 'transferencia') return 'Transferencia';
-  return tx.categoriaId === null ? 'Sin categoría' : categories.categoryName(tx.categoriaId);
+  return nombreDeCategoria(tx.categoriaId);
 }
 
 /** Los ingresos suman, todo lo demas resta. */
@@ -44,6 +50,7 @@ export function FilaMovimiento(
   },
 ) {
   const styles = crearEstilos(theme);
+  const categorias = useCategorias();
   /**
    * El estilo va **aplanado**, y el estado de presion a mano.
    *
@@ -75,7 +82,7 @@ export function FilaMovimiento(
           <Text style={styles.nombre} numberOfLines={1}>{tx.nombre}</Text>
           <View style={styles.meta}>
             {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
-            <Text style={styles.subtitulo}>{subtitulo(tx)}</Text>
+            <Text style={styles.subtitulo}>{subtitulo(tx, categorias.nombre)}</Text>
           </View>
         </View>
         {/* Un punto ambar y nada mas. El ambar es el color de "esto pide

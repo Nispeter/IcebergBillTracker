@@ -10,7 +10,7 @@
  * informacion de la pantalla sobre la que hay que hacer algo hoy.
  */
 
-import { categories, money, recurrence } from '@iceberg/core';
+import { money, recurrence } from '@iceberg/core';
 import {
   crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
 } from '@iceberg/db';
@@ -29,10 +29,12 @@ import { Titulo } from '../../components/Titulo';
 import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
 import { Pinguino } from '../../components/Pinguino';
 import { iconoDeCategoria } from '../../components/iconos';
+import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { useCandidatasARegla, useTempanos } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
+import { useCategorias } from '../../datos/catalogo';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
@@ -41,8 +43,10 @@ export default function Tempanos() {
   const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const categorias = useCategorias();
   const { rango, corte } = usePeriodo();
   const { db, contexto } = useDatos();
+  const avisar = useAvisar();
 
   const tempanos = useTempanos(rango, corte);
   // Encontradas en el historial: es lo que evita tener que cargar a mano el
@@ -134,6 +138,7 @@ export default function Tempanos() {
                     cada: candidata.cada,
                     desde: candidata.desde,
                   });
+                  avisar('Cuenta periódica creada');
                 }}
               />
             ))}
@@ -171,6 +176,7 @@ function Fila(
     onDeshacer: () => void;
   },
 ) {
+  const categorias = useCategorias();
   const { regla, estado, diasRestantes } = tempano;
   const Icono = regla.categoriaId ? iconoDeCategoria(regla.categoriaId) : null;
   const vencido = estado === 'pendiente' && diasRestantes < 0;
@@ -197,7 +203,7 @@ function Fila(
             {estado === 'pagada' ? 'Pagada'
               : estado === 'omitida' ? 'Omitida'
                 : cuando(diasRestantes)}
-            {regla.categoriaId ? ` · ${categories.categoryShortName(regla.categoriaId)}` : ''}
+            {regla.categoriaId ? ` · ${categorias.nombreCorto(regla.categoriaId)}` : ''}
           </Text>
         </View>
       </View>

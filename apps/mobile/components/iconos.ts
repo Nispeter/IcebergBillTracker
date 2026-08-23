@@ -22,6 +22,7 @@ import { House } from 'phosphor-react-native/src/icons/House';
 import { Lightning } from 'phosphor-react-native/src/icons/Lightning';
 import { PiggyBank } from 'phosphor-react-native/src/icons/PiggyBank';
 import { Scales } from 'phosphor-react-native/src/icons/Scales';
+import { Tag } from 'phosphor-react-native/src/icons/Tag';
 import { User } from 'phosphor-react-native/src/icons/User';
 import { UsersThree } from 'phosphor-react-native/src/icons/UsersThree';
 import type { ComponentType } from 'react';
@@ -44,10 +45,18 @@ const POR_CATEGORIA: Record<categories.CategoryId, IconoCategoria> = {
 };
 
 /**
- * Devuelve `null` si el id no esta en el catalogo. Puede pasar: en modo hogar
- * llega una categoria escrita por una version mas nueva de la app en otro
- * dispositivo, y la fila tiene que mostrarse igual, sin icono.
+ * El icono de una categoria. Nunca `null`: lo que no esta en el catalogo lleva
+ * una etiqueta generica.
+ *
+ * Antes devolvia `null` y la fila se dibujaba sin icono. Con las categorias
+ * propias eso pasa a ser lo normal --ninguna esta en el catalogo-- y una lista
+ * donde la mitad de las filas tiene icono y la otra mitad no se ve rota, no
+ * minimalista. La etiqueta dice lo justo: "es una categoria, y no es de las que
+ * la app conoce".
+ *
+ * Sirve igual para el otro caso que ya existia: en modo hogar puede llegar una
+ * categoria escrita por una version mas nueva de la app en otro telefono.
  */
-export function iconoDeCategoria(id: string): IconoCategoria | null {
-  return POR_CATEGORIA[id as categories.CategoryId] ?? null;
+export function iconoDeCategoria(id: string): IconoCategoria {
+  return POR_CATEGORIA[id as categories.CategoryId] ?? Tag;
 }

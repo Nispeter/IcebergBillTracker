@@ -6,10 +6,10 @@
  * depurar cuando algo no cuadra entre dos telefonos.
  */
 
-import { categories, crypto, dates, money } from '@iceberg/core';
+import { crypto, dates, money } from '@iceberg/core';
 import {
   CLAVE_CARPETA, CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_DISPOSITIVO, CLAVE_HOGAR,
-  CLAVE_MIEMBRO, escribirAjuste, borrarTodo, crearCuenta,
+  CLAVE_MIEMBRO, borrarCategoria, escribirAjuste, borrarTodo, crearCategoria, crearCuenta,
   deshacerLote, editarCuenta, leerAjuste, renombrarMiembro, unirseAHogar,
   type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
@@ -21,15 +21,18 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
 import { Star } from 'phosphor-react-native/src/icons/Star';
+import { Trash } from 'phosphor-react-native/src/icons/Trash';
 import { Interruptor } from '../../components/Interruptor';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
+import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
   useCuentas, useLotes, useMiembros, useMovimientos, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
+import { useCategorias } from '../../datos/catalogo';
 import { useCuentaActiva } from '../../datos/cuenta';
 import { useComprometidas } from '../../datos/consultas';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
@@ -46,8 +49,10 @@ export default function Ajustes() {
   const aireInferior = useAireInferior();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const comprometidas = useComprometidas();
+  const categorias = useCategorias();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { db, contexto, cambiarHogar } = useDatos();
+  const avisar = useAvisar();
   const periodo = usePeriodo();
 
   const movimientos = useMovimientos();
@@ -68,6 +73,7 @@ export default function Ajustes() {
   /** Archivos de la ultima pasada que se saltaron por venir de otro hogar. */
   const [ajenosEnCarpeta, setAjenosEnCarpeta] = useState(0);
   const [nombrePropio, setNombrePropio] = useState<string | null>(null);
+  const [nuevaCategoria, setNuevaCategoria] = useState('');
 
   const vacia = movimientos.length === 0;
 
@@ -117,6 +123,33 @@ export default function Ajustes() {
       setAviso((e as Error).message);
     } finally {
       setSincronizando(false);
+    }
+  }
+
+  function agregarCategoria() {
+    if (nuevaCategoria.trim() === '') return;
+    try {
+      const creada = crearCategoria(db, contexto, nuevaCategoria);
+      setNuevaCategoria('');
+      avisar(`Categoría "${creada.nombre}" creada`);
+    } catch (e) {
+      setAviso((e as Error).message);
+    }
+  }
+
+  /**
+   * Saca una categoria propia de la lista.
+   *
+   * No pide confirmacion, y es a proposito: los movimientos que la usaban no se
+   * tocan y siguen mostrando su nombre, y volver a escribirla la revive. Es de
+   * las pocas cosas de esta pantalla que no cuesta nada deshacer.
+   */
+  function quitarCategoria(id: string, nombre: string) {
+    try {
+      borrarCategoria(db, contexto, id);
+      avisar(`Se quitó "${nombre}"`);
+    } catch (e) {
+      setAviso((e as Error).message);
     }
   }
 
@@ -277,7 +310,7 @@ export default function Ajustes() {
         ) : carpeta === null ? (
           <Pressable
             onPress={elegir}
-            style={styles.botonSecundario}
+            style={[styles.botonSecundario, styles.botonConAire]}
             accessibilityRole="button"
             accessibilityLabel="Elegir la carpeta compartida"
           >
@@ -285,7 +318,7 @@ export default function Ajustes() {
           </Pressable>
         ) : (
           <>
-            <Text style={styles.etiqueta}>Carpeta</Text>
+            <Text style={styles.etiquetaSuelta}>Carpeta</Text>
             <Text style={styles.valor} numberOfLines={1}>{nombreDeCarpeta(carpeta)}</Text>
             {/* En columna y con aire: apilados sin separacion los dos botones se
                 leian como un solo bloque. */}
@@ -343,7 +376,7 @@ export default function Ajustes() {
           </View>
         )}
 
-        <Text style={styles.etiqueta}>Código de tu hogar</Text>
+        <Text style={styles.etiquetaSuelta}>Código de tu hogar</Text>
         <Pressable
           onPress={() => Share.share({ message: identidad.hogar ?? '' })}
           style={styles.codigo}
@@ -353,7 +386,7 @@ export default function Ajustes() {
           <Text style={styles.codigoTexto} numberOfLines={1}>{identidad.hogar ?? '—'}</Text>
         </Pressable>
 
-        <Text style={styles.etiqueta}>Unirme a otro hogar</Text>
+        <Text style={styles.etiquetaSuelta}>Unirme a otro hogar</Text>
         <TextInput
           value={codigoDeHogar}
           onChangeText={setCodigoDeHogar}
@@ -367,7 +400,10 @@ export default function Ajustes() {
         <Pressable
           onPress={emparejar}
           disabled={codigoDeHogar.trim() === ''}
-          style={[styles.botonSecundario, codigoDeHogar.trim() === '' && styles.apagado]}
+          style={[
+            styles.botonSecundario, styles.botonConAire,
+            codigoDeHogar.trim() === '' && styles.apagado,
+          ]}
           accessibilityRole="button"
           accessibilityLabel="Unirme a ese hogar"
         >
@@ -409,7 +445,10 @@ export default function Ajustes() {
                 editar la cuenta en vez de marcarla. Volver a tocar la marcada la
                 desmarca, y la app vuelve a abrir con todas juntas. */}
             <Pressable
-              onPress={() => marcarPorDefecto(porDefecto === cuenta.id ? null : cuenta.id)}
+              onPress={() => {
+                marcarPorDefecto(porDefecto === cuenta.id ? null : cuenta.id);
+                avisar(porDefecto === cuenta.id ? 'Ya no abre con esta cuenta' : 'Guardado');
+              }}
               hitSlop={10}
               accessibilityRole="button"
               accessibilityState={{ selected: porDefecto === cuenta.id }}
@@ -463,34 +502,90 @@ export default function Ajustes() {
             + 'Cámbialas si no te calzan: hay quien paga el arriendo con tarjeta y lo '
             + 'lleva en Deudas, y quien ahorra cuando sobra en vez de todos los meses.\n\n'
             + 'Un gasto suelto se puede corregir sin tocar esto, con el interruptor que '
-            + 'está al lado de la categoría al crearlo o editarlo.'}
+            + 'está al lado de la categoría al crearlo o editarlo.\n\n'
+            + 'Las doce primeras vienen con la app y no se pueden quitar. Las que agregues '
+            + 'tú aparecen al final y llevan un basurero: quitarlas no borra ningún '
+            + 'movimiento —siguen mostrando el nombre— y volver a escribirlas las trae de '
+            + 'vuelta.\n\n'
+            + 'Las categorías propias viajan al sincronizar, así que el otro teléfono ve '
+            + 'los mismos nombres.'}
         />
         <Panel theme={theme}>
-          {categories.CATEGORIES.map((categoria) => {
-            const esCompromiso = comprometidas.has(categoria.id);
-            return (
-              <View key={categoria.id} style={styles.fila}>
-                <Text style={styles.etiqueta} numberOfLines={1}>{categoria.nombre}</Text>
-                <View style={styles.claseDeCategoria}>
-                  <Text style={styles.etiqueta}>
-                    {esCompromiso ? 'Comprometido' : 'Variable'}
-                  </Text>
-                  <Interruptor
-                    theme={theme}
-                    encendido={esCompromiso}
-                    accesible={`${categoria.nombre}: ${esCompromiso ? 'comprometido' : 'variable'}`}
-                    onCambiar={(valor) => {
-                      const siguiente = new Set(comprometidas);
-                      if (valor) siguiente.add(categoria.id);
-                      else siguiente.delete(categoria.id);
-                      escribirAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS, JSON.stringify([...siguiente]));
-                    }}
-                  />
+          {/*
+            Alto fijo y scroll propio: la lista arranca en doce y no tiene tope,
+            asi que sin esto cada categoria nueva empuja hacia abajo el resto de
+            Ajustes y la pantalla se vuelve interminable.
+          */}
+          <ScrollView
+            style={styles.listaDeCategorias}
+            nestedScrollEnabled
+            {...desplazamiento}
+          >
+            {categorias.todas.map((categoria) => {
+              const esCompromiso = comprometidas.has(categoria.id);
+              return (
+                <View key={categoria.id} style={styles.fila}>
+                  <Text style={styles.etiqueta} numberOfLines={1}>{categoria.nombre}</Text>
+                  <View style={styles.claseDeCategoria}>
+                    <Text style={styles.etiqueta}>
+                      {esCompromiso ? 'Comprometido' : 'Variable'}
+                    </Text>
+                    <Interruptor
+                      theme={theme}
+                      encendido={esCompromiso}
+                      accesible={`${categoria.nombre}: ${esCompromiso ? 'comprometido' : 'variable'}`}
+                      onCambiar={(valor) => {
+                        const siguiente = new Set(comprometidas);
+                        if (valor) siguiente.add(categoria.id);
+                        else siguiente.delete(categoria.id);
+                        escribirAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS, JSON.stringify([...siguiente]));
+                        avisar('Guardado');
+                      }}
+                    />
+                    {/* El hueco cuando no es propia mantiene alineada la columna
+                        del interruptor: sin el, las doce de la app quedarian
+                        corridas respecto de las que si se pueden borrar. */}
+                    {categoria.propia ? (
+                      <Pressable
+                        onPress={() => quitarCategoria(categoria.id, categoria.nombre)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Quitar la categoría ${categoria.nombre}`}
+                      >
+                        <Trash size={14} weight="regular" color={theme.silencio} />
+                      </Pressable>
+                    ) : <View style={styles.huecoDeBasurero} />}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
+          </ScrollView>
         </Panel>
+
+        <Text style={styles.etiquetaSuelta}>Agregar una categoría</Text>
+        <View style={styles.filaDeAgregar}>
+          <TextInput
+            value={nuevaCategoria}
+            onChangeText={setNuevaCategoria}
+            placeholder="Mascotas, auto, gimnasio…"
+            placeholderTextColor={theme.silencio}
+            autoCapitalize="sentences"
+            autoCorrect={false}
+            onSubmitEditing={agregarCategoria}
+            returnKeyType="done"
+            style={[styles.entradaFrase, styles.entradaDeCategoria]}
+            accessibilityLabel="Nombre de la categoría nueva"
+          />
+          <Pressable
+            onPress={agregarCategoria}
+            disabled={nuevaCategoria.trim() === ''}
+            style={[styles.botonSecundario, nuevaCategoria.trim() === '' && styles.apagado]}
+            accessibilityRole="button"
+            accessibilityLabel="Agregar la categoría"
+          >
+            <Text style={styles.botonTexto}>Agregar</Text>
+          </Pressable>
+        </View>
 
         <Seccion
           styles={styles}
@@ -759,6 +854,34 @@ function crearEstilos(theme: Theme) {
       color: theme.vencidoTexto,
     },
     etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
+    /**
+     * La misma etiqueta, pero encabezando un control en vez de viviendo en una
+     * fila de dos columnas.
+     *
+     * Necesita su propio estilo porque `etiqueta` se usa tambien dentro de
+     * `fila`, que centra verticalmente: ahi un margen la descuadraria del valor
+     * que tiene al lado.
+     */
+    etiquetaSuelta: {
+      fontFamily: fonts.texto,
+      fontWeight: pesos.regular,
+      fontSize: fontSizes.xs,
+      color: theme.silencioHondo,
+      marginTop: spacing.lg,
+      marginBottom: spacing.xs,
+    },
+    /** Un boton que sigue a un texto o a un campo, no a otro boton. */
+    botonConAire: { marginTop: spacing.md },
+    /**
+     * Alto de la lista de categorias.
+     *
+     * Unas ocho filas. Que se corte a mitad de una fila es deliberado: es lo que
+     * hace evidente que hay mas abajo, cosa que un corte limpio esconderia.
+     */
+    listaDeCategorias: { maxHeight: 268 },
+    huecoDeBasurero: { width: 14 },
+    filaDeAgregar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    entradaDeCategoria: { flex: 1 },
     valor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
     valorMono: {
       flex: 1,
@@ -800,7 +923,7 @@ function crearEstilos(theme: Theme) {
     acciones: { flexDirection: 'row', gap: spacing.sm },
     // Los botones se dimensionan por su contenido, asi que el contenedor los
     // alinea a la izquierda en vez de estirarlos a lo ancho.
-    accionesEnColumna: { gap: spacing.sm, alignItems: 'flex-start' },
+    accionesEnColumna: { gap: spacing.sm, alignItems: 'flex-start', marginTop: spacing.md },
     entradaFrase: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,

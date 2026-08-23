@@ -17,13 +17,14 @@
  * `explicacion` sigue calculado en `core`, por si alguna vez tiene donde ir.
  */
 
-import { analytics, categories, money } from '@iceberg/core';
+import { analytics, money } from '@iceberg/core';
 import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Panel } from './Panel';
 import { Titulo } from './Titulo';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
+import { useCategorias } from '../datos/catalogo';
 
 /** Cuantas filas entran antes de que la lista deje de informar y solo ocupe. */
 const FILAS = 3;
@@ -46,6 +47,7 @@ export function QueCambio(
   },
 ) {
   const styles = crearEstilos(theme);
+  const categorias = useCategorias();
 
   // Una categoria que gasto lo mismo que el periodo pasado no explica nada:
   // ocuparia una fila para decir "0". `deriva` ya viene ordenada por cuanto
@@ -78,7 +80,7 @@ export function QueCambio(
           {filas.map((fila) => {
             const esSinCategoria = fila.categoriaId === analytics.SIN_CATEGORIA;
             const Icono = esSinCategoria ? null : iconoDeCategoria(fila.categoriaId);
-            const nombre = categories.categoryShortName(
+            const nombre = categorias.nombreCorto(
               esSinCategoria ? undefined : fila.categoriaId,
             );
             // Los delta en cero ya quedaron fuera: no negativo es subida.

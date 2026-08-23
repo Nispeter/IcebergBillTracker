@@ -12,7 +12,7 @@
  * guardar es lo que evita la sorpresa.
  */
 
-import { categories, dates, money, recurrence } from '@iceberg/core';
+import { dates, money, recurrence } from '@iceberg/core';
 import type { TipoDeMovimiento } from '@iceberg/db';
 import {
   elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
@@ -22,12 +22,14 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { ConDesplegable } from './ConDesplegable';
 import { ChipDisparador, ListaDeOpciones } from './SelectorDesplegable';
 import { iconoDeCategoria } from './iconos';
+import { useCategorias } from '../datos/catalogo';
 
 export interface ValoresDeRegla {
   readonly tipo: TipoDeMovimiento;
   readonly montoMinor: number;
   readonly nombre: string;
-  readonly categoriaId: categories.CategoryId | null;
+  /** `string` y no `CategoryId`: ver `FormularioMovimiento`. */
+  readonly categoriaId: string | null;
   readonly frecuencia: recurrence.Frecuencia;
   readonly cada: number;
   readonly desde: dates.PlainDate;
@@ -56,13 +58,14 @@ export function FormularioRegla({
   error?: string | null;
 }) {
   const styles = crearEstilos(theme);
+  const categorias = useCategorias();
 
   const [tipo, setTipo] = useState<TipoDeMovimiento>(inicial?.tipo ?? 'gasto');
   const [monto, setMonto] = useState(
     inicial?.montoMinor === undefined ? '' : money.formatNumber(money.money(inicial.montoMinor)),
   );
   const [nombre, setNombre] = useState(inicial?.nombre ?? '');
-  const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(
+  const [categoriaId, setCategoriaId] = useState<string | null>(
     inicial?.categoriaId ?? null,
   );
   const [frecuencia, setFrecuencia] = useState<recurrence.Frecuencia>(inicial?.frecuencia ?? 'mensual');
@@ -109,7 +112,7 @@ export function FormularioRegla({
 
   const opcionesDeCategoria = useMemo(() => [
     { valor: null, etiqueta: 'Sin categoría' },
-    ...categories.CATEGORIES.map((categoria) => ({
+    ...categorias.todas.map((categoria) => ({
       valor: categoria.id,
       etiqueta: categoria.nombre,
       icono: iconoDeCategoria(categoria.id),
@@ -179,7 +182,7 @@ export function FormularioRegla({
               <View style={styles.filaChip}>
                 <ChipDisparador
                   theme={theme}
-                  etiqueta={categoriaId === null ? 'Sin categoría' : categories.categoryShortName(categoriaId)}
+                  etiqueta={categorias.nombreCorto(categoriaId)}
                   icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
                   abierto={eligiendoCategoria}
                   activo={categoriaId !== null}
@@ -187,7 +190,7 @@ export function FormularioRegla({
                   accesible={
                     categoriaId === null
                       ? 'Elegir categoría'
-                      : `Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`
+                      : `Categoría ${categorias.nombre(categoriaId)}. Tocar para cambiar`
                   }
                 />
               </View>
@@ -197,7 +200,7 @@ export function FormularioRegla({
                 theme={theme}
                 opciones={opcionesDeCategoria}
                 seleccionado={categoriaId}
-                onElegir={(valor: categories.CategoryId | null) => {
+                onElegir={(valor: string | null) => {
                   setCategoriaId(valor);
                   setEligiendoCategoria(false);
                 }}

@@ -12,7 +12,7 @@
  * no lo use.
  */
 
-import { categories, rules } from '@iceberg/core';
+import { rules } from '@iceberg/core';
 import {
   aplicarCategorias, borrarReglaDeCategoria, crearReglaDeCategoria,
   sinCategoriaQueSeReconocen, type ReglaCategoria,
@@ -27,11 +27,13 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { ConDesplegable } from '../components/ConDesplegable';
 import { ChipDisparador, ListaDeOpciones } from '../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../components/iconos';
+import { useAvisar } from '../datos/aviso';
 import { useDatos } from '../datos/BaseDeDatos';
 import { useMovimientos, useReglasDeCategoria } from '../datos/consultas';
 import { volver } from '../datos/navegacion';
 import { useTema } from '../datos/tema';
 import { PantallaModal } from '../components/PantallaModal';
+import { useCategorias } from '../datos/catalogo';
 
 /** Cuantos nombres sin reconocer se ofrecen. Mas que esto es una lista, no una ayuda. */
 const SUGERENCIAS = 8;
@@ -39,21 +41,23 @@ const SUGERENCIAS = 8;
 export default function ReglasDeCategoria() {
   const { theme } = useTema();
   const styles = crearEstilos(theme);
+  const categorias = useCategorias();
   const { db, contexto } = useDatos();
+  const avisar = useAvisar();
   const router = useRouter();
 
   const reglas = useReglasDeCategoria();
   const movimientos = useMovimientos();
 
   const [patron, setPatron] = useState('');
-  const [categoriaId, setCategoriaId] = useState<categories.CategoryId>('comida');
+  const [categoriaId, setCategoriaId] = useState<string>('comida');
   const [eligiendo, setEligiendo] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
 
   /** Los gastos que hoy nadie sabe clasificar, agrupados por nombre. */
   const sinReconocer = useMemo(() => {
     const catalogo = [
-      ...reglas.map((r) => ({ patron: r.patron, categoriaId: r.categoriaId as categories.CategoryId })),
+      ...reglas.map((r) => ({ patron: r.patron, categoriaId: r.categoriaId })),
       ...rules.REGLAS_CHILE,
     ];
     const cuenta = new Map<string, number>();
@@ -77,7 +81,7 @@ export default function ReglasDeCategoria() {
   );
 
   const opciones = useMemo(
-    () => categories.CATEGORIES.map((c) => ({
+    () => categorias.todas.map((c) => ({
       valor: c.id, etiqueta: c.nombre, icono: iconoDeCategoria(c.id),
     })),
     [],
@@ -86,6 +90,7 @@ export default function ReglasDeCategoria() {
   function agregar(texto: string) {
     try {
       crearReglaDeCategoria(db, contexto, { patron: texto, categoriaId });
+      avisar('Regla guardada');
       setPatron('');
       setAviso(null);
     } catch (e) {
@@ -129,12 +134,12 @@ export default function ReglasDeCategoria() {
               <View style={styles.filaChip}>
                 <ChipDisparador
                   theme={theme}
-                  etiqueta={categories.categoryShortName(categoriaId)}
+                  etiqueta={categorias.nombreCorto(categoriaId)}
                   icono={iconoDeCategoria(categoriaId)}
                   abierto={eligiendo}
                   activo
                   onPress={() => setEligiendo(!eligiendo)}
-                  accesible={`Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`}
+                  accesible={`Categoría ${categorias.nombre(categoriaId)}. Tocar para cambiar`}
                 />
               </View>
             )}
@@ -143,7 +148,7 @@ export default function ReglasDeCategoria() {
                 theme={theme}
                 opciones={opciones}
                 seleccionado={categoriaId}
-                onElegir={(valor: categories.CategoryId) => {
+                onElegir={(valor: string) => {
                   setCategoriaId(valor);
                   setEligiendo(false);
                 }}
@@ -210,9 +215,9 @@ export default function ReglasDeCategoria() {
               return (
                 <View key={regla.id} style={styles.fila}>
                   <Text style={styles.patron} numberOfLines={1}>{regla.patron}</Text>
-                  {Icono ? <Icono size={13} weight="regular" color={theme.silencio} /> : null}
+                  <Icono size={13} weight="regular" color={theme.silencio} />
                   <Text style={styles.categoria}>
-                    {categories.categoryShortName(regla.categoriaId)}
+                    {categorias.nombreCorto(regla.categoriaId)}
                   </Text>
                   <Pressable
                     onPress={() => borrarReglaDeCategoria(db, contexto, regla.id)}

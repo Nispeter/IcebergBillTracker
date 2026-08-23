@@ -6,7 +6,7 @@
  * total", las barras dicen "cuanto mas que la siguiente".
  */
 
-import { categories, dates, money } from '@iceberg/core';
+import { dates, money } from '@iceberg/core';
 import {
   elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
 } from '@iceberg/ui';
@@ -25,12 +25,14 @@ import { iconoDeCategoria } from '../../components/iconos';
 import { useAnalisisDeRango } from '../../datos/consultas';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
+import { useCategorias } from '../../datos/catalogo';
 
 export default function Categorias() {
   const { theme } = useTema();
   const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const categorias = useCategorias();
   const { tipo, rango, corte } = usePeriodo();
   const router = useRouter();
 
@@ -98,11 +100,11 @@ export default function Categorias() {
                   })}
                   style={styles.fila}
                   accessibilityRole="button"
-                  accessibilityLabel={`Ver movimientos de ${categories.categoryName(categoriaId)}`}
+                  accessibilityLabel={`Ver movimientos de ${categorias.nombre(categoriaId)}`}
                 >
-                  {Icono ? <Icono size={15} weight="regular" color={theme.silencio} /> : null}
+                  <Icono size={15} weight="regular" color={theme.silencio} />
                   <Text style={styles.nombre} numberOfLines={1}>
-                    {categories.categoryShortName(categoriaId)}
+                    {categorias.nombreCorto(categoriaId)}
                   </Text>
                   <BarraSegmentada valor={total.amountMinor} unidad={unidad} total={muescas} theme={theme} />
                   <Text style={styles.monto}>{money.formatNumber(total)}</Text>

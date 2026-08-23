@@ -12,7 +12,7 @@
  *   una hace que la pantalla tarde en aparecer y que el scroll se sienta pesado.
  */
 
-import { categories, money } from '@iceberg/core';
+import { money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
 import {
   capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
@@ -30,6 +30,7 @@ import { iconoDeCategoria } from '../../components/iconos';
 import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
+import { useCategorias } from '../../datos/catalogo';
 
 /**
  * Cuantos se traen por tanda, a eleccion.
@@ -60,14 +61,15 @@ export default function Movimientos() {
   const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const categorias = useCategorias();
   const { rango } = usePeriodo();
   // Se puede llegar aca desde una categoria de la torta o desde un dia del
   // calendario. El parametro precarga el filtro.
   const params = useLocalSearchParams<{ categoria?: string; dia?: string }>();
 
   const [tipo, setTipo] = useState<TipoDeMovimiento | null>(null);
-  const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(
-    (params.categoria as categories.CategoryId | undefined) ?? null,
+  const [categoriaId, setCategoriaId] = useState<string | null>(
+    (params.categoria as string | undefined) ?? null,
   );
   const [abierto, setAbierto] = useState<Desplegable>(null);
   const [pagina, setPagina] = useState(1);
@@ -118,7 +120,7 @@ export default function Movimientos() {
 
   const opcionesDeCategoria = useMemo(() => [
     { valor: null, etiqueta: 'Todas las categorías' },
-    ...categories.CATEGORIES.map((categoria) => ({
+    ...categorias.todas.map((categoria) => ({
       valor: categoria.id,
       etiqueta: categoria.nombre,
       icono: iconoDeCategoria(categoria.id),
@@ -154,7 +156,7 @@ export default function Movimientos() {
             />
             <ChipDisparador
               theme={theme}
-              etiqueta={categoriaId === null ? 'Categoría' : categories.categoryShortName(categoriaId)}
+              etiqueta={categoriaId === null ? 'Categoría' : categorias.nombreCorto(categoriaId)}
               icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
               abierto={abierto === 'categoria'}
               activo={categoriaId !== null}

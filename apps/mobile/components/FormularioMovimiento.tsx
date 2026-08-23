@@ -6,7 +6,7 @@
  * igual y no hay dos formularios que mantener sincronizados.
  */
 
-import { categories, dates, money } from '@iceberg/core';
+import { dates, money } from '@iceberg/core';
 import type { TipoDeMovimiento } from '@iceberg/db';
 import {
   capas,
@@ -22,13 +22,20 @@ import { Interruptor } from './Interruptor';
 import { esComprometido, useComprometidas } from '../datos/consultas';
 import { ChipDisparador, ListaDeOpciones } from './SelectorDesplegable';
 import { iconoDeCategoria } from './iconos';
+import { useCategorias } from '../datos/catalogo';
 
 export interface ValoresDelFormulario {
   readonly tipo: TipoDeMovimiento;
   readonly montoMinor: number;
   readonly ocurridoEn: dates.PlainDate;
   readonly nombre: string;
-  readonly categoriaId: categories.CategoryId | null;
+  /**
+   * El id de la categoria, o `null`.
+   *
+   * `string` y no `CategoryId`: desde que se pueden agregar categorias propias,
+   * el catalogo de la app dejo de ser la lista completa de ids validos.
+   */
+  readonly categoriaId: string | null;
   /**
    * Si es un compromiso fijo. `null` deja que la app lo deduzca.
    *
@@ -52,6 +59,7 @@ export function FormularioMovimiento({
   theme, titulo, inicial, onGuardar, onCancelar, onBorrar, error,
 }: FormularioMovimientoProps) {
   const styles = crearEstilos(theme);
+  const categorias = useCategorias();
 
   const [tipo, setTipo] = useState<TipoDeMovimiento>(inicial?.tipo ?? 'gasto');
   const [monto, setMonto] = useState(
@@ -59,7 +67,7 @@ export function FormularioMovimiento({
   );
   const [nombre, setNombre] = useState(inicial?.nombre ?? '');
   const [fecha, setFecha] = useState<string>(inicial?.ocurridoEn ?? dates.today());
-  const [categoriaId, setCategoriaId] = useState<categories.CategoryId | null>(
+  const [categoriaId, setCategoriaId] = useState<string | null>(
     inicial?.categoriaId ?? null,
   );
   /**
@@ -90,12 +98,12 @@ export function FormularioMovimiento({
 
   const opcionesDeCategoria = useMemo(() => [
     { valor: null, etiqueta: 'Sin categoría' },
-    ...categories.CATEGORIES.map((categoria) => ({
+    ...categorias.todas.map((categoria) => ({
       valor: categoria.id,
       etiqueta: categoria.nombre,
       icono: iconoDeCategoria(categoria.id),
     })),
-  ], []);
+  ], [categorias]);
 
   return (
     <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
@@ -177,7 +185,7 @@ export function FormularioMovimiento({
               <View style={styles.filaChip}>
                 <ChipDisparador
                   theme={theme}
-                  etiqueta={categoriaId === null ? 'Sin categoría' : categories.categoryShortName(categoriaId)}
+                  etiqueta={categorias.nombreCorto(categoriaId)}
                   icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
                   abierto={eligiendoCategoria}
                   activo={categoriaId !== null}
@@ -185,7 +193,7 @@ export function FormularioMovimiento({
                   accesible={
                     categoriaId === null
                       ? 'Elegir categoría'
-                      : `Categoría ${categories.categoryName(categoriaId)}. Tocar para cambiar`
+                      : `Categoría ${categorias.nombre(categoriaId)}. Tocar para cambiar`
                   }
                 />
                 {/*
@@ -214,7 +222,7 @@ export function FormularioMovimiento({
                 theme={theme}
                 opciones={opcionesDeCategoria}
                 seleccionado={categoriaId}
-                onElegir={(valor: categories.CategoryId | null) => {
+                onElegir={(valor: string | null) => {
                   setCategoriaId(valor);
                   setEligiendoCategoria(false);
                 }}

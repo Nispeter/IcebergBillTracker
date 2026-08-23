@@ -21,7 +21,7 @@
  * pixeles de alto y los dos dejan de estorbarse.
  */
 
-import { categories, money } from '@iceberg/core';
+import { money } from '@iceberg/core';
 import {
   charts, donutArcPath, fontSizes, fonts, pesos, sectoresDeTorta, spacing, type Theme,
 } from '@iceberg/ui';
@@ -29,6 +29,7 @@ import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { iconoDeCategoria } from './iconos';
+import { useCategorias } from '../datos/catalogo';
 
 export interface PorcionDeTorta {
   readonly categoriaId: string;
@@ -57,7 +58,10 @@ interface Sector {
   readonly esOtras: boolean;
 }
 
-function armarSectores(porciones: readonly PorcionDeTorta[]): Sector[] {
+function armarSectores(
+  porciones: readonly PorcionDeTorta[],
+  nombreCorto: (id: string) => string,
+): Sector[] {
   const total = money.sum(porciones.map((p) => p.total));
   if (total.amountMinor === 0) return [];
 
@@ -66,7 +70,7 @@ function armarSectores(porciones: readonly PorcionDeTorta[]): Sector[] {
 
   const sectores: Sector[] = principales.map((porcion, indice) => ({
     id: porcion.categoriaId,
-    etiqueta: categories.categoryShortName(porcion.categoriaId),
+    etiqueta: nombreCorto(porcion.categoriaId),
     total: porcion.total,
     parte: porcion.total.amountMinor / total.amountMinor,
     color: charts[indice % charts.length]!,
@@ -100,7 +104,8 @@ export function TortaDeCategorias(
   },
 ) {
   const styles = crearEstilos(theme);
-  const sectores = armarSectores(porciones);
+  const categorias = useCategorias();
+  const sectores = armarSectores(porciones, categorias.nombreCorto);
 
   if (sectores.length === 0) {
     return <Text style={styles.vacio}>Sin gastos en este período.</Text>;
