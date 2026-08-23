@@ -3,8 +3,8 @@
 Finanzas personales para Chile. **Local-first**: tus datos viven en tu teléfono y no salen
 de ahí salvo que tú los exportes.
 
-Sobre la línea de agua va el gasto **comprometido** —arriendo, cuentas, cuotas: lo que llega
-igual—; debajo, el **variable**, que es sobre lo único que puedes decidir. La línea no está
+Sobre la línea de agua va el gasto **comprometido**: arriendo, cuentas, cuotas, lo que llega
+igual. Debajo va el **variable**, que es sobre lo único que puedes decidir. La línea no está
 puesta a ojo: se calcula para que el *área* sobre ella sea la proporción exacta.
 
 ## Instalar en Android
@@ -24,8 +24,8 @@ Play Store.
   gasto comprometido.
 - Detecta cuentas periódicas en tu historial y propone crearlas.
 - Marca lo que se sale de lo habitual con mediana y MAD, no con promedios.
-- Sincroniza con otro teléfono por una carpeta compartida --de Drive, de Dropbox, la que
-  sea--, con cifrado opcional. Sin servidor ni cuenta: cada aparato escribe su propio
+- Sincroniza con otro teléfono por una carpeta compartida de Drive, de Dropbox o la que
+  sea, con cifrado opcional. Sin servidor ni cuenta: cada aparato escribe su propio
   archivo y lee los de los demás.
 - Cuentas separadas: un libro compartido y otro personal, y decides cuál viaja.
 

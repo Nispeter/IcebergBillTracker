@@ -281,7 +281,7 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Sincronizar"
-          ayuda={'Eliges **una carpeta** —de Drive, de Dropbox, del teléfono— y cada '
+          ayuda={'Eliges **una carpeta** de Drive, de Dropbox o del teléfono, y cada '
             + 'aparato escribe ahí su propio archivo. Tu nube los sincroniza como '
             + 'sincroniza cualquier archivo tuyo, y al tocar Sincronizar la app lee los '
             + 'de los demás.\n\n'
@@ -320,9 +320,10 @@ export default function Ajustes() {
           <>
             <Text style={styles.etiquetaSuelta}>Carpeta</Text>
             <Text style={styles.valor} numberOfLines={1}>{nombreDeCarpeta(carpeta)}</Text>
-            {/* En columna y con aire: apilados sin separacion los dos botones se
-                leian como un solo bloque. */}
-            <View style={styles.accionesEnColumna}>
+            {/* En fila: los dos textos son cortos y caben. Estaban en columna de
+                cuando decian "Fusionar con un archivo" y "Exportar para
+                compartir", que no cabian ni de lejos. */}
+            <View style={[styles.acciones, styles.botonConAire]}>
               <Pressable
                 onPress={() => sincronizar()}
                 disabled={sincronizando}
@@ -497,16 +498,16 @@ export default function Ajustes() {
           titulo="Categorías"
           ayuda={'Cada categoría trae un tipo por omisión, y es solo eso: una suposición '
             + 'para no tener que clasificar a mano cada gasto.\n\n'
-            + 'Comprometido es lo que llega igual --arriendo, cuentas, cuotas--; variable '
-            + 'es lo que decides tú.\n\n'
+            + 'Comprometido es lo que llega igual: arriendo, cuentas, cuotas. Variable es '
+            + 'lo que decides tú.\n\n'
             + 'Cámbialas si no te calzan: hay quien paga el arriendo con tarjeta y lo '
             + 'lleva en Deudas, y quien ahorra cuando sobra en vez de todos los meses.\n\n'
             + 'Un gasto suelto se puede corregir sin tocar esto, con el interruptor que '
             + 'está al lado de la categoría al crearlo o editarlo.\n\n'
             + 'Las doce primeras vienen con la app y no se pueden quitar. Las que agregues '
             + 'tú aparecen al final y llevan un basurero: quitarlas no borra ningún '
-            + 'movimiento —siguen mostrando el nombre— y volver a escribirlas las trae de '
-            + 'vuelta.\n\n'
+            + 'movimiento, que sigue mostrando el nombre. Y volver a escribirlas las trae '
+            + 'de vuelta.\n\n'
             + 'Las categorías propias viajan al sincronizar, así que el otro teléfono ve '
             + 'los mismos nombres.'}
         />
@@ -590,9 +591,9 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Importar"
-          ayuda={'Baja la cartola desde la web de tu banco --en Banco de Chile es Cartola '
-            + 'en Excel-- y elígela aquí. Verás una vista previa antes de que se escriba '
-            + 'nada.\n\n'
+          ayuda={'Baja la cartola desde la web de tu banco y elígela aquí. En Banco de '
+            + 'Chile se llama Cartola en Excel. Verás una vista previa antes de que se '
+            + 'escriba nada.\n\n'
             + 'Reimportar el mismo archivo no duplica: reconoce lo que ya está. Y cada '
             + 'importación se puede deshacer entera desde esta misma pantalla.\n\n'
             + 'Si tu banco no es Banco de Chile, igual sirve: te va a pedir que indiques '
@@ -922,7 +923,6 @@ function crearEstilos(theme: Theme) {
     acciones: { flexDirection: 'row', gap: spacing.sm },
     // Los botones se dimensionan por su contenido, asi que el contenedor los
     // alinea a la izquierda en vez de estirarlos a lo ancho.
-    accionesEnColumna: { gap: spacing.sm, alignItems: 'flex-start', marginTop: spacing.md },
     entradaFrase: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
