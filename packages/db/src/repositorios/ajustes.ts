@@ -38,6 +38,19 @@ export const CLAVE_CUENTA_POR_DEFECTO = 'cuentaPorDefecto';
  */
 export const CLAVE_CATEGORIAS_COMPROMETIDAS = 'categoriasComprometidas';
 
+/**
+ * La carpeta compartida donde viven los archivos de sincronizacion.
+ *
+ * En Android es la URI `content://` que devolvio el selector del sistema, con
+ * permiso permanente; en web es un centinela y el permiso real vive en
+ * IndexedDB. Ver `apps/mobile/datos/carpeta.ts`.
+ *
+ * Se guarda aca y no en el respaldo por la misma razon que el resto de la tabla
+ * de ajustes: **nunca se exporta**. Cada aparato elige su propia carpeta, y una
+ * URI de otro telefono no significaria nada en este.
+ */
+export const CLAVE_CARPETA = 'carpetaCompartida';
+
 export function leerAjuste(db: BaseDeDatos, clave: string): string | null {
   const filas = db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1).all();
   return filas[0]?.valor ?? null;

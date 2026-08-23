@@ -285,3 +285,60 @@ function adelantarReloj(contexto: Contexto, respaldo: Respaldo): void {
   }
   if (mayor !== '') contexto.recibir(mayor);
 }
+
+/** Lo que dejó una pasada por la carpeta compartida. */
+export interface ResultadoDeVarios extends ResultadoDeSincronizacion {
+  /** Cuántos archivos entraron. */
+  readonly fusionados: number;
+  /**
+   * Cuántos se saltaron por venir de otro hogar.
+   *
+   * Se cuentan en vez de tirar error: en una carpeta compartida basta que
+   * alguien deje ahí el archivo de otra casa para que la sincronización entera
+   * dejara de funcionar, y lo que corresponde es ignorarlo y seguir.
+   */
+  readonly ajenos: number;
+}
+
+/**
+ * Fusiona varios archivos, sin que uno malo eche a perder al resto.
+ *
+ * Es la operación de la carpeta compartida: ahí adentro hay un archivo por
+ * aparato y todos se leen de una vez. Cada uno se fusiona por separado --la
+ * fusión es idempotente y conmutativa, así que el orden no importa-- y los
+ * totales se suman.
+ */
+export function fusionarVarios(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  archivos: readonly unknown[],
+  opciones: OpcionesDeFusion = {},
+): ResultadoDeVarios {
+  const porTabla: Record<string, sync.ResumenDeFusion> = {};
+  const ejemplos: ConflictoLegible[] = [];
+  let total = VACIO;
+  let fusionados = 0;
+  let ajenos = 0;
+
+  for (const archivo of archivos) {
+    let resultado: ResultadoDeSincronizacion;
+    try {
+      resultado = fusionarRespaldo(db, contexto, archivo, opciones);
+    } catch (e) {
+      if (e instanceof HogarAjenoError) { ajenos += 1; continue; }
+      throw e;
+    }
+    fusionados += 1;
+    total = sumar(total, resultado.total);
+    for (const [nombre, resumen] of Object.entries(resultado.porTabla)) {
+      porTabla[nombre] = sumar(porTabla[nombre] ?? VACIO, resumen);
+    }
+    // El mismo recorte que hace una fusión sola: diez alcanzan para entender
+    // qué pasó, y la lista completa de varios archivos no la mira nadie.
+    for (const conflicto of resultado.ejemplos) {
+      if (ejemplos.length < 10) ejemplos.push(conflicto);
+    }
+  }
+
+  return { porTabla, total, ejemplos, fusionados, ajenos };
+}

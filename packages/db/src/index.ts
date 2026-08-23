@@ -9,4 +9,5 @@ export * from './repositorios/importaciones';
 export * from './repositorios/respaldo';
 export * from './repositorios/reglasDeCategoria';
 export * from './repositorios/sincronizacion';
+export * from './repositorios/carpeta';
 export * from './repositorios/miembros';
