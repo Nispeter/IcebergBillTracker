@@ -437,8 +437,9 @@ export const durations = {
  * De abajo hacia arriba, y el orden es el que importa: el contenido; el boton
  * flotante, que va sobre el contenido pero cede ante cualquier panel; los
  * desplegables; las burbujas de ayuda; el encabezado, que lleva el selector de
- * periodo; y el menu lateral, que tapa todo porque es el unico que ocupa la
- * pantalla entera.
+ * periodo; el menu lateral, que tapa todo porque es el unico que ocupa la
+ * pantalla entera; y el aviso de guardado, que va sobre el lateral porque
+ * confirma algo que acaba de pasar y no tendria sentido que algo lo tapara.
  */
 export const capas = {
   flotante: 10,
@@ -446,4 +447,5 @@ export const capas = {
   ayuda: 30,
   encabezado: 40,
   lateral: 50,
+  aviso: 60,
 } as const;

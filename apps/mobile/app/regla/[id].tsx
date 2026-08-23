@@ -1,11 +1,12 @@
 /** Edicion de una cuenta periodica. */
 
-import type { categories, dates, recurrence } from '@iceberg/core';
+import type { dates, recurrence } from '@iceberg/core';
 import { borrarRegla, editarRegla, obtenerRegla } from '@iceberg/db';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Text } from 'react-native';
 import { FormularioRegla, type ValoresDeRegla } from '../../components/FormularioRegla';
+import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
@@ -14,6 +15,7 @@ import { PantallaModal } from '../../components/PantallaModal';
 export default function EditarRegla() {
   const { theme } = useTema();
   const { db, contexto } = useDatos();
+  const avisar = useAvisar();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export default function EditarRegla() {
           tipo: regla.tipo,
           montoMinor: regla.montoMinor,
           nombre: regla.nombre,
-          categoriaId: regla.categoriaId as categories.CategoryId | null,
+          categoriaId: regla.categoriaId,
           frecuencia: regla.frecuencia as recurrence.Frecuencia,
           cada: regla.cada,
           desde: regla.desde as dates.PlainDate,
@@ -49,6 +51,7 @@ export default function EditarRegla() {
         onGuardar={(valores: ValoresDeRegla) => {
           try {
             editarRegla(db, contexto, regla.id, valores);
+            avisar('Cambios guardados');
             volver(router);
           } catch (e) {
             setError((e as Error).message);

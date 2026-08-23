@@ -4,6 +4,7 @@ import { listarCuentas, crearMovimiento } from '@iceberg/db';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../components/FormularioMovimiento';
+import { useAvisar } from '../datos/aviso';
 import { useDatos } from '../datos/BaseDeDatos';
 import { useCuentaActiva } from '../datos/cuenta';
 import { useTema } from '../datos/tema';
@@ -14,6 +15,7 @@ export default function NuevoMovimiento() {
   const { theme } = useTema();
 
   const { db, contexto } = useDatos();
+  const avisar = useAvisar();
   const { cuentaId } = useCuentaActiva();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export default function NuevoMovimiento() {
         return;
       }
       crearMovimiento(db, contexto, { cuentaId: cuenta.id, ...valores });
+      avisar('Movimiento guardado');
       volver(router);
     } catch (e) {
       setError((e as Error).message);

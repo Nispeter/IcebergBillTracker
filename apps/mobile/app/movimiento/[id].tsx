@@ -1,12 +1,13 @@
 /** Editar o borrar un movimiento. */
 
-import type { categories, dates } from '@iceberg/core';
+import type { dates } from '@iceberg/core';
 import { borrarMovimiento, editarMovimiento, obtenerMovimiento } from '@iceberg/db';
 import { fontSizes, fonts, pesos, spacing } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../../components/FormularioMovimiento';
+import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
@@ -16,6 +17,7 @@ export default function EditarMovimiento() {
   const { theme } = useTema();
 
   const { db, contexto } = useDatos();
+  const avisar = useAvisar();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export default function EditarMovimiento() {
   function guardar(valores: ValoresDelFormulario) {
     try {
       editarMovimiento(db, contexto, movimiento!.id, valores);
+      avisar('Cambios guardados');
       volver(router);
     } catch (e) {
       setError((e as Error).message);
@@ -71,7 +74,7 @@ export default function EditarMovimiento() {
           montoMinor: movimiento.montoMinor,
           ocurridoEn: movimiento.ocurridoEn as dates.PlainDate,
           nombre: movimiento.nombre,
-          categoriaId: movimiento.categoriaId as categories.CategoryId | null,
+          categoriaId: movimiento.categoriaId,
           // La columna guarda 0, 1 o nulo; el formulario habla en booleanos.
           comprometido: movimiento.comprometido === null ? null : movimiento.comprometido === 1,
         }}

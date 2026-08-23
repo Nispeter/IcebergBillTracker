@@ -10,6 +10,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Pinguino } from '../components/Pinguino';
+import { ProveedorDeAviso } from '../datos/aviso';
 import { ProveedorDeDatos } from '../datos/BaseDeDatos';
 import { useFechaDeCorte } from '../datos/consultas';
 import { ProveedorDeCuenta } from '../datos/cuenta';
@@ -61,6 +62,9 @@ function Contenido() {
         `Pantalla`.
       */}
       <SafeAreaProvider>
+      {/* Envuelve todo para que el aviso de guardado se dibuje al final del
+          arbol, encima de cualquier pantalla. Ver `datos/aviso.tsx`. */}
+      <ProveedorDeAviso theme={theme}>
       <ProveedorDeDatos
         cargando={
           <View style={centro}>
@@ -104,6 +108,7 @@ function Contenido() {
           </ProveedorDeCuenta>
         </ConPeriodo>
       </ProveedorDeDatos>
+      </ProveedorDeAviso>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

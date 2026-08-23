@@ -20,6 +20,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
@@ -37,6 +38,7 @@ export default function EditarCuenta() {
   const { theme } = useTema();
   const styles = crearEstilos(theme);
   const { db, contexto } = useDatos();
+  const avisar = useAvisar();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -70,6 +72,7 @@ export default function EditarCuenta() {
       };
       if (cuenta === null) crearCuenta(db, contexto, datos);
       else editarCuenta(db, contexto, cuenta.id, datos);
+      avisar(cuenta === null ? 'Cuenta creada' : 'Cambios guardados');
       volver(router);
     } catch (e) {
       setError((e as Error).message);

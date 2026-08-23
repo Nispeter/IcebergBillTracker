@@ -4,6 +4,7 @@ import { crearRegla, listarCuentas } from '@iceberg/db';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FormularioRegla, type ValoresDeRegla } from '../../components/FormularioRegla';
+import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
@@ -12,6 +13,7 @@ import { PantallaModal } from '../../components/PantallaModal';
 export default function NuevaRegla() {
   const { theme } = useTema();
   const { db, contexto } = useDatos();
+  const avisar = useAvisar();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +25,7 @@ export default function NuevaRegla() {
         return;
       }
       crearRegla(db, contexto, { cuentaId: cuenta.id, ...valores });
+      avisar('Cuenta periódica guardada');
       volver(router);
     } catch (e) {
       setError((e as Error).message);
