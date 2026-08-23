@@ -516,11 +516,10 @@ export default function Ajustes() {
             asi que sin esto cada categoria nueva empuja hacia abajo el resto de
             Ajustes y la pantalla se vuelve interminable.
           */}
-          <ScrollView
-            style={styles.listaDeCategorias}
-            nestedScrollEnabled
-            {...desplazamiento}
-          >
+          {/* Sin `desplazamiento`: ese `onScroll` esconde el boton flotante segun
+              la direccion, y eso es del scroll de la pantalla. Moverse dentro de
+              una lista de 268 px no es salir a mirar otra cosa. */}
+          <ScrollView style={styles.listaDeCategorias} nestedScrollEnabled>
             {categorias.todas.map((categoria) => {
               const esCompromiso = comprometidas.has(categoria.id);
               return (
