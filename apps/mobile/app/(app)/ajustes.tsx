@@ -70,6 +70,14 @@ export default function Ajustes() {
     () => leerAjuste(db, CLAVE_CARPETA) || null,
   );
   const [sincronizando, setSincronizando] = useState(false);
+  /**
+   * Lo que salio mal con la carpeta, dicho **junto a la carpeta**.
+   *
+   * El aviso general se dibuja al final de Ajustes, a once secciones de aca: un
+   * error al elegir carpeta aparecia fuera de la pantalla y el usuario se
+   * quedaba sin saber por que no habia pasado nada.
+   */
+  const [problemaDeCarpeta, setProblemaDeCarpeta] = useState<string | null>(null);
   /** Archivos de la ultima pasada que se saltaron por venir de otro hogar. */
   const [ajenosEnCarpeta, setAjenosEnCarpeta] = useState(0);
   const [nombrePropio, setNombrePropio] = useState<string | null>(null);
@@ -79,6 +87,7 @@ export default function Ajustes() {
 
   /** Abre el selector del sistema y recuerda la carpeta elegida. */
   async function elegir() {
+    setProblemaDeCarpeta(null);
     try {
       const elegida = await elegirCarpeta();
       if (elegida === null) return;
@@ -88,7 +97,7 @@ export default function Ajustes() {
       setCarpeta(elegida);
       setAviso('Carpeta lista. Ahora toca Sincronizar.');
     } catch (e) {
-      setAviso((e as Error).message);
+      setProblemaDeCarpeta((e as Error).message);
     }
   }
 
@@ -101,6 +110,7 @@ export default function Ajustes() {
    */
   async function sincronizar(permitirOtroHogar = false) {
     if (carpeta === null) return;
+    setProblemaDeCarpeta(null);
     setSincronizando(true);
     try {
       const r = await sincronizarCarpeta(db, contexto, carpeta, { frase, permitirOtroHogar });
@@ -127,7 +137,7 @@ export default function Ajustes() {
         escribirAjuste(db, CLAVE_ARCHIVO_PROPIO, '');
         setCarpeta(null);
       }
-      setAviso((e as Error).message);
+      setProblemaDeCarpeta((e as Error).message);
     } finally {
       setSincronizando(false);
     }
@@ -353,6 +363,10 @@ export default function Ajustes() {
               </Pressable>
             </View>
           </>
+        )}
+
+        {problemaDeCarpeta === null ? null : (
+          <Text style={styles.problemaDeCarpeta}>{problemaDeCarpeta}</Text>
         )}
 
         {ajenosEnCarpeta === 0 ? null : (
@@ -976,5 +990,14 @@ function crearEstilos(theme: Theme) {
     botonTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
 
     nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.sm },
+    /** En rojo y con aire: es lo unico de la seccion que exige una decision. */
+    problemaDeCarpeta: {
+      fontFamily: fonts.texto,
+      fontWeight: pesos.regular,
+      fontSize: fontSizes.xs,
+      lineHeight: 18,
+      color: theme.vencidoTexto,
+      marginTop: spacing.md,
+    },
   });
 }

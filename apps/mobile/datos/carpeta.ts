@@ -93,6 +93,46 @@ export class CarpetaPerdidaError extends Error {
   }
 }
 
+/**
+ * El proveedor de la carpeta no deja escribir.
+ *
+ * Se descubre al elegirla y no al sincronizar, que es lo que importa: enterarse
+ * en el momento de elegir permite elegir otra, mientras que enterarse tres dias
+ * despues --cuando uno creia que estaba respaldado-- es la peor forma de
+ * fallar.
+ *
+ * Pasa con proveedores de nube que exponen sus carpetas **solo para leer**. El
+ * selector del sistema las muestra igual y devuelve una URI valida, asi que no
+ * hay forma de saberlo sin intentar escribir.
+ */
+export class CarpetaDeSoloLecturaError extends Error {
+  override name = 'CarpetaDeSoloLecturaError';
+
+  constructor(causa: string) {
+    super(
+      'Esa carpeta no deja crear archivos, así que la app no puede sincronizar ahí. '
+      + 'Le pasa a Google Drive: comparte sus carpetas solo para leer.\n\n'
+      + 'Prueba con una carpeta del teléfono, o con otra nube cuyo proveedor sí deje '
+      + `escribir.\n\nAndroid dijo: ${causa}`,
+    );
+  }
+}
+
+/**
+ * Corre una operacion de SAF diciendo cual era si falla.
+ *
+ * Sin esto los errores llegaban como un mensaje suelto de Android sin contexto,
+ * y desde afuera era imposible saber si habia fallado listar, crear o escribir.
+ * Son tres causas distintas con tres salidas distintas.
+ */
+async function alIntentar<T>(que: string, hacer: () => Promise<T>): Promise<T> {
+  try {
+    return await hacer();
+  } catch (e) {
+    throw new Error(`No se pudo ${que}: ${(e as Error).message}`);
+  }
+}
+
 // ─────────────────────────────── web ───────────────────────────────
 
 interface Escritura { write(dato: string): Promise<void>; close(): Promise<void> }
@@ -186,13 +226,13 @@ export async function elegirCarpeta(): Promise<string | null> {
   const permiso = await SAF.requestDirectoryPermissionsAsync();
   if (!permiso.granted) return null;
 
-  // La subcarpeta acota lo que hay que leer a lo que escribimos nosotros. Si el
-  // proveedor no deja crearla se sigue con la carpeta elegida: peor que tenerla
-  // es no poder sincronizar.
+  // Crear la subcarpeta es ademas **la prueba de que se puede escribir**. Antes
+  // se caia de vuelta a la carpeta elegida si fallaba, y eso escondia el
+  // problema hasta la primera sincronizacion, donde ya no se entendia.
   try {
     return await SAF.makeDirectoryAsync(permiso.directoryUri, SUBCARPETA);
-  } catch {
-    return permiso.directoryUri;
+  } catch (e) {
+    throw new CarpetaDeSoloLecturaError((e as Error).message);
   }
 }
 
@@ -214,10 +254,12 @@ export function nombreDeCarpeta(carpeta: string): string {
     cola = carpeta;
   }
 
-  // `acc=4;doc=encoded=...` y compañia: un identificador, no un nombre.
+  // `acc=4;doc=encoded=...` y compañia: un identificador, no un nombre. Se dice
+  // de que proveedor es, que es lo unico cierto: decir "carpeta Iceberg" seria
+  // afirmar que la subcarpeta se creo, y desde aca no se sabe.
   if (cola.includes('=')) {
     const proveedor = carpeta.match(/com\.google\.android\.apps\.docs/) ? 'Google Drive' : 'tu nube';
-    return `Carpeta ${SUBCARPETA} en ${proveedor}`;
+    return `Una carpeta de ${proveedor}`;
   }
 
   const dosPuntos = cola.lastIndexOf(':');
@@ -255,8 +297,11 @@ export async function escribirEnCarpeta(
     }
   }
 
-  const uri = await SAF.createFileAsync(carpeta, base, 'application/json');
-  await SAF.writeAsStringAsync(uri, texto);
+  const uri = await alIntentar(
+    'crear el archivo en la carpeta',
+    () => SAF.createFileAsync(carpeta, base, 'application/json'),
+  );
+  await alIntentar('escribir el archivo', () => SAF.writeAsStringAsync(uri, texto));
   return uri;
 }
 
@@ -283,7 +328,8 @@ export async function leerCarpeta(
     return archivos;
   }
 
-  for (const uri of await SAF.readDirectoryAsync(carpeta)) {
+  const uris = await alIntentar('abrir la carpeta', () => SAF.readDirectoryAsync(carpeta));
+  for (const uri of uris) {
     if (uri === propio) continue;
     try {
       archivos.push({ nombre: uri, texto: await SAF.readAsStringAsync(uri) });
