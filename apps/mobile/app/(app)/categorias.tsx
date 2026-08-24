@@ -18,7 +18,7 @@ import { BarraSegmentada } from '../../components/BarraSegmentada';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior } from '../../datos/desplazamiento';
 import { QueCambio } from '../../components/QueCambio';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
 import { iconoDeCategoria } from '../../components/iconos';
@@ -29,7 +29,6 @@ import { useCategorias } from '../../datos/catalogo';
 
 export default function Categorias() {
   const { theme } = useTema();
-  const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const categorias = useCategorias();
@@ -50,7 +49,6 @@ export default function Categorias() {
     <Pantalla>
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
-        {...desplazamiento}
       >
         <Titulo
           texto="En qué se fue"

@@ -19,7 +19,7 @@ import { LineaDeSaldo } from '../../components/LineaDeSaldo';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior } from '../../datos/desplazamiento';
 import { useAnalisisDeRango, useSaldoAlEmpezar } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
@@ -28,7 +28,6 @@ const NOMBRES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
 
 export default function DiaADia() {
   const { theme } = useTema();
-  const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte, tipo } = usePeriodo();
@@ -51,7 +50,6 @@ export default function DiaADia() {
     <Pantalla>
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
-        {...desplazamiento}
       >
         {tipo === 'year' ? (
           <Text style={styles.aviso}>

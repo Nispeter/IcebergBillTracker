@@ -323,14 +323,14 @@ export const spacing = {
 } as const;
 
 /**
- * Aire al final de una pantalla que scrollea, para que el boton flotante no
- * tape la ultima fila.
+ * Alto de la barra de navegacion de abajo, **sin** el margen del sistema.
  *
- * Son sus 44 px mas los 16 que lo separan del borde, mas un respiro. Sin esto la
- * ultima fila de cada lista queda debajo del circulo **siempre**, y no hay forma
- * de leerla ni de tocarla.
+ * Lo usan la barra para dibujarse y las pantallas para reservar aire al final de
+ * lo que scrollea. Vive aca y no en el componente porque las dos cosas tienen
+ * que estar de acuerdo: si no, o la ultima fila queda debajo de la barra o
+ * sobra un hueco.
  */
-export const AIRE_PARA_EL_FLOTANTE = 76;
+export const ALTO_DE_LA_BARRA = 58;
 
 /**
  * Tipografia.

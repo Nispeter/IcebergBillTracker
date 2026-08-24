@@ -42,7 +42,7 @@ import { Hoja } from '../../components/Hoja';
 import { Iceberg, alturaDeLineaDeAgua } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior } from '../../datos/desplazamiento';
 import {
   esGastoComprometido, useAnalisisDeRango, useAnomalias, useComprometidas, useDesgloseDelSaldo,
   useMovimientosDeRegla, useMovimientosFiltrados, useSaldoInicial, type DesgloseDelSaldo,
@@ -58,7 +58,6 @@ const ALTO_ETIQUETA = 30;
 
 export default function Resumen() {
   const { theme } = useTema();
-  const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { tipo, rango, corte } = usePeriodo();
@@ -114,7 +113,6 @@ export default function Resumen() {
     <Pantalla>
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
-        {...desplazamiento}
       >
         <Pressable
           onPress={() => setCifra('saldo')}

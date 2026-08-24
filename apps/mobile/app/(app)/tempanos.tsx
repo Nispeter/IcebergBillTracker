@@ -26,7 +26,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior } from '../../datos/desplazamiento';
 import { Pinguino } from '../../components/Pinguino';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAvisar } from '../../datos/aviso';
@@ -40,7 +40,6 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 
 export default function Tempanos() {
   const { theme } = useTema();
-  const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const categorias = useCategorias();
@@ -64,7 +63,6 @@ export default function Tempanos() {
     <Pantalla permitirFuturo>
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
-        {...desplazamiento}
       >
         <View style={styles.cabecera}>
           <View style={styles.total}>

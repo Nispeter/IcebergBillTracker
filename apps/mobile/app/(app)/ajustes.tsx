@@ -26,7 +26,7 @@ import { Interruptor } from '../../components/Interruptor';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
-import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior } from '../../datos/desplazamiento';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
@@ -45,7 +45,6 @@ import { useTema } from '../../datos/tema';
 
 export default function Ajustes() {
   const { nombre: tema, theme, alternar } = useTema();
-  const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const comprometidas = useComprometidas();
@@ -183,7 +182,6 @@ export default function Ajustes() {
     <Pantalla sinPeriodo>
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
-        {...desplazamiento}
       >
         <Seccion
           styles={styles}
@@ -517,9 +515,6 @@ export default function Ajustes() {
             asi que sin esto cada categoria nueva empuja hacia abajo el resto de
             Ajustes y la pantalla se vuelve interminable.
           */}
-          {/* Sin `desplazamiento`: ese `onScroll` esconde el boton flotante segun
-              la direccion, y eso es del scroll de la pantalla. Moverse dentro de
-              una lista de 268 px no es salir a mirar otra cosa. */}
           <ScrollView style={styles.listaDeCategorias} nestedScrollEnabled>
             {categorias.todas.map((categoria) => {
               const esCompromiso = comprometidas.has(categoria.id);

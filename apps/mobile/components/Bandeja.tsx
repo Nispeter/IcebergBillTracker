@@ -1,68 +1,37 @@
 /**
- * La navegacion, en una bandeja que sube desde abajo.
+ * La bandeja de "que estoy mirando": elegir con que cuenta ver la app.
  *
- * Tercera forma que toma esto y conviene dejar escrito por que, para no volver
- * en circulo:
+ * Llego a tener adentro los seis destinos, y se los llevo la barra de abajo:
+ * ver `BarraInferior`, que ademas cuenta el recorrido completo de la navegacion.
+ * Lo que quedo aca es lo unico que **no** es un lugar al que ir sino un filtro
+ * sobre todo lo demas.
  *
- * 1. **Barra de pestañas fija abajo.** Se fue porque ocupaba una franja
- *    permanente de la pantalla para algo que se toca cada tantos minutos.
- * 2. **Panel lateral que se esconde.** Arreglaba eso, pero dejaba los seis
- *    destinos arriba a la izquierda, que en un telefono grande es justo donde el
- *    pulgar no llega.
- * 3. **Esta bandeja.** Se esconde igual que el panel lateral --el contenido usa
- *    el alto completo mientras no se la pide-- y ademas aparece **donde esta la
- *    mano**. Es lo que la barra de pestañas hacia bien, sin el costo de estar
- *    siempre puesta.
+ * Sigue siendo una bandeja y no un desplegable en el encabezado por donde ya
+ * estuvo: bajo el periodo dejaba una barra de dos lineas en todas las pantallas
+ * para algo que casi nunca se cambia, porque uno mira un libro y se queda ahi.
  *
- * Los destinos van en rejilla de tres y no en lista: seis filas apiladas desde
- * abajo taparian la pantalla entera, y en rejilla la bandeja ocupa un tercio.
+ * **No se abre con una sola cuenta.** `Pantalla` ni siquiera dibuja el boton que
+ * la abre: una bandeja vacia es peor que ninguna.
  *
- * Se cierra tocando fuera, tocando una opcion, o con la X. Tres salidas, porque
- * una bandeja de la que no se sabe salir es peor que no tenerla.
+ * Se cierra tocando fuera, con la X, o al elegir una cuenta.
  */
 
-import {
-  capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
-} from '@iceberg/ui';
-import { usePathname, useRouter } from 'expo-router';
-import { CalendarBlank } from 'phosphor-react-native/src/icons/CalendarBlank';
-import { ChartPieSlice } from 'phosphor-react-native/src/icons/ChartPieSlice';
-import { Gear } from 'phosphor-react-native/src/icons/Gear';
-import { Snowflake } from 'phosphor-react-native/src/icons/Snowflake';
-import { ListBullets } from 'phosphor-react-native/src/icons/ListBullets';
-import { Waves } from 'phosphor-react-native/src/icons/Waves';
+import { capas, elevation, radii, spacing, type Theme } from '@iceberg/ui';
 import { X } from 'phosphor-react-native/src/icons/X';
-import type { IconProps } from 'phosphor-react-native';
-import { useEffect, useRef, useState, type ComponentType } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Pinguino } from './Pinguino';
 import { SelectorDeCuenta } from './SelectorDeCuenta';
-
-interface Destino {
-  readonly ruta: string;
-  readonly etiqueta: string;
-  readonly icono: ComponentType<IconProps>;
-}
-
-const DESTINOS: readonly Destino[] = [
-  { ruta: '/', etiqueta: 'Resumen', icono: Waves },
-  { ruta: '/categorias', etiqueta: 'Categorías', icono: ChartPieSlice },
-  { ruta: '/calendario', etiqueta: 'Día a día', icono: CalendarBlank },
-  { ruta: '/tempanos', etiqueta: 'Témpanos', icono: Snowflake },
-  { ruta: '/movimientos', etiqueta: 'Movimientos', icono: ListBullets },
-  { ruta: '/ajustes', etiqueta: 'Ajustes', icono: Gear },
-];
 
 /**
  * Desde donde entra mientras no se sabe cuanto mide.
  *
  * La bandeja se mide sola con `onLayout`, pero eso llega despues del primer
  * render y la primera apertura no tendria de donde salir. Se usa el mayor de los
- * dos: pasarse deja la bandeja fuera de pantalla un instante mas, que no se ve;
+ * dos: pasarse la deja fuera de pantalla un instante mas, que no se ve;
  * quedarse corto la hace aparecer a medio camino, que si.
  */
-const ENTRADA_MINIMA = 360;
+const ENTRADA_MINIMA = 260;
 
 const OPACIDAD_VELO = 0.82;
 
@@ -70,8 +39,6 @@ export function Bandeja(
   { theme, abierta, onCerrar }: { theme: Theme; abierta: boolean; onCerrar: () => void },
 ) {
   const styles = crearEstilos(theme, useSafeAreaInsets());
-  const router = useRouter();
-  const ruta = usePathname();
 
   // `montada` sobrevive al cierre: si se desmontara al tocar fuera, la bandeja
   // desapareceria de golpe y la animacion de salida no se veria nunca.
@@ -109,7 +76,7 @@ export function Bandeja(
           style={styles.veloTocable}
           onPress={onCerrar}
           accessibilityRole="button"
-          accessibilityLabel="Cerrar menú"
+          accessibilityLabel="Cerrar"
         />
       </Animated.View>
 
@@ -122,59 +89,18 @@ export function Bandeja(
         <View style={styles.tirador} />
 
         <View style={styles.cabecera}>
-          <View style={styles.marcaFila}>
-            <Pinguino theme={theme} tamano={24} />
-            <Text style={styles.marca}>ICEBERG</Text>
-          </View>
           <Pressable
             onPress={onCerrar}
             style={styles.cerrar}
             accessibilityRole="button"
-            accessibilityLabel="Cerrar menú"
+            accessibilityLabel="Cerrar"
             hitSlop={8}
           >
             <X size={14} weight="bold" color={theme.silencio} />
           </Pressable>
         </View>
 
-        {/*
-          El selector de cuenta va aca y no en el encabezado.
-          Estuvo bajo el periodo y dejaba una barra de dos lineas en todas las
-          pantallas para algo que casi nunca se cambia: uno mira un libro y se
-          queda ahi. Este menu es donde ya viven las decisiones de "que estoy
-          mirando". No se dibuja con una sola cuenta.
-        */}
         <SelectorDeCuenta theme={theme} alCerrar={onCerrar} />
-
-        <View style={styles.rejilla}>
-          {DESTINOS.map((destino) => {
-            const Icono = destino.icono;
-            const activo = ruta === destino.ruta;
-            return (
-              <Pressable
-                key={destino.ruta}
-                onPress={() => {
-                  onCerrar();
-                  if (!activo) router.replace(destino.ruta as never);
-                }}
-                style={({ pressed }) => [styles.celda, pressed && styles.celdaApretada]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: activo }}
-                accessibilityLabel={destino.etiqueta}
-              >
-                <View style={[styles.ficha, activo && styles.fichaActiva]}>
-                  <Icono size={20} weight="regular" color={activo ? theme.acentoTexto : theme.silencio} />
-                </View>
-                <Text
-                  style={activo ? styles.etiquetaActiva : styles.etiqueta}
-                  numberOfLines={1}
-                >
-                  {destino.etiqueta}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
       </Animated.View>
     </View>
   );
@@ -193,7 +119,7 @@ function crearEstilos(theme: Theme, margenes: { bottom: number }) {
       paddingTop: spacing.sm,
       // El margen del sistema va sumado y no fijo: la bandeja termina justo
       // donde empieza la barra de gestos de Android, que la taparia.
-      paddingBottom: spacing.lg + margenes.bottom,
+      paddingBottom: spacing.xl + margenes.bottom,
       borderTopLeftRadius: radii.lg,
       borderTopRightRadius: radii.lg,
       backgroundColor: theme.superficie,
@@ -206,17 +132,9 @@ function crearEstilos(theme: Theme, margenes: { bottom: number }) {
       borderRadius: radii.full,
       alignSelf: 'center',
       backgroundColor: theme.hairline,
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
     },
-    cabecera: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: spacing.sm,
-      paddingBottom: spacing.md,
-    },
-    marcaFila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
+    cabecera: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.sm },
     cerrar: {
       width: 22,
       height: 22,
@@ -226,31 +144,5 @@ function crearEstilos(theme: Theme, margenes: { bottom: number }) {
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },
-    rejilla: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginTop: spacing.sm,
-    },
-    /** Un tercio exacto: seis destinos son dos filas parejas de tres. */
-    celda: {
-      width: '33.333%',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingVertical: spacing.sm,
-    },
-    celdaApretada: { opacity: 0.6 },
-    ficha: {
-      width: 44,
-      height: 44,
-      borderRadius: radii.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.superficieHonda,
-    },
-    // Lo activo se marca en la ficha y no en el texto: el color de fondo se ve
-    // de reojo, y con seis destinos uno busca donde esta parado sin leer.
-    fichaActiva: { backgroundColor: theme.hieloSobreAgua },
-    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 11, color: theme.silencio },
-    etiquetaActiva: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: 11, color: theme.tinta },
   });
 }

@@ -24,7 +24,7 @@ import { Ayuda } from '../../components/Ayuda';
 import { ConDesplegable } from '../../components/ConDesplegable';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Pantalla } from '../../components/Pantalla';
-import { useAireInferior, useDesplazamiento } from '../../datos/desplazamiento';
+import { useAireInferior } from '../../datos/desplazamiento';
 import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
@@ -58,7 +58,6 @@ type Desplegable = 'tipo' | 'categoria' | 'tanda' | null;
 
 export default function Movimientos() {
   const { theme } = useTema();
-  const desplazamiento = useDesplazamiento();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const categorias = useCategorias();
@@ -214,7 +213,6 @@ export default function Movimientos() {
           scroll justo cuando uno quiere cambiarlo. */}
       <View style={styles.fijo}>{encabezado}</View>
       <FlatList
-        {...desplazamiento}
         data={movimientos}
         keyExtractor={(tx) => tx.id}
         renderItem={({ item }: { item: Movimiento }) => (
