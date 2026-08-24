@@ -16,6 +16,7 @@ import {
   charts, elevation, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pinguino } from './Pinguino';
 
 /** Lunes primero, como el resto de la app. */
 const DIAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -75,6 +76,15 @@ export function Calendario(
       </View>
 
       <View style={styles.grilla}>
+        {/*
+          Detrás de la rejilla y muy apagado: es una marca de agua, no un
+          dibujo. `pointerEvents="none"` porque cubre las celdas y si no se
+          comería los toques de los días.
+        */}
+        <View style={styles.marcaDeAgua} pointerEvents="none">
+          <Pinguino theme={theme} tamano={150} estado="dormido" />
+        </View>
+
         {Array.from({ length: relleno }, (_, i) => <View key={`v${i}`} style={styles.celda} />)}
 
         {serie.map((dia) => {
@@ -127,6 +137,23 @@ function crearEstilos(theme: Theme) {
     },
     grilla: { flexDirection: 'row', flexWrap: 'wrap' },
     celda: { width: `${100 / 7}%`, aspectRatio: 0.95, padding: 2, alignItems: 'center', justifyContent: 'center' },
+    /**
+     * El pingüino de fondo.
+     *
+     * Al 6 % se ve solo cuando uno se detiene a mirar, que es lo que tiene que
+     * hacer una marca de agua: no puede competir con los montos, que son lo que
+     * la pantalla vino a decir.
+     */
+    marcaDeAgua: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      opacity: 0.06,
+    },
     marca: { position: 'absolute', top: 2, right: 2, bottom: 2, left: 2, borderRadius: radii.sm },
     /**
      * Un dia sin gasto no dibuja nada, ni siquiera un contorno.

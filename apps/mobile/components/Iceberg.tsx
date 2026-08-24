@@ -13,7 +13,7 @@
  */
 
 import { toPathData, waterlineForShare, type Point, type Theme } from '@iceberg/ui';
-import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { View } from 'react-native';
 
 const ANCHO = 200;
@@ -31,6 +31,24 @@ const SILUETA: Point[] = [
 ];
 
 const RUTA = toPathData(SILUETA);
+
+/**
+ * Motas de textura, en coordenadas del `viewBox`.
+ *
+ * **No se recortan con la silueta**: cada punto se eligió comprobando que cae
+ * dentro del polígono con ocho unidades de holgura, y separado de los demás.
+ * Recortar era el camino obvio y es justamente el que ya falló acá: un
+ * `ClipPath` funcionaba en web y en Android dejaba el iceberg de un solo color.
+ * Un punto que ya está adentro no necesita que nadie lo recorte.
+ *
+ * Cada mota decide sola qué es: **burbuja** si queda bajo la línea de agua,
+ * **nieve** si queda encima. Como la línea se mueve con la proporción del gasto,
+ * la textura cambia con ella.
+ */
+const TEXTURA: readonly Point[] = [
+  [143, 201], [62, 165], [127, 151], [87, 104], [105, 214], [53, 201], [152, 120],
+  [115, 74], [23, 117], [55, 85], [168, 167], [96, 176], [81, 53], [94, 138],
+];
 
 export interface IcebergProps {
   /** Proporcion del gasto que es comprometido, de 0 a 1. */
@@ -58,6 +76,17 @@ export interface IcebergProps {
  */
 export function alturaDeLineaDeAgua(shareComprometido: number, alto: number): number {
   return (waterlineForShare(SILUETA, shareComprometido) / ALTO) * alto;
+}
+
+/**
+ * Cuanto mide de ancho el dibujo para un alto dado.
+ *
+ * La pantalla lo necesita para poner cosas **encima del hielo**: la escena es
+ * mucho mas ancha que el iceberg --la linea de agua cruza de borde a borde-- asi
+ * que un porcentaje del contenedor no cae donde uno cree.
+ */
+export function anchoDelIceberg(alto: number): number {
+  return alto * (ANCHO / ALTO);
 }
 
 export function Iceberg(
@@ -95,6 +124,38 @@ export function Iceberg(
         </Defs>
 
         <Path d={RUTA} fill="url(#hieloYAgua)" />
+
+        {/*
+          La textura. Los radios varían con el índice y no al azar: el dibujo
+          tiene que ser el mismo en cada render, o las motas titilarían cada vez
+          que cambia el período.
+        */}
+        {TEXTURA.map(([x, y], indice) => {
+          const bajoElAgua = y > linea;
+          const radio = 1.5 + (indice % 3) * 0.6;
+          return bajoElAgua ? (
+            <Circle
+              key={`${x}-${y}`}
+              cx={x}
+              cy={y}
+              r={radio}
+              fill={theme.hieloSobreAgua}
+              opacity={0.38}
+            />
+          ) : (
+            // Sobre el hielo no sirve una mota más clara: el hielo ya es casi
+            // blanco. La que se ve es la sombra, que es como se lee la nieve de
+            // lejos.
+            <Circle
+              key={`${x}-${y}`}
+              cx={x}
+              cy={y}
+              r={radio * 0.85}
+              fill={theme.sobreElHielo}
+              opacity={0.12}
+            />
+          );
+        })}
 
         {/* La linea de agua cruza entera, no solo el ancho del hielo: es el
             nivel del mar, no un borde de la figura. Cuando la dibuja la

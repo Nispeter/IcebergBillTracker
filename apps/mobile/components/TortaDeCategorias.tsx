@@ -121,7 +121,8 @@ export function TortaDeCategorias(
 
   return (
     <View style={styles.bloque}>
-      <Svg width={LADO} height={LADO} viewBox={`0 0 ${LADO} ${LADO}`}>
+      <View>
+        <Svg width={LADO} height={LADO} viewBox={`0 0 ${LADO} ${LADO}`}>
         {sectores.map((sector, indice) => {
           const angulo = angulos[indice];
           if (!angulo) return null;
@@ -137,7 +138,15 @@ export function TortaDeCategorias(
             />
           );
         })}
-      </Svg>
+        </Svg>
+
+        {/* En el hueco del anillo, que si no es un agujero. El radio interior
+            son 52 de 176, o sea 104 de diámetro: un pingüino de 44 entra con
+            aire de sobra y no toca ningún sector. */}
+        <View style={styles.enElHueco} pointerEvents="none">
+          <Pinguino theme={theme} tamano={44} />
+        </View>
+      </View>
 
       <View style={styles.leyenda}>
         {sectores.map((sector) => {
@@ -198,5 +207,14 @@ function crearEstilos(theme: Theme) {
     porcentaje: { width: 30, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
     sinGastos: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
+    enElHueco: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
   });
 }

@@ -38,7 +38,7 @@ import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovim
 import { Pinguino } from '../../components/Pinguino';
 import { DetalleDeCifra, type Detalle } from '../../components/DetalleDeCifra';
 import { Hoja } from '../../components/Hoja';
-import { Iceberg, alturaDeLineaDeAgua } from '../../components/Iceberg';
+import { Iceberg, alturaDeLineaDeAgua, anchoDelIceberg } from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useAireInferior } from '../../datos/desplazamiento';
@@ -48,9 +48,25 @@ import {
 } from '../../datos/consultas';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
+import { useAvisar } from '../../datos/aviso';
 
 /** El alto del hielo. Es la pieza mas grande de la pantalla, y tiene que serlo. */
 const ALTO_HIELO = 240;
+
+/** Cuántos toques al iceberg hacen aparecer la colonia. */
+const TOQUES_PARA_LA_COLONIA = 5;
+
+/**
+ * Dónde se para cada pingüino, en unidades del `viewBox` del iceberg.
+ *
+ * En unidades del dibujo y no en fracciones del contenedor: la escena es mucho
+ * más ancha que el hielo, así que un 24 % del contenedor cae sobre el mar
+ * abierto. Estos cuatro quedan sobre el hielo mientras la línea de agua no suba
+ * hasta el pico.
+ */
+const LA_COLONIA = [72, 96, 120, 144];
+const ALTO_DEL_PINGUINO = 18;
+const TAMANO_DEL_PINGUINO = 16;
 
 /** Lo que ocupa un porcentaje escrito. Si su franja no lo tiene, no se dibuja. */
 const ALTO_ETIQUETA = 30;
@@ -74,6 +90,17 @@ export default function Resumen() {
   const anomalias = useAnomalias();
   const deRegla = useMovimientosDeRegla(rango);
   const [cifra, setCifra] = useState<Cifra | null>(null);
+
+  /**
+   * El huevo de pascua: cinco toques al iceberg y aparece la colonia.
+   *
+   * Cinco y no tres porque tres se alcanzan sin querer; y no diez, porque nadie
+   * insiste tanto con algo que no promete nada. Vive en el estado de la
+   * pantalla, así que se va al salir: es un guiño, no una preferencia.
+   */
+  const [toques, setToques] = useState(0);
+  const hayColonia = toques >= TOQUES_PARA_LA_COLONIA;
+  const avisar = useAvisar();
   const comprometidas = useComprometidas();
 
   const variable = money.subtract(a.resumen.gasto, a.fijo);
@@ -152,7 +179,17 @@ export default function Resumen() {
         />
 
         <View style={styles.escena}>
-          <View style={styles.hielo}>
+          <Pressable
+            style={styles.hielo}
+            onPress={() => {
+              if (hayColonia) return;
+              const van = toques + 1;
+              setToques(van);
+              if (van >= TOQUES_PARA_LA_COLONIA) avisar('Llegó la colonia');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="El iceberg"
+          >
             <Iceberg
               shareComprometido={share}
               theme={theme}
@@ -161,7 +198,28 @@ export default function Resumen() {
               alto={ALTO_HIELO}
               dibujarLinea={false}
             />
-          </View>
+          </Pressable>
+
+          {/*
+            Los pingüinos se paran **sobre la línea de agua**, que es el único
+            borde del dibujo cuya altura conocemos sin medir nada: `yLinea` ya
+            estaba calculada para dibujarla.
+          */}
+          {hayColonia && hayGasto ? LA_COLONIA.map((enElDibujo) => (
+            <View
+              key={enElDibujo}
+              pointerEvents="none"
+              style={[styles.enLaOrilla, {
+                top: yLinea - ALTO_DEL_PINGUINO,
+                // Desde el centro, que es donde el iceberg esta anclado, y no
+                // desde el borde de la escena.
+                marginLeft: ((enElDibujo - 100) / 200) * anchoDelIceberg(ALTO_HIELO)
+                  - TAMANO_DEL_PINGUINO / 2,
+              }]}
+            >
+              <Pinguino theme={theme} tamano={TAMANO_DEL_PINGUINO} estado="contento" />
+            </View>
+          )) : null}
           {/* Sin gastos no hay reparto, y sin reparto no hay nivel que marcar:
               la linea quedaba pegada al borde de arriba, suelta bajo el saldo,
               afirmando una division que no existe. */}
@@ -473,6 +531,9 @@ function crearEstilos(theme: Theme) {
     escena: { height: ALTO_HIELO, marginHorizontal: -spacing.lg, marginBottom: spacing.lg },
     hielo: { alignItems: 'center' },
     lineaDeAgua: { position: 'absolute', left: 0, right: 0, height: 1.5, backgroundColor: charts[0] },
+    // Anclado al centro de la escena: el `marginLeft` de cada uno lo corre
+    // hasta su lugar sobre el hielo.
+    enLaOrilla: { position: 'absolute', left: '50%' },
     parteEnElHielo: {
       position: 'absolute',
       left: 0,
