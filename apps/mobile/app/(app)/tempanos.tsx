@@ -60,7 +60,17 @@ export default function Tempanos() {
   );
 
   return (
-    <Pantalla titulo="Témpanos" permitirFuturo>
+    <Pantalla
+      titulo="Témpanos"
+      ayudaDelTitulo={'Tus **cuentas periódicas**: lo que se repite y ya está '
+        + 'comprometido aunque todavía no lo hayas pagado. Arriendo, servicios, '
+        + 'suscripciones, cuotas.\n\n'
+        + 'Se llaman témpanos porque son la parte del gasto que viene igual, la estés '
+        + 'mirando o no.\n\n'
+        + 'Es la única vista que mira hacia adelante: avanza el período con la flecha '
+        + 'de arriba y ves lo que se viene.'}
+      permitirFuturo
+    >
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >

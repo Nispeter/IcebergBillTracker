@@ -44,6 +44,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { Ayuda } from './Ayuda';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
 import { useAbrirBandeja } from './Bandeja';
@@ -51,10 +52,18 @@ import { useCuentas } from '../datos/consultas';
 import { useTema } from '../datos/tema';
 
 export function Pantalla(
-  { children, titulo, sinPeriodo, permitirFuturo }: {
+  { children, titulo, ayudaDelTitulo, sinPeriodo, permitirFuturo }: {
     children: ReactNode;
     /** El nombre de la vista. El mismo que lleva en la barra de abajo. */
     titulo?: string;
+    /**
+     * Que es esta vista, si el nombre no alcanza.
+     *
+     * Casi ninguna la necesita --"Movimientos" o "Ajustes" se explican solos--,
+     * y por eso es opcional en vez de obligatoria: una `i` al lado de algo
+     * evidente es ruido.
+     */
+    ayudaDelTitulo?: string;
     sinPeriodo?: boolean;
     /** Ver `BarraDePeriodo`: solo Tempanos necesita mirar hacia adelante. */
     permitirFuturo?: boolean;
@@ -131,7 +140,12 @@ export function Pantalla(
           )}
         </View>
         {titulo === undefined ? null : (
-          <Text style={styles.tituloDeVista}>{titulo}</Text>
+          <View style={styles.filaDelTitulo}>
+            <Text style={styles.tituloDeVista}>{titulo}</Text>
+            {ayudaDelTitulo === undefined ? null : (
+              <Ayuda titulo={titulo} texto={ayudaDelTitulo} theme={theme} />
+            )}
+          </View>
         )}
       </View>
 
@@ -191,6 +205,13 @@ function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }) {
       fontWeight: pesos.semibold,
       fontSize: fontSizes.lg,
       color: theme.tinta,
+    },
+    // La `i` pegada al titulo y no al borde derecho: explica **esto**, y a diez
+    // centimetros de distancia deja de estar claro que. Ver `Titulo.tsx`.
+    filaDelTitulo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
       marginTop: spacing.md,
     },
 
