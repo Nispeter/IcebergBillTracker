@@ -438,8 +438,9 @@ export const durations = {
  * flotante, que va sobre el contenido pero cede ante cualquier panel; los
  * desplegables; las burbujas de ayuda; el encabezado, que lleva el selector de
  * periodo; el menu lateral, que tapa todo porque es el unico que ocupa la
- * pantalla entera; y el aviso de guardado, que va sobre el lateral porque
- * confirma algo que acaba de pasar y no tendria sentido que algo lo tapara.
+ * pantalla entera; la hoja deslizante, que es la unica que se abre **sobre** el
+ * menu; y el aviso de guardado, que va sobre todo porque confirma algo que
+ * acaba de pasar y no tendria sentido que algo lo tapara.
  */
 export const capas = {
   flotante: 10,
@@ -447,5 +448,6 @@ export const capas = {
   ayuda: 30,
   encabezado: 40,
   lateral: 50,
+  hoja: 55,
   aviso: 60,
 } as const;

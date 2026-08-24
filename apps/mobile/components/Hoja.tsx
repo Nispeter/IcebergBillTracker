@@ -23,7 +23,7 @@
  */
 
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
-import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import { capas, elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,6 +76,10 @@ export function Hoja(
       // Desmontar recien aca: `onClose` corre cuando la animacion de salida ya
       // termino, asi que se ve entera.
       onClose={() => { setMontada(false); onCerrar(); }}
+      // El boton flotante lleva `zIndex` propio y la hoja no llevaba ninguno,
+      // asi que el `+` le quedaba encima: un elemento con capa explicita le gana
+      // a cualquier hermano sin ella, por mas tarde que venga en el arbol.
+      containerStyle={styles.capa}
       backgroundStyle={styles.fondo}
       handleIndicatorStyle={styles.tirador}
     >
@@ -90,6 +94,7 @@ export function Hoja(
 
 function crearEstilos(theme: Theme, aireDelSistema: number) {
   return StyleSheet.create({
+    capa: { zIndex: capas.hoja },
     fondo: { backgroundColor: theme.superficie },
     tirador: { backgroundColor: theme.hairline, width: 36 },
     contenido: {
