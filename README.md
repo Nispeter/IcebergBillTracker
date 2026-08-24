@@ -63,16 +63,69 @@ Cuatro decisiones que conviene saber antes de tocar el código:
 - **El orden lo da un HLC**: el orden lexicográfico de `updatedAt` es el orden causal, y por
   eso la fusión converge.
 
-## Publicar
+## Publicar una versión
 
-Una versión nueva es una etiqueta; el resto lo hace GitHub Actions:
+Una versión nueva es **una etiqueta**; compilar y publicar lo hace GitHub Actions
+(`.github/workflows/apk.yml`). Son cuatro pasos.
 
-```bash
-git tag v0.2.0 && git push --tags
+**1. Sube el número de versión** en `apps/mobile/app.json`:
+
+```jsonc
+"version": "0.4.0",        // lo que ve el usuario
+"android": {
+  "versionCode": 4,        // +1 siempre, es lo que Android compara
+}
 ```
 
-La APK va firmada con la llave de depuración de Expo: sirve para instalar y compartir, no
-para la Play Store.
+Los dos, no uno. `versionCode` es el único que Android mira para decidir si una APK es
+una actualización de la anterior: si no sube, el teléfono puede negarse a instalarla
+encima. `version` es solo el texto que se muestra.
+
+**2. Comprueba antes de esperar diez minutos.** El workflow corre esto igual y aborta si
+falla, pero acá tarda segundos:
+
+```bash
+npm run typecheck && npm test
+```
+
+**3. Sube el commit y la etiqueta.** La etiqueta tiene que empezar con `v`: es lo que
+dispara el workflow.
+
+```bash
+git add apps/mobile/app.json && git commit -m "🔖 v0.4.0"
+git push origin main
+git tag -a v0.4.0 -m "Lo que trae esta versión"
+git push origin v0.4.0
+```
+
+**4. Mira cómo va.** Tarda unos 25 minutos, casi todos en Gradle:
+
+```bash
+gh run watch          # o la pestaña Actions en GitHub
+```
+
+Al terminar, la APK queda en un enlace que **no cambia entre versiones**:
+
+```
+https://github.com/Nispeter/IcebergBillTracker/releases/latest/download/iceberg.apk
+```
+
+### Cosas que conviene saber
+
+**Compilar sin publicar**: en la pestaña Actions, `APK` → `Run workflow`. Deja la APK como
+artefacto de la corrida, sin crear un release. Sirve para probar que compila sin quemar un
+número de versión.
+
+**Te equivocaste de etiqueta**: bórrala de los dos lados y vuelve a etiquetar.
+
+```bash
+git tag -d v0.4.0
+git push origin :refs/tags/v0.4.0
+```
+
+**No hace falta ningún secreto.** La APK va firmada con la llave de depuración de Expo, que
+es pública: sirve para instalar y compartir, no para la Play Store. Publicar de verdad
+pide generar una llave propia y guardarla en los secretos del repositorio.
 
 Para la versión web, `npm run exportar:web` deja el sitio en `dist/`. **GitHub Pages no
 sirve**: SQLite en el navegador necesita `SharedArrayBuffer`, que exige las cabeceras
