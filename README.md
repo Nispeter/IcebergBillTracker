@@ -66,42 +66,49 @@ Cuatro decisiones que conviene saber antes de tocar el código:
 ## Publicar una versión
 
 Una versión nueva es **una etiqueta**; compilar y publicar lo hace GitHub Actions
-(`.github/workflows/apk.yml`). Son cuatro pasos.
-
-**1. Sube el número de versión** en `apps/mobile/app.json`:
-
-```jsonc
-"version": "0.4.0",        // lo que ve el usuario
-"android": {
-  "versionCode": 4,        // +1 siempre, es lo que Android compara
-}
-```
-
-Los dos, no uno. `versionCode` es el único que Android mira para decidir si una APK es
-una actualización de la anterior: si no sube, el teléfono puede negarse a instalarla
-encima. `version` es solo el texto que se muestra.
-
-**2. Comprueba antes de esperar diez minutos.** El workflow corre esto igual y aborta si
-falla, pero acá tarda segundos:
+(`.github/workflows/apk.yml`). Todo el procedimiento está en un script:
 
 ```bash
-npm run typecheck && npm test
+node tools/publicar.mjs 0.4.1 "Arregla el selector de carpeta en Android"
 ```
 
-**3. Sube el commit y la etiqueta.** La etiqueta tiene que empezar con `v`: es lo que
-dispara el workflow.
+Eso sube el número de versión, corre tipos y pruebas, confirma, etiqueta y empuja. Antes
+de tocar nada comprueba que estés en `main`, que no haya cambios sin confirmar y que la
+etiqueta no exista, así que si algo está mal se corta sin dejar el repositorio a medio
+publicar.
 
-```bash
-git add apps/mobile/app.json && git commit -m "🔖 v0.4.0"
-git push origin main
-git tag -a v0.4.0 -m "Lo que trae esta versión"
-git push origin v0.4.0
-```
-
-**4. Mira cómo va.** Tarda unos 25 minutos, casi todos en Gradle:
+Después tarda unos 25 minutos, casi todos en Gradle. Para seguirla:
 
 ```bash
 gh run watch          # o la pestaña Actions en GitHub
+```
+
+### Qué hace por dentro
+
+Vale la pena saberlo por si alguna vez hay que hacerlo a mano:
+
+**Sube los dos números** de `apps/mobile/app.json`, no uno:
+
+```jsonc
+"version": "0.4.1",        // el texto que se muestra
+"android": {
+  "versionCode": 5,        // +1 siempre, es lo que Android compara
+}
+```
+
+`versionCode` es el único que Android mira para decidir si una APK es actualización de la
+anterior: si no sube, el teléfono puede negarse a instalarla encima. Es el paso que se
+olvida, y por eso existe el script.
+
+**Corre `npm run typecheck && npm test` antes de empujar.** El workflow los corre igual y
+aborta si fallan, pero acá tarda segundos en vez de diez minutos.
+
+**Etiqueta con `v` adelante**, que es lo que dispara el workflow:
+
+```bash
+git push origin main
+git tag -a v0.4.1 -m "Lo que trae esta versión"
+git push origin v0.4.1
 ```
 
 Al terminar, la APK queda en un enlace que **no cambia entre versiones**:
