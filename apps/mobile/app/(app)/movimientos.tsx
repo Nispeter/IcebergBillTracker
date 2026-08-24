@@ -27,6 +27,7 @@ import { Pantalla } from '../../components/Pantalla';
 import { useAireInferior } from '../../datos/desplazamiento';
 import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../../components/iconos';
+import { Pinguino } from '../../components/Pinguino';
 import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
@@ -218,7 +219,12 @@ export default function Movimientos() {
         renderItem={({ item }: { item: Movimiento }) => (
           <FilaMovimiento tx={item} theme={theme} anomala={anomalias.has(item.id)} />
         )}
-        ListEmptyComponent={<Text style={styles.vacio}>Ningún movimiento con esos filtros.</Text>}
+        ListEmptyComponent={(
+          <View style={styles.vacio}>
+            <Pinguino theme={theme} tamano={40} estado="dormido" />
+            <Text style={styles.vacioTexto}>Ningún movimiento con esos filtros.</Text>
+          </View>
+        )}
         ListFooterComponent={
           hayMas ? (
             <Pressable
@@ -278,12 +284,14 @@ function crearEstilos(theme: Theme) {
     filtros: { flexDirection: 'row', gap: spacing.sm },
     espacio: { height: spacing.lg },
 
-    vacio: {
+    // El contenedor centra al pinguino y a su linea; el texto va aparte porque
+    // un estilo de texto sobre un `View` no aplica nada.
+    vacio: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xxl },
+    vacioTexto: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: fontSizes.sm,
       color: theme.silencio,
-      marginTop: spacing.xxl,
       textAlign: 'center',
     },
 

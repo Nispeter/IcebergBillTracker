@@ -42,8 +42,9 @@ import Svg, { Circle, Path } from 'react-native-svg';
  * - `normal`: lo de siempre.
  * - `dormido`: no hay nada que mirar. Para pantallas vacías.
  * - `alerta`: hay algo que resolver hoy. Para vencidos y avisos.
+ * - `contento`: no queda nada pendiente. Para cuando la noticia es buena.
  */
-export type EstadoDelPinguino = 'normal' | 'dormido' | 'alerta';
+export type EstadoDelPinguino = 'normal' | 'dormido' | 'alerta' | 'contento';
 
 const ANCHO = 64;
 const ALTO = 72;
@@ -70,6 +71,16 @@ const PANZA = 'M32,16 C40,16 45,23 46,31 C48,37 49,42 49,48 C49,58 42,65 32,65'
 /** Ojos cerrados: dos arcos con la curva hacia abajo. */
 const OJO_DORMIDO_IZQUIERDO = 'M21,27 C23,30 27,30 29,27';
 const OJO_DORMIDO_DERECHO = 'M35,27 C37,30 41,30 43,27';
+
+/**
+ * Ojos contentos: los mismos arcos que dormido, con la curva al reves.
+ *
+ * Dos arcos hacia arriba se leen como una sonrisa aunque esten donde van los
+ * ojos, que es el truco de siempre. Y como es la misma forma invertida, a 20 px
+ * se distingue de `dormido` sin agregar un solo trazo.
+ */
+const OJO_CONTENTO_IZQUIERDO = 'M21,29 C23,25 27,25 29,29';
+const OJO_CONTENTO_DERECHO = 'M35,29 C37,25 41,25 43,29';
 
 /** Cejas inclinadas hacia adentro: es lo que se lee como preocupación. */
 const CEJA_IZQUIERDA = 'M20,20 L30,23';
@@ -104,6 +115,11 @@ export function Pinguino(
         <>
           <Path d={OJO_DORMIDO_IZQUIERDO} {...linea} />
           <Path d={OJO_DORMIDO_DERECHO} {...linea} />
+        </>
+      ) : estado === 'contento' ? (
+        <>
+          <Path d={OJO_CONTENTO_IZQUIERDO} {...linea} />
+          <Path d={OJO_CONTENTO_DERECHO} {...linea} />
         </>
       ) : (
         <>

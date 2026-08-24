@@ -19,7 +19,9 @@
  * de la barra-- asi que esconderse dejo de tener motivo y se saco.
  *
  * Asoma por encima del borde para que no se lea como un destino mas: es la
- * accion, no un lugar al que ir.
+ * accion, no un lugar al que ir. Y va en **ambar**, el color del pico del
+ * pinguino: es lo unico calido en una pantalla de azules, asi que el ojo lo
+ * encuentra sin buscarlo.
  *
  * ## Sin etiquetas
  *
@@ -177,7 +179,7 @@ function crearEstilos(theme: Theme, aireDelSistema: number) {
       borderRadius: radii.full,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.acento,
+      backgroundColor: theme.pinguinoPico,
       // El anillo del color de la barra separa el circulo del borde que cruza
       // por detras. Sin el, el mas se lee pegado a la linea.
       borderWidth: 3,

@@ -29,6 +29,7 @@ import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { iconoDeCategoria } from './iconos';
+import { Pinguino } from './Pinguino';
 import { useCategorias } from '../datos/catalogo';
 
 export interface PorcionDeTorta {
@@ -108,7 +109,12 @@ export function TortaDeCategorias(
   const sectores = armarSectores(porciones, categorias.nombreCorto);
 
   if (sectores.length === 0) {
-    return <Text style={styles.vacio}>Sin gastos en este período.</Text>;
+    return (
+      <View style={styles.sinGastos}>
+        <Pinguino theme={theme} tamano={40} estado="dormido" />
+        <Text style={styles.vacio}>Sin gastos en este período.</Text>
+      </View>
+    );
   }
 
   const angulos = sectoresDeTorta(sectores.map((s) => s.total.amountMinor));
@@ -191,5 +197,6 @@ function crearEstilos(theme: Theme) {
     monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
     porcentaje: { width: 30, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    sinGastos: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
   });
 }

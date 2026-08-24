@@ -8,6 +8,12 @@
  * La idea que sostiene la paleta: **todo frio menos un acento calido**, el ambar
  * del pico del pinguino. Cuando el resto de la pantalla es azul-hielo, ese ambar
  * senala lo importante sin necesidad de agrandar, subrayar ni recuadrar nada.
+ * Desde que el boton de agregar lo lleva, el ambar tiene **dos trabajos**: la
+ * accion principal y lo que pide atencion --un vencido, un gasto fuera de lo
+ * habitual--. Conviven porque el boton esta siempre en el mismo lugar y lo otro
+ * aparece dentro del contenido, pero es la tension a vigilar si algun dia el
+ * ambar se usa en un tercer lugar.
+ *
  * Por eso el ambar se gasta con avaricia: si aparece en todos lados, deja de
  * significar.
  *

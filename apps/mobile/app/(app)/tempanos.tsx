@@ -87,6 +87,18 @@ export default function Tempanos() {
           />
         </View>
 
+        {/*
+          El unico momento de la app en que no hay nada que hacer y eso es una
+          buena noticia. Vale decirlo: la pantalla se ve igual de vacia cuando
+          esta todo pagado que cuando no hay nada cargado, y son cosas opuestas.
+        */}
+        {vencidos.length === 0 && tempanos.length > 0 && pendientes.length === 0 ? (
+          <View style={styles.filaAviso}>
+            <Pinguino theme={theme} tamano={22} estado="contento" />
+            <Text style={styles.avisoAlDia}>Todo al día en este período.</Text>
+          </View>
+        ) : null}
+
         {vencidos.length > 0 ? (
           <View style={styles.filaAviso}>
             <Pinguino theme={theme} tamano={22} estado="alerta" />
@@ -326,6 +338,9 @@ function crearEstilos(theme: Theme) {
     totalEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
     totalCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 28, color: theme.tinta, letterSpacing: -0.5 },
     aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto, paddingBottom: spacing.sm },
+    // En el verde de los ingresos y no en el acento: es la misma idea de "esto
+    // suma", y ya esta aprendida en las otras pantallas.
+    avisoAlDia: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.ingresoTexto, paddingBottom: spacing.sm },
 
     // Sin subrayado, igual que en la lista de movimientos: la fecha a la
     // izquierda y los dos renglones de cada fila ya la separan de la siguiente.
