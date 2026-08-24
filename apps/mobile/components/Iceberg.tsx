@@ -13,6 +13,7 @@
  */
 
 import { toPathData, waterlineForShare, type Point, type Theme } from '@iceberg/ui';
+import * as React from 'react';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { View } from 'react-native';
 
@@ -72,9 +73,21 @@ const FACETAS: readonly { puntos: Point[]; tono: number }[] = [
 ];
 
 /** Cuanto oscurece la faceta mas en sombra. Mas que esto y parece sucio. */
-const SOMBRA_MAXIMA = 0.14;
+const SOMBRA_MAXIMA = 0.2;
 /** La arista de cada plano. Es lo que se lee como cristal. */
 const ARISTA = 0.09;
+/** Desde que tono una faceta lleva reflejo. Solo las que miran a la luz. */
+const TONO_CON_BRILLO = 0.7;
+const BRILLO_MAXIMO = 0.28;
+
+/**
+ * De donde a donde va la rampa de luz, en coordenadas del `viewBox`.
+ *
+ * Del vertice iluminado al opuesto. Es lo que hace que **dentro de una misma
+ * faceta** el sombreado varie en vez de ser un tono plano: una faceta plana se
+ * ve dibujada, una con caida se ve iluminada.
+ */
+const DE_LA_LUZ = { x1: 0, y1: 0, x2: ANCHO, y2: ALTO };
 
 
 
@@ -149,6 +162,37 @@ export function Iceberg(
             <Stop offset={corte} stopColor={agua} />
             <Stop offset="1" stopColor={profundidad} />
           </LinearGradient>
+
+          {/*
+            La rampa de sombra. Va aparte del degradado de hielo y agua porque
+            hace otra cosa: aquel dice **que material** hay a cada altura, esta
+            dice **cuanta luz** llega a cada punto. Se multiplican.
+          */}
+          <LinearGradient
+            id="rampaDeLuz"
+            x1={DE_LA_LUZ.x1}
+            y1={DE_LA_LUZ.y1}
+            x2={DE_LA_LUZ.x2}
+            y2={DE_LA_LUZ.y2}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0" stopColor={theme.sobreElHielo} stopOpacity={0} />
+            <Stop offset="1" stopColor={theme.sobreElHielo} stopOpacity={1} />
+          </LinearGradient>
+
+          {/* El reflejo se apaga hacia adentro de la faceta: si fuera parejo se
+              leeria como una mancha y no como un brillo. */}
+          <LinearGradient
+            id="rampaDeBrillo"
+            x1={DE_LA_LUZ.x1}
+            y1={DE_LA_LUZ.y1}
+            x2={DE_LA_LUZ.x2}
+            y2={DE_LA_LUZ.y2}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0" stopColor={theme.brilloDelHielo} stopOpacity={1} />
+            <Stop offset="0.45" stopColor={theme.brilloDelHielo} stopOpacity={0} />
+          </LinearGradient>
         </Defs>
 
         <Path d={RUTA} fill="url(#hieloYAgua)" />
@@ -158,20 +202,44 @@ export function Iceberg(
           color propio: asi la que cruza la linea de agua se tiñe sola de hielo
           arriba y de agua abajo, sin tener que saber donde esta la linea.
         */}
-        {FACETAS.map(({ puntos, tono }) => (
-          <Path
-            key={`${puntos[0]![0]}-${puntos[0]![1]}-${puntos[1]![0]}`}
-            d={toPathData(puntos)}
-            fill={theme.sobreElHielo}
-            // Solo las que estan de espaldas a la luz llevan sombra. Las
-            // iluminadas se quedan con el degradado limpio: sobre un hielo casi
-            // blanco no hay con que aclarar mas.
-            fillOpacity={tono < 0 ? -tono * SOMBRA_MAXIMA : 0}
-            stroke={theme.sobreElHielo}
-            strokeOpacity={ARISTA}
-            strokeWidth={0.5}
-          />
-        ))}
+        {FACETAS.map(({ puntos, tono }) => {
+          const clave = `${puntos[0]![0]}-${puntos[0]![1]}-${puntos[1]![0]}`;
+          // De 0 en la cara mas iluminada a 1 en la mas de espaldas.
+          const sombra = (1 - tono) / 2;
+          const ruta = toPathData(puntos);
+          return (
+            <React.Fragment key={clave}>
+              <Path
+                d={ruta}
+                fill="url(#rampaDeLuz)"
+                fillOpacity={sombra * SOMBRA_MAXIMA}
+                stroke={theme.sobreElHielo}
+                strokeOpacity={ARISTA}
+                strokeWidth={0.5}
+              />
+              {/* El reflejo, solo en las caras que miran a la luz. */}
+              {tono > TONO_CON_BRILLO ? (
+                <Path
+                  d={ruta}
+                  fill="url(#rampaDeBrillo)"
+                  fillOpacity={(tono - TONO_CON_BRILLO) / (1 - TONO_CON_BRILLO) * BRILLO_MAXIMO}
+                />
+              ) : null}
+              {/* Una fractura por faceta: del vertice interior al medio de la
+                  arista. Va **dentro del triangulo**, asi que no hace falta
+                  comprobar nada. */}
+              <Line
+                x1={puntos[2]![0]}
+                y1={puntos[2]![1]}
+                x2={(puntos[0]![0] + puntos[1]![0]) / 2}
+                y2={(puntos[0]![1] + puntos[1]![1]) / 2}
+                stroke={theme.sobreElHielo}
+                strokeOpacity={ARISTA * 0.6}
+                strokeWidth={0.4}
+              />
+            </React.Fragment>
+          );
+        })}
 
         {/* La linea de agua cruza entera, no solo el ancho del hielo: es el
             nivel del mar, no un borde de la figura. Cuando la dibuja la

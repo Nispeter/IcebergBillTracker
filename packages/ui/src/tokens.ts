@@ -184,6 +184,15 @@ export interface Theme {
    */
   readonly hieloSobreAgua: string;
   /**
+   * El reflejo sobre la cara del hielo que mira a la luz.
+   *
+   * Blanco en los dos temas, y en los dos tiene con que brillar: en el claro el
+   * hielo es `nieblaAzul` y en el oscuro es `hielo`, asi que el blanco queda por
+   * encima de ambos. Es el unico color que se usa **por encima** del hielo, no
+   * sobre el.
+   */
+  readonly brilloDelHielo: string;
+  /**
    * El agua junto a la superficie: el tope del degradado de la pantalla.
    *
    * Va con `aguaProfunda`. Los dos existen para que el fondo tenga profundidad
@@ -238,6 +247,7 @@ export const light: Theme = {
   // Sobre el fondo hielo, el blanco desapareceria: va la niebla azul, que se
   // lee como nieve en sombra.
   hieloSobreAgua: palette.nieblaAzul,
+  brilloDelHielo: palette.blanco,
   aguaSuperficie: palette.blanco,
   aguaProfunda: palette.deshieloProfundo,
   superficieHonda: palette.deshieloHondo,
@@ -271,6 +281,7 @@ export const dark: Theme = {
   pinguinoPico: palette.ambar,
   sobreElHielo: palette.tintaProfunda,
   hieloSobreAgua: palette.hielo,
+  brilloDelHielo: palette.blanco,
   aguaSuperficie: palette.superficieNoche,
   aguaProfunda: palette.abismo,
   superficieHonda: palette.abismo,
