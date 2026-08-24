@@ -65,6 +65,21 @@ const TOQUES_PARA_LA_COLONIA = 5;
  * hasta el pico.
  */
 const LA_COLONIA = [72, 96, 120, 144];
+
+/**
+ * Olas a los lados del hielo: hasta donde llega cada una y a que profundidad.
+ *
+ * `lado` dice de que borde nace, `ancho` cuanto avanza hacia el centro y `hondo`
+ * cuantos pixeles por debajo de la linea de agua va. Se quedan **afuera del
+ * iceberg**: la escena es mucho mas ancha que el dibujo, y el mar de los
+ * costados estaba liso mientras el hielo tenia relieve.
+ */
+const OLAS = [
+  { lado: 'izquierda', ancho: '17%', hondo: 11, fuerza: 0.22 },
+  { lado: 'derecha', ancho: '13%', hondo: 19, fuerza: 0.16 },
+  { lado: 'izquierda', ancho: '11%', hondo: 28, fuerza: 0.12 },
+  { lado: 'derecha', ancho: '16%', hondo: 34, fuerza: 0.1 },
+] as const;
 const ALTO_DEL_PINGUINO = 18;
 const TAMANO_DEL_PINGUINO = 16;
 
@@ -205,6 +220,19 @@ export default function Resumen() {
             borde del dibujo cuya altura conocemos sin medir nada: `yLinea` ya
             estaba calculada para dibujarla.
           */}
+          {/* Debajo de la linea y solo si hay linea que seguir. */}
+          {hayGasto ? OLAS.map((ola, indice) => (
+            <View
+              key={indice}
+              pointerEvents="none"
+              style={[
+                styles.ola,
+                ola.lado === 'izquierda' ? { left: 0 } : { right: 0 },
+                { top: yLinea + ola.hondo, width: ola.ancho, opacity: ola.fuerza },
+              ]}
+            />
+          )) : null}
+
           {hayColonia && hayGasto ? LA_COLONIA.map((enElDibujo) => (
             <View
               key={enElDibujo}
@@ -534,6 +562,9 @@ function crearEstilos(theme: Theme) {
     // Anclado al centro de la escena: el `marginLeft` de cada uno lo corre
     // hasta su lugar sobre el hielo.
     enLaOrilla: { position: 'absolute', left: '50%' },
+    // Del mismo color que la linea de agua y mucho mas tenues: son la misma
+    // superficie vista mas lejos, no otro elemento.
+    ola: { position: 'absolute', height: 1.5, borderRadius: 1, backgroundColor: charts[0] },
     parteEnElHielo: {
       position: 'absolute',
       left: 0,

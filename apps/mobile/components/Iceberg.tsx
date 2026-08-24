@@ -13,7 +13,7 @@
  */
 
 import { toPathData, waterlineForShare, type Point, type Theme } from '@iceberg/ui';
-import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { View } from 'react-native';
 
 const ANCHO = 200;
@@ -33,22 +33,50 @@ const SILUETA: Point[] = [
 const RUTA = toPathData(SILUETA);
 
 /**
- * Motas de textura, en coordenadas del `viewBox`.
+ * Las facetas, en coordenadas del `viewBox`.
  *
- * **No se recortan con la silueta**: cada punto se eligió comprobando que cae
- * dentro del polígono con ocho unidades de holgura, y separado de los demás.
- * Recortar era el camino obvio y es justamente el que ya falló acá: un
- * `ClipPath` funcionaba en web y en Android dejaba el iceberg de un solo color.
- * Un punto que ya está adentro no necesita que nadie lo recorte.
+ * Un iceberg es un cristal, y lo que lo hace leerse como hielo son los planos,
+ * no la textura granulada: la primera version puso motas y se veian como
+ * suciedad sobre el dibujo.
  *
- * Cada mota decide sola qué es: **burbuja** si queda bajo la línea de agua,
- * **nieve** si queda encima. Como la línea se mueve con la proporción del gasto,
- * la textura cambia con ella.
+ * Cada faceta es un triangulo entre una arista de la silueta y un vertice
+ * interior. **Estan verificadas una por una**: se muestreo cada triangulo por
+ * coordenadas baricentricas comprobando que ningun punto se sale del contorno.
+ * Recortar con `ClipPath` era el camino obvio y es el que ya fallo en Android en
+ * este mismo archivo, dejando el iceberg de un solo color.
+ *
+ * `tono` va de -1 a 1 segun cuanto le da la luz, que entra desde arriba a la
+ * izquierda. Se calculo una vez y se dejo escrito: nada de esto cambia en
+ * tiempo de ejecucion.
  */
-const TEXTURA: readonly Point[] = [
-  [143, 201], [62, 165], [127, 151], [87, 104], [105, 214], [53, 201], [152, 120],
-  [115, 74], [23, 117], [55, 85], [168, 167], [96, 176], [81, 53], [94, 138],
+const FACETAS: readonly { puntos: Point[]; tono: number }[] = [
+  { puntos: [[92, 0], [104, 26], [86, 72]], tono: 0.85 },
+  { puntos: [[104, 26], [98, 44], [73, 88]], tono: 0.84 },
+  { puntos: [[98, 44], [126, 30], [104, 96]], tono: 0.75 },
+  { puntos: [[126, 30], [136, 62], [106, 101]], tono: 0.53 },
+  { puntos: [[136, 62], [150, 52], [106, 104]], tono: 0.31 },
+  { puntos: [[150, 52], [162, 96], [106, 107]], tono: -0.01 },
+  { puntos: [[162, 96], [186, 118], [114, 109]], tono: -0.53 },
+  { puntos: [[186, 118], [168, 150], [120, 115]], tono: -0.78 },
+  { puntos: [[168, 150], [194, 180], [132, 130]], tono: -0.93 },
+  { puntos: [[194, 180], [150, 216], [135, 151]], tono: -0.99 },
+  { puntos: [[150, 216], [100, 236], [114, 167]], tono: -0.92 },
+  { puntos: [[100, 236], [48, 222], [88, 171]], tono: -0.68 },
+  { puntos: [[48, 222], [12, 186], [66, 156]], tono: -0.33 },
+  { puntos: [[12, 186], [36, 152], [72, 132]], tono: -0.07 },
+  { puntos: [[36, 152], [4, 118], [77, 117]], tono: 0.27 },
+  { puntos: [[4, 118], [40, 92], [82, 108]], tono: 0.59 },
+  { puntos: [[40, 92], [58, 62], [100, 108]], tono: 0.9 },
+  { puntos: [[58, 62], [78, 30], [97, 99]], tono: 0.99 },
+  { puntos: [[78, 30], [92, 0], [96, 74]], tono: 0.92 },
 ];
+
+/** Cuanto oscurece la faceta mas en sombra. Mas que esto y parece sucio. */
+const SOMBRA_MAXIMA = 0.14;
+/** La arista de cada plano. Es lo que se lee como cristal. */
+const ARISTA = 0.09;
+
+
 
 export interface IcebergProps {
   /** Proporcion del gasto que es comprometido, de 0 a 1. */
@@ -126,36 +154,24 @@ export function Iceberg(
         <Path d={RUTA} fill="url(#hieloYAgua)" />
 
         {/*
-          La textura. Los radios varían con el índice y no al azar: el dibujo
-          tiene que ser el mismo en cada render, o las motas titilarían cada vez
-          que cambia el período.
+          Las facetas van **encima** del degradado y semitransparentes, no con
+          color propio: asi la que cruza la linea de agua se tiñe sola de hielo
+          arriba y de agua abajo, sin tener que saber donde esta la linea.
         */}
-        {TEXTURA.map(([x, y], indice) => {
-          const bajoElAgua = y > linea;
-          const radio = 1.5 + (indice % 3) * 0.6;
-          return bajoElAgua ? (
-            <Circle
-              key={`${x}-${y}`}
-              cx={x}
-              cy={y}
-              r={radio}
-              fill={theme.hieloSobreAgua}
-              opacity={0.38}
-            />
-          ) : (
-            // Sobre el hielo no sirve una mota más clara: el hielo ya es casi
-            // blanco. La que se ve es la sombra, que es como se lee la nieve de
-            // lejos.
-            <Circle
-              key={`${x}-${y}`}
-              cx={x}
-              cy={y}
-              r={radio * 0.85}
-              fill={theme.sobreElHielo}
-              opacity={0.12}
-            />
-          );
-        })}
+        {FACETAS.map(({ puntos, tono }) => (
+          <Path
+            key={`${puntos[0]![0]}-${puntos[0]![1]}-${puntos[1]![0]}`}
+            d={toPathData(puntos)}
+            fill={theme.sobreElHielo}
+            // Solo las que estan de espaldas a la luz llevan sombra. Las
+            // iluminadas se quedan con el degradado limpio: sobre un hielo casi
+            // blanco no hay con que aclarar mas.
+            fillOpacity={tono < 0 ? -tono * SOMBRA_MAXIMA : 0}
+            stroke={theme.sobreElHielo}
+            strokeOpacity={ARISTA}
+            strokeWidth={0.5}
+          />
+        ))}
 
         {/* La linea de agua cruza entera, no solo el ancho del hielo: es el
             nivel del mar, no un borde de la figura. Cuando la dibuja la
