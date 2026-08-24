@@ -26,7 +26,8 @@ import {
   charts, donutArcPath, fontSizes, fonts, pesos, sectoresDeTorta, spacing, type Theme,
 } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { iconoDeCategoria } from './iconos';
 import { Pinguino } from './Pinguino';
@@ -44,6 +45,9 @@ const RADIO_INTERIOR = 52;
 
 /** El ancho que ocupa el `>` de las filas que llevan a algun lado. */
 const ANCHO_CARET = 12;
+
+/** Cuanto brinca el pinguino del hueco al tocarlo. */
+const REBOTE = 12;
 
 /** Cuantas categorias llevan color propio antes de agruparse en "Otras". */
 const CON_COLOR = 5;
@@ -96,15 +100,33 @@ function armarSectores(
 }
 
 export function TortaDeCategorias(
-  { porciones, theme, onElegir }:
+  { porciones, theme, onElegir, onTocarPinguino }:
   {
     porciones: readonly PorcionDeTorta[];
     theme: Theme;
     /** Si viene, cada fila de la leyenda filtra por esa categoria. */
     onElegir?: (categoriaId: string) => void;
+    /** Si viene, el pinguino del hueco brinca al tocarlo y lo avisa. */
+    onTocarPinguino?: () => void;
   },
 ) {
   const styles = crearEstilos(theme);
+  /**
+   * El brinco del pinguino del hueco.
+   *
+   * Vive aca y no en `Pinguino` porque el dibujo no sabe nada de gestos: es una
+   * figura, y quien decide si responde al toque es quien la pone.
+   */
+  const rebote = useRef(new Animated.Value(0)).current;
+  const brincar = useCallback(() => {
+    onTocarPinguino?.();
+    rebote.setValue(0);
+    Animated.sequence([
+      Animated.timing(rebote, { toValue: 1, duration: 130, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.spring(rebote, { toValue: 0, friction: 4, tension: 90, useNativeDriver: true }),
+    ]).start();
+  }, [onTocarPinguino, rebote]);
+
   const categorias = useCategorias();
   const sectores = armarSectores(porciones, categorias.nombreCorto);
 
@@ -143,9 +165,23 @@ export function TortaDeCategorias(
         {/* En el hueco del anillo, que si no es un agujero. El radio interior
             son 52 de 176, o sea 104 de diámetro: un pingüino de 44 entra con
             aire de sobra y no toca ningún sector. */}
-        <View style={styles.enElHueco} pointerEvents="none">
-          <Pinguino theme={theme} tamano={44} />
-        </View>
+        <Animated.View
+          style={[styles.enElHueco, {
+            transform: [{ translateY: rebote.interpolate({ inputRange: [0, 1], outputRange: [0, -REBOTE] }) }],
+          }]}
+          pointerEvents={onTocarPinguino ? 'box-none' : 'none'}
+        >
+          {onTocarPinguino ? (
+            <Pressable
+              onPress={brincar}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="El pingüino"
+            >
+              <Pinguino theme={theme} tamano={44} />
+            </Pressable>
+          ) : <Pinguino theme={theme} tamano={44} />}
+        </Animated.View>
       </View>
 
       <View style={styles.leyenda}>

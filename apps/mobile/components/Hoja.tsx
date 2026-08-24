@@ -23,7 +23,9 @@
  */
 
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
-import { capas, elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import {
+  ALTO_DE_LA_BARRA, capas, elevation, fontSizes, fonts, pesos, spacing, type Theme,
+} from '@iceberg/ui';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -99,9 +101,16 @@ function crearEstilos(theme: Theme, aireDelSistema: number) {
     tirador: { backgroundColor: theme.hairline, width: 36 },
     contenido: {
       paddingHorizontal: spacing.lg,
-      // `xxxl` y no `xxl`: con el aire justo, la ultima linea quedaba pegada al
-      // borde y en un telefono se leia como si el texto siguiera mas abajo.
-      paddingBottom: spacing.xxxl + aireDelSistema,
+      /**
+       * `xxxl` y no `xxl`: con el aire justo, la ultima linea quedaba pegada al
+       * borde y en un telefono se leia como si el texto siguiera mas abajo.
+       *
+       * Se suma ademas el alto de la barra de abajo. La barra vive en el layout
+       * del grupo y la hoja dentro de la pantalla, asi que **la barra le queda
+       * encima** y tapaba la ultima linea. Reservar su alto no arregla el orden
+       * de dibujo, pero deja de esconder texto, que es lo que importaba.
+       */
+      paddingBottom: spacing.xxxl + aireDelSistema + ALTO_DE_LA_BARRA,
       gap: spacing.sm,
       maxWidth: 480,
       width: '100%',

@@ -12,7 +12,7 @@ import {
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarraSegmentada } from '../../components/BarraSegmentada';
 import { Ayuda } from '../../components/Ayuda';
@@ -20,6 +20,8 @@ import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useAireInferior } from '../../datos/desplazamiento';
 import { QueCambio } from '../../components/QueCambio';
+import { Creditos } from '../../components/Creditos';
+import { Hoja } from '../../components/Hoja';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAnalisisDeRango } from '../../datos/consultas';
@@ -27,8 +29,19 @@ import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 import { useCategorias } from '../../datos/catalogo';
 
+/**
+ * Cuantos toques al pinguino del hueco abren los creditos.
+ *
+ * Seis es bastante, y esa es la idea: el pinguino brinca desde el primer toque,
+ * asi que quien lo toca ya recibio lo suyo. Los creditos son para el que
+ * insiste.
+ */
+const TOQUES_PARA_LOS_CREDITOS = 6;
+
 export default function Categorias() {
   const { theme } = useTema();
+  const [toquesAlPinguino, setToquesAlPinguino] = useState(0);
+  const [creditos, setCreditos] = useState(false);
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const categorias = useCategorias();
@@ -59,6 +72,11 @@ export default function Categorias() {
             + 'son sobre el gasto del período, no sobre el total del año.'}
         />
         <TortaDeCategorias
+          onTocarPinguino={() => {
+            const van = toquesAlPinguino + 1;
+            setToquesAlPinguino(van);
+            if (van === TOQUES_PARA_LOS_CREDITOS) setCreditos(true);
+          }}
           porciones={a.porCategoria}
           theme={theme}
           onElegir={(categoriaId) => router.push({
@@ -113,6 +131,15 @@ export default function Categorias() {
           </>
         ) : null}
       </ScrollView>
+
+      <Hoja
+        abierta={creditos}
+        titulo="Gracias"
+        theme={theme}
+        onCerrar={() => { setCreditos(false); setToquesAlPinguino(0); }}
+      >
+        <Creditos theme={theme} />
+      </Hoja>
     </Pantalla>
   );
 }

@@ -27,14 +27,16 @@ interface Retrato {
  * una y recién cuando el archivo está.
  */
 const RETRATOS: readonly Retrato[] = [
-  // { fuente: require('../assets/lei.jpg'), nombre: 'La Reineta', titulo: '…' },
-  // { fuente: require('../assets/chum.jpg'), nombre: 'Don Sombra…', titulo: '…' },
-];
-
-/** Los nombres, que se muestran haya fotos o no. */
-const DUEÑOS = [
-  { nombre: 'La Reineta', titulo: 'princesa de los dinosaurios y los ñandús' },
-  { nombre: 'Don Sombra Chumbe Chimbarongo', titulo: 'magnate del carbón' },
+  {
+    fuente: require('../assets/lei.jpg'),
+    nombre: 'La Reineta',
+    titulo: 'princesa de los dinosaurios y los ñandús',
+  },
+  {
+    fuente: require('../assets/chum.jpg'),
+    nombre: 'Don Sombra Chumbe Chimbarongo',
+    titulo: 'magnate del carbón',
+  },
 ];
 
 export function Creditos({ theme }: { theme: Theme }) {
@@ -56,14 +58,7 @@ export function Creditos({ theme }: { theme: Theme }) {
             </View>
           ))}
         </View>
-      ) : (
-        DUEÑOS.map((dueño) => (
-          <View key={dueño.nombre} style={styles.sinFoto}>
-            <Text style={styles.nombre}>{dueño.nombre}</Text>
-            <Text style={styles.titulo}>{dueño.titulo}</Text>
-          </View>
-        ))
-      )}
+      ) : null}
     </View>
   );
 }
@@ -82,8 +77,22 @@ function crearEstilos(theme: Theme) {
     // desplazar la hoja para ver al segundo.
     retratos: { flexDirection: 'row', gap: spacing.md },
     retrato: { flex: 1, gap: spacing.xs },
-    sinFoto: { gap: 2 },
-    foto: { width: '100%', aspectRatio: 3 / 4, borderRadius: radii.md },
+    /**
+     * Cuadradas y no verticales.
+     *
+     * Las fotos vienen en 3:4, y a media columna eso da un recorte altisimo que
+     * se come al gato: quedaba el cojin y el suelo. Un cuadrado toma la franja
+     * del medio, que es donde esta la cara.
+     */
+    /**
+     * Alto fijo, no proporcion.
+     *
+     * Con `aspectRatio` la imagen se dibujaba con su alto natural --1600 px-- y
+     * la hoja quedaba mas alta que la pantalla: el recorte se comia al gato y
+     * dejaba a la vista el cojin y el suelo. Un alto en pixeles no depende de lo
+     * que mida el archivo.
+     */
+    foto: { width: '100%', height: 150, borderRadius: radii.md },
     nombre: {
       fontFamily: fonts.texto,
       fontWeight: pesos.semibold,

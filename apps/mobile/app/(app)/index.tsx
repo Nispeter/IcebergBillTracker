@@ -38,7 +38,6 @@ import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovim
 import { Pinguino } from '../../components/Pinguino';
 import { PinguinosDelIceberg } from '../../components/PinguinoDelIceberg';
 import { DetalleDeCifra, type Detalle } from '../../components/DetalleDeCifra';
-import { Creditos } from '../../components/Creditos';
 import { Hoja } from '../../components/Hoja';
 import {
   Iceberg, alturaDeLineaDeAgua, anchoDelIceberg, bordeDelHieloEn,
@@ -61,8 +60,6 @@ const ALTO_HIELO = 240;
 /** Cuántos toques al iceberg hacen aparecer la colonia. */
 const TOQUES_PARA_LA_COLONIA = 5;
 
-/** Cuántos toques al pingüino del medio abren los créditos. */
-const TOQUES_PARA_LOS_CREDITOS = 6;
 
 /**
  * Dónde se para cada pingüino, en unidades del `viewBox` del iceberg.
@@ -103,15 +100,6 @@ export default function Resumen() {
   const [cifra, setCifra] = useState<Cifra | null>(null);
   const cuantosPinguinos = usePinguinos();
 
-  /**
-   * Seis toques al pingüino del medio y salen los créditos.
-   *
-   * Seis es bastante, y esa es la idea: el pingüino salta desde el primer toque,
-   * así que quien lo toca ya recibió lo suyo. Los créditos son para el que
-   * insiste.
-   */
-  const [toquesAlPinguino, setToquesAlPinguino] = useState(0);
-  const [creditos, setCreditos] = useState(false);
 
   /**
    * El huevo de pascua: cinco toques al iceberg y aparece la colonia.
@@ -264,11 +252,6 @@ export default function Resumen() {
               yLinea={yLinea}
               bordeDelHielo={bordeDelHieloEn(yLinea, ALTO_HIELO)}
               cuantos={cuantosPinguinos}
-              onTocar={() => {
-                const van = toquesAlPinguino + 1;
-                setToquesAlPinguino(van);
-                if (van === TOQUES_PARA_LOS_CREDITOS) setCreditos(true);
-              }}
             />
           ) : null}
 
@@ -361,15 +344,6 @@ export default function Resumen() {
           </Pressable>
         </Link>
       </ScrollView>
-
-      <Hoja
-        abierta={creditos}
-        titulo="Gracias"
-        theme={theme}
-        onCerrar={() => { setCreditos(false); setToquesAlPinguino(0); }}
-      >
-        <Creditos theme={theme} />
-      </Hoja>
 
       <Hoja
         abierta={detalle !== null}
