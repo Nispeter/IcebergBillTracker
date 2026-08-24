@@ -8,7 +8,8 @@
 
 import { crypto, dates, money } from '@iceberg/core';
 import {
-  CLAVE_CARPETA, CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_DISPOSITIVO, CLAVE_HOGAR,
+  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_CATEGORIAS_COMPROMETIDAS,
+  CLAVE_DISPOSITIVO, CLAVE_HOGAR,
   CLAVE_MIEMBRO, borrarCategoria, escribirAjuste, borrarTodo, crearCategoria, crearCuenta,
   deshacerLote, editarCuenta, leerAjuste, renombrarMiembro, unirseAHogar,
   type ConflictoLegible, type Lote, type Miembro,
@@ -82,6 +83,8 @@ export default function Ajustes() {
       const elegida = await elegirCarpeta();
       if (elegida === null) return;
       escribirAjuste(db, CLAVE_CARPETA, elegida);
+      // La carpeta cambio: la URI del archivo propio apuntaba a la anterior.
+      escribirAjuste(db, CLAVE_ARCHIVO_PROPIO, '');
       setCarpeta(elegida);
       setAviso('Carpeta lista. Ahora toca Sincronizar.');
     } catch (e) {
@@ -115,8 +118,13 @@ export default function Ajustes() {
         + (r.cerrados === 0 ? '' : ` ${r.cerrados} no se pudieron abrir con esa frase.`),
       );
     } catch (e) {
+      // **La carpeta no se borra por un error cualquiera.** Antes si, y el
+      // sintoma era desconcertante: fallaba algo, el boton de sincronizar
+      // desaparecia y volvia el de elegir carpeta, sin decir que habia pasado.
+      // Solo se suelta cuando el error dice con certeza que ya no hay permiso.
       if (e instanceof CarpetaPerdidaError) {
         escribirAjuste(db, CLAVE_CARPETA, '');
+        escribirAjuste(db, CLAVE_ARCHIVO_PROPIO, '');
         setCarpeta(null);
       }
       setAviso((e as Error).message);
@@ -284,7 +292,9 @@ export default function Ajustes() {
             + 'sincroniza cualquier archivo tuyo, y al tocar Sincronizar la app lee los '
             + 'de los demás.\n\n'
             + 'No hay servidor ni cuenta que crear: la app nunca habla con la nube, solo '
-            + 'con la carpeta que le señalaste.\n\n'
+            + 'con la carpeta que le señalaste. Adentro crea una '
+            + 'subcarpeta **Iceberg** y trabaja solo ahí, así que puedes elegir cualquier '
+            + 'carpeta sin que se mezcle con lo que ya tengas.\n\n'
             + 'Para compartir con otra persona, una sola vez:\n\n'
             + '1. Los dos eligen la **misma** carpeta compartida.\n'
             + '2. Toca tu código de hogar para enviárselo.\n'

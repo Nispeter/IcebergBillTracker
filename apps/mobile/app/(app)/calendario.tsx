@@ -51,6 +51,15 @@ export default function DiaADia() {
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >
+        <Titulo
+          texto="Gasto por día"
+          theme={theme}
+          estilo={styles.tituloJunto}
+          ayuda={'Cada celda es un día del período y su tono dice cuánto se gastó: '
+            + 'mientras más claro, más. Los días sin gasto quedan apagados.\n\n'
+            + 'Tocar un día lleva al listado de sus movimientos.'}
+        />
+
         {tipo === 'year' ? (
           <Text style={styles.aviso}>
             El calendario se ve por día, semana o mes. Un año son 365 celdas de tres píxeles.
@@ -146,6 +155,8 @@ function Dato({ styles, etiqueta, valor }: { styles: Estilos; etiqueta: string; 
 
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
+    /** Encabeza lo que viene justo abajo, sin el aire de una seccion suelta. */
+    tituloJunto: { marginTop: spacing.lg, marginBottom: spacing.xs },
     contenido: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.lg,

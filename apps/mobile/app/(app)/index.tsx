@@ -35,7 +35,6 @@ import { Info } from 'phosphor-react-native/src/icons/Info';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
-import { Ayuda } from '../../components/Ayuda';
 import { Pinguino } from '../../components/Pinguino';
 import { DetalleDeCifra, type Detalle } from '../../components/DetalleDeCifra';
 import { Hoja } from '../../components/Hoja';
@@ -137,6 +136,21 @@ export default function Resumen() {
           es lo que convierte al iceberg en algo que flota y no en una ilustracion
           metida en una caja.
         */}
+        {/*
+          El título va aquí y no dentro del reparto, que es donde estaba la `i`
+          suelta: una sección sin nombre obliga a deducir qué mira, y el iceberg
+          es justo la que más lo necesitaba porque no lleva ni una etiqueta.
+        */}
+        <Titulo
+          texto="Comprometido y variable"
+          theme={theme}
+          estilo={styles.tituloJunto}
+          ayuda={'Comprometido llega igual: arriendo, cuentas, cuotas, impuestos. '
+            + 'Variable es lo que decides tú, y es sobre lo único que puedes actuar.\n\n'
+            + 'El hielo sobre la línea de agua es lo comprometido; lo de abajo, lo '
+            + 'variable.'}
+        />
+
         <View style={styles.escena}>
           <View style={styles.hielo}>
             <Iceberg
@@ -186,17 +200,19 @@ export default function Resumen() {
             parte={share} onPress={() => setCifra('comprometido')} />
           <Leyenda styles={styles} titulo="variable" monto={money.format(variable)}
             parte={1 - share} alDerecho onPress={() => setCifra('variable')} />
-          <Ayuda
-            titulo="Comprometido y variable"
-            theme={theme}
-            texto={'Comprometido llega igual: arriendo, cuentas, cuotas, impuestos. '
-              + 'Variable es lo que decides tú, y es sobre lo único que puedes actuar.'}
-          />
         </View>
 
 
+        <Titulo
+          texto="Entradas y salidas"
+          theme={theme}
+          estilo={styles.tituloJunto}
+          ayuda={'Lo que entró y lo que salió en el período, y la diferencia entre los '
+            + 'dos. El porcentaje compara contra el período anterior del mismo largo.'}
+        />
+
         {/* La tarjeta se hunde en vez de levantarse: ver `superficieHonda`. */}
-        <View style={styles.trio}>
+        <View style={styles.trioConTitulo}>
           <Celda styles={styles} theme={theme} etiqueta="ingreso" valor={money.format(a.resumen.ingreso)}
             variacion={a.comparacion.ingreso.variacion} mejorSiSube onPress={() => setCifra('ingreso')} />
           <Celda styles={styles} theme={theme} etiqueta="gasto" valor={money.format(a.resumen.gasto)}
@@ -476,6 +492,15 @@ function crearEstilos(theme: Theme) {
      * cinco cifras median casi lo mismo y se leian como una planilla pegada
      * debajo del dibujo.
      */
+    /**
+     * Un titulo que encabeza lo que viene justo abajo.
+     *
+     * `Titulo` trae `marginTop: xxl`, pensado para dos o tres secciones por
+     * pantalla. Aca son cuatro seguidas y con ese aire el Resumen se volvia el
+     * doble de largo: el usuario pidio los titulos **sin** que empujaran el
+     * contenido.
+     */
+    tituloJunto: { marginTop: spacing.lg, marginBottom: spacing.xs },
     reparto: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
     leyenda: { flex: 1, gap: 2 },
     leyendaDerecha: { alignItems: 'flex-end' },
@@ -489,10 +514,10 @@ function crearEstilos(theme: Theme) {
      * es la unica de las tres que contesta "como me fue", y en una banda de
      * numeros todos del mismo color era imposible saber donde mirar.
      */
-    trio: {
+    /** Con titulo propio ya no necesita el aire que lo separaba de lo de arriba. */
+    trioConTitulo: {
       flexDirection: 'row',
       gap: spacing.sm,
-      marginTop: spacing.xl,
       paddingVertical: spacing.lg,
       paddingHorizontal: spacing.md,
       borderRadius: radii.md,

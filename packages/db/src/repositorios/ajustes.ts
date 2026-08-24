@@ -51,6 +51,18 @@ export const CLAVE_CATEGORIAS_COMPROMETIDAS = 'categoriasComprometidas';
  */
 export const CLAVE_CARPETA = 'carpetaCompartida';
 
+/**
+ * La URI del archivo que escribe este aparato dentro de la carpeta.
+ *
+ * Se guarda porque **no hay forma de encontrarlo por nombre**: el listado de
+ * SAF devuelve URIs, y en Drive la URI es un identificador opaco que no
+ * contiene el nombre del archivo. Ver `apps/mobile/datos/carpeta.ts`.
+ *
+ * Va en `ajustes`, que nunca se exporta, por lo mismo que la carpeta: es una
+ * direccion de este telefono y en otro no significaria nada.
+ */
+export const CLAVE_ARCHIVO_PROPIO = 'archivoPropio';
+
 export function leerAjuste(db: BaseDeDatos, clave: string): string | null {
   const filas = db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1).all();
   return filas[0]?.valor ?? null;

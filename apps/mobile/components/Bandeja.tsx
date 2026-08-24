@@ -14,11 +14,24 @@
  * la abre: una bandeja vacia es peor que ninguna.
  *
  * Se cierra tocando fuera, con la X, o al elegir una cuenta.
+ *
+ * ## Por que se monta desde el layout y no desde `Pantalla`
+ *
+ * Estuvo dentro de `Pantalla`, y desde que la barra de abajo se mudo al layout
+ * la barra le quedaba **encima**: son ramas distintas del arbol, y la que lleva
+ * `zIndex` explicito le gana a cualquier hermano sin importar quien tenga el
+ * numero mas alto adentro de su propia rama. Montada aca, despues de la barra,
+ * el orden del documento la deja arriba sin pelear.
+ *
+ * El disparador vive en el encabezado, que si es de `Pantalla`, asi que la
+ * bandeja expone `useAbrirBandeja()` en vez de recibir el estado por props.
  */
 
 import { capas, elevation, radii, spacing, type Theme } from '@iceberg/ui';
 import { X } from 'phosphor-react-native/src/icons/X';
-import { useEffect, useRef, useState } from 'react';
+import {
+  createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode,
+} from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SelectorDeCuenta } from './SelectorDeCuenta';
@@ -35,7 +48,27 @@ const ENTRADA_MINIMA = 260;
 
 const OPACIDAD_VELO = 0.82;
 
-export function Bandeja(
+const Contexto = createContext<() => void>(() => {});
+
+/** Abre la bandeja. Lo llama la hamburguesa del encabezado. */
+export function useAbrirBandeja(): () => void {
+  return useContext(Contexto);
+}
+
+/** Monta la bandeja al final del arbol y deja como abrirla a quien este dentro. */
+export function ProveedorDeBandeja({ theme, children }: { theme: Theme; children: ReactNode }) {
+  const [abierta, setAbierta] = useState(false);
+  const abrir = useCallback(() => setAbierta(true), []);
+
+  return (
+    <Contexto.Provider value={abrir}>
+      {children}
+      <Bandeja theme={theme} abierta={abierta} onCerrar={() => setAbierta(false)} />
+    </Contexto.Provider>
+  );
+}
+
+function Bandeja(
   { theme, abierta, onCerrar }: { theme: Theme; abierta: boolean; onCerrar: () => void },
 ) {
   const styles = crearEstilos(theme, useSafeAreaInsets());

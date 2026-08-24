@@ -14,6 +14,25 @@
  * Lo que se pierde: **nadie avisa cuando el otro escribio**. Hay que ir a mirar,
  * asi que esto se pone al dia cuando alguien sincroniza, no en tiempo real.
  *
+ * ## Nada se busca por nombre
+ *
+ * La primera version listaba la carpeta y buscaba su archivo por el nombre que
+ * venia en la URI. **En Drive eso no existe.** Una URI de almacenamiento local
+ * termina en `primary:Documents/Iceberg/iceberg-01ABC.json` y el nombre esta a
+ * la vista; una de Drive termina en `acc=4;doc=encoded=6jU41736SetDJn6Zm...`,
+ * que es un identificador opaco. `readDirectoryAsync` devuelve URIs y nada mas:
+ * no hay forma de pedir el nombre para mostrar.
+ *
+ * Por eso ahora **se guarda la URI del archivo propio** y se escribe derecho
+ * sobre ella. Y al leer, lo ajeno es "todo lo que hay menos esa URI": tampoco
+ * hace falta el nombre.
+ *
+ * ## Una subcarpeta propia
+ *
+ * Al elegir se crea `Iceberg` adentro y se guarda **esa**. Sin eso, "todo lo que
+ * hay menos lo mio" seria la carpeta entera del usuario --planillas, PDF, lo que
+ * tenga-- y habria que abrir cada archivo para descubrir que no era nuestro.
+ *
  * ## Un archivo por aparato
  *
  * Nadie escribe el archivo de otro. Asi no hay dos escritores sobre el mismo
@@ -49,11 +68,22 @@ export const HAY_CARPETA = Platform.OS === 'android'
 /** Centinela para web: el permiso real es el manejador guardado en IndexedDB. */
 const EN_EL_NAVEGADOR = 'web';
 
+/** La subcarpeta que la app crea adentro de la que eligio el usuario. */
+const SUBCARPETA = 'Iceberg';
+
 /**
- * La carpeta ya no esta: se revoco el permiso, se borro, o se cambio de nube.
+ * Ya no se puede entrar a la carpeta.
  *
- * Es un error aparte porque la salida es distinta a la de cualquier otro fallo:
- * no hay nada que reintentar, hay que volver a elegir la carpeta.
+ * **Solo se usa cuando es seguro**, y en la practica eso es un caso: en web, que
+ * el manejador guardado en IndexedDB no este o que el navegador niegue el
+ * permiso. Ahi no hay nada que reintentar.
+ *
+ * En Android **no se usa**, y es a proposito. Antes cualquier error de SAF se
+ * convertia en este, y quien llamaba borraba la carpeta guardada: un fallo
+ * cualquiera --uno de red de Drive, por ejemplo-- dejaba al usuario teniendo que
+ * volver a elegir la carpeta y sin saber que habia pasado, porque el mensaje
+ * verdadero se perdia en el camino. Ahora los errores de SAF suben tal como
+ * vienen.
  */
 export class CarpetaPerdidaError extends Error {
   override name = 'CarpetaPerdidaError';
@@ -76,6 +106,7 @@ interface ManejadorDeCarpeta {
   readonly name: string;
   keys(): AsyncIterableIterator<string>;
   getFileHandle(nombre: string, opciones?: { create?: boolean }): Promise<ManejadorDeArchivo>;
+  getDirectoryHandle(nombre: string, opciones?: { create?: boolean }): Promise<ManejadorDeCarpeta>;
   /** Opcionales: no todos los manejadores los traen. Ver `carpetaWeb`. */
   queryPermission?(opciones: { mode: 'readwrite' }): Promise<string>;
   requestPermission?(opciones: { mode: 'readwrite' }): Promise<string>;
@@ -125,28 +156,10 @@ async function carpetaWeb(): Promise<ManejadorDeCarpeta | null> {
   return null;
 }
 
-// ───────────────────────────── Android ─────────────────────────────
-
-/**
- * El nombre de archivo dentro de una URI `content://`.
- *
- * SAF no entrega nombres sino URIs con el identificador del documento adentro,
- * escapado. El nombre es lo que va despues de la ultima barra una vez
- * desescapado.
- */
-function nombreEnUri(uri: string): string {
-  try {
-    const entero = decodeURIComponent(uri);
-    return entero.slice(entero.lastIndexOf('/') + 1);
-  } catch {
-    return uri;
-  }
-}
-
 // ────────────────────────────── comun ──────────────────────────────
 
 /**
- * Abre el selector de carpetas del sistema.
+ * Abre el selector de carpetas del sistema y prepara la subcarpeta.
  *
  * Devuelve lo que hay que guardar para volver a entrar, o `null` si el usuario
  * cancela, que no es un error.
@@ -157,7 +170,11 @@ export async function elegirCarpeta(): Promise<string | null> {
       showDirectoryPicker(o: { mode: 'readwrite' }): Promise<ManejadorDeCarpeta>;
     }).showDirectoryPicker;
     try {
-      const manejador = await elegir({ mode: 'readwrite' });
+      const elegida = await elegir({ mode: 'readwrite' });
+      // La misma subcarpeta que en Android, para que las dos plataformas hagan
+      // lo mismo: lo que hay adentro es nuestro y no hace falta distinguirlo de
+      // lo que el usuario ya tuviera en la carpeta.
+      const manejador = await elegida.getDirectoryHandle(SUBCARPETA, { create: true });
       await conLaBase((almacen) => almacen.put(manejador, 'carpeta'));
       return EN_EL_NAVEGADOR;
     } catch {
@@ -167,58 +184,91 @@ export async function elegirCarpeta(): Promise<string | null> {
   }
 
   const permiso = await SAF.requestDirectoryPermissionsAsync();
-  return permiso.granted ? permiso.directoryUri : null;
+  if (!permiso.granted) return null;
+
+  // La subcarpeta acota lo que hay que leer a lo que escribimos nosotros. Si el
+  // proveedor no deja crearla se sigue con la carpeta elegida: peor que tenerla
+  // es no poder sincronizar.
+  try {
+    return await SAF.makeDirectoryAsync(permiso.directoryUri, SUBCARPETA);
+  } catch {
+    return permiso.directoryUri;
+  }
 }
 
-/** Un nombre corto de la carpeta, para mostrarlo. */
+/**
+ * Un nombre corto de la carpeta, para mostrarlo.
+ *
+ * En almacenamiento local la URI termina en algo legible; en Drive termina en un
+ * identificador opaco y no hay de donde sacar el nombre. Ahi se dice de que
+ * proveedor es, que es lo unico cierto que se puede decir.
+ */
 export function nombreDeCarpeta(carpeta: string): string {
   if (carpeta === EN_EL_NAVEGADOR) return 'la carpeta elegida';
-  // La URI termina en algo como `primary%3ADocuments%2FIceberg`; lo legible es
-  // lo que sigue a los dos puntos.
-  const cola = nombreEnUri(carpeta);
+
+  let cola: string;
+  try {
+    const entero = decodeURIComponent(carpeta);
+    cola = entero.slice(entero.lastIndexOf('/') + 1);
+  } catch {
+    cola = carpeta;
+  }
+
+  // `acc=4;doc=encoded=...` y compañia: un identificador, no un nombre.
+  if (cola.includes('=')) {
+    const proveedor = carpeta.match(/com\.google\.android\.apps\.docs/) ? 'Google Drive' : 'tu nube';
+    return `Carpeta ${SUBCARPETA} en ${proveedor}`;
+  }
+
   const dosPuntos = cola.lastIndexOf(':');
   return dosPuntos === -1 ? cola : cola.slice(dosPuntos + 1);
 }
 
 /**
- * Escribe el archivo de este aparato, reemplazando el anterior.
+ * Escribe el archivo de este aparato y devuelve su URI, para guardarla.
  *
- * `base` va **sin extension**: SAF la agrega segun el tipo. El archivo se busca
- * antes de crearlo porque `createFileAsync` no reemplaza, sino que inventa un
- * nombre nuevo si ya hay uno igual, y a la vuelta habria dos.
+ * `archivoConocido` es la URI de la vuelta anterior. Con ella se escribe derecho
+ * y no hace falta listar nada; sin ella se crea el archivo. **Buscarlo por
+ * nombre no es una opcion**: ver el encabezado de este archivo.
  */
 export async function escribirEnCarpeta(
-  carpeta: string, base: string, texto: string,
-): Promise<void> {
+  carpeta: string, base: string, texto: string, archivoConocido: string | null,
+): Promise<string> {
   if (carpeta === EN_EL_NAVEGADOR) {
     const manejador = await carpetaWeb();
     if (manejador === null) throw new CarpetaPerdidaError();
-    const archivo = await manejador.getFileHandle(base + '.json', { create: true });
+    const nombre = base + '.json';
+    const archivo = await manejador.getFileHandle(nombre, { create: true });
     const escritura = await archivo.createWritable();
     await escritura.write(texto);
     await escritura.close();
-    return;
+    return nombre;
   }
 
-  let existentes: string[];
-  try {
-    existentes = await SAF.readDirectoryAsync(carpeta);
-  } catch {
-    throw new CarpetaPerdidaError();
+  if (archivoConocido !== null) {
+    try {
+      await SAF.writeAsStringAsync(archivoConocido, texto);
+      return archivoConocido;
+    } catch {
+      // El archivo pudo borrarse desde la nube o desde otro aparato. Se cae al
+      // camino de crearlo: perder el archivo no puede dejar sin sincronizar.
+    }
   }
-  const mio = existentes.find((uri) => nombreEnUri(uri).startsWith(base));
-  const uri = mio ?? await SAF.createFileAsync(carpeta, base, 'application/json');
+
+  const uri = await SAF.createFileAsync(carpeta, base, 'application/json');
   await SAF.writeAsStringAsync(uri, texto);
+  return uri;
 }
 
 /**
- * Lee los archivos de los otros aparatos.
+ * Lee lo que dejaron los otros aparatos.
  *
- * Se salta el propio --ya esta en la base-- y cualquier cosa que no termine en
- * `.json`, porque la carpeta es del usuario y adentro puede tener lo que quiera.
+ * Ajeno es **todo lo que hay menos el archivo propio**, identificado por su URI
+ * y no por su nombre. Lo que no se pueda leer o no sea JSON se descarta mas
+ * arriba, en `pasarPorCarpeta`, que lo cuenta como cerrado.
  */
 export async function leerCarpeta(
-  carpeta: string, propio: string,
+  carpeta: string, propio: string | null,
 ): Promise<ArchivoDeCarpeta[]> {
   const archivos: ArchivoDeCarpeta[] = [];
 
@@ -226,23 +276,21 @@ export async function leerCarpeta(
     const manejador = await carpetaWeb();
     if (manejador === null) throw new CarpetaPerdidaError();
     for await (const nombre of manejador.keys()) {
-      if (!nombre.endsWith('.json') || nombre.startsWith(propio)) continue;
+      if (!nombre.endsWith('.json') || nombre === propio) continue;
       const archivo = await manejador.getFileHandle(nombre);
       archivos.push({ nombre, texto: await (await archivo.getFile()).text() });
     }
     return archivos;
   }
 
-  let uris: string[];
-  try {
-    uris = await SAF.readDirectoryAsync(carpeta);
-  } catch {
-    throw new CarpetaPerdidaError();
-  }
-  for (const uri of uris) {
-    const nombre = nombreEnUri(uri);
-    if (!nombre.endsWith('.json') || nombre.startsWith(propio)) continue;
-    archivos.push({ nombre, texto: await SAF.readAsStringAsync(uri) });
+  for (const uri of await SAF.readDirectoryAsync(carpeta)) {
+    if (uri === propio) continue;
+    try {
+      archivos.push({ nombre: uri, texto: await SAF.readAsStringAsync(uri) });
+    } catch {
+      // Una subcarpeta, o un archivo que el proveedor no deja leer. No es
+      // asunto nuestro y no puede cortar la pasada.
+    }
   }
   return archivos;
 }

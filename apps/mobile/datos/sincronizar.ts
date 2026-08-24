@@ -5,9 +5,15 @@
  * propio al día-- y acá está solamente el primero y el último, que son los que
  * tocan el sistema de archivos. Lo del medio vive en `db/repositorios/carpeta`,
  * separado justamente para poder probarlo sin abrir nada.
+ *
+ * Acá también se recuerda **cuál es el archivo propio**, porque no se puede
+ * encontrar por nombre: ver `carpeta.ts`.
  */
 
-import { pasarPorCarpeta, type BaseDeDatos, type Contexto, type PasadaPorCarpeta } from '@iceberg/db';
+import {
+  CLAVE_ARCHIVO_PROPIO, escribirAjuste, leerAjuste, pasarPorCarpeta,
+  type BaseDeDatos, type Contexto, type PasadaPorCarpeta,
+} from '@iceberg/db';
 import { escribirEnCarpeta, leerCarpeta, nombreDelPropio } from './carpeta';
 
 export interface OpcionesDeCarpeta {
@@ -23,9 +29,17 @@ export async function sincronizarCarpeta(
   carpeta: string,
   opciones: OpcionesDeCarpeta,
 ): Promise<PasadaPorCarpeta> {
-  const propio = nombreDelPropio(contexto);
+  const propio = leerAjuste(db, CLAVE_ARCHIVO_PROPIO) || null;
+
   const ajenos = await leerCarpeta(carpeta, propio);
   const pasada = pasarPorCarpeta(db, contexto, ajenos, opciones);
-  await escribirEnCarpeta(carpeta, propio, pasada.propio);
+
+  const escrito = await escribirEnCarpeta(
+    carpeta, nombreDelPropio(contexto), pasada.propio, propio,
+  );
+  // Puede haber cambiado: la primera vez no había ninguno, y si el archivo se
+  // borró desde la nube `escribirEnCarpeta` crea otro.
+  if (escrito !== propio) escribirAjuste(db, CLAVE_ARCHIVO_PROPIO, escrito);
+
   return pasada;
 }

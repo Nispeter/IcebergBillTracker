@@ -39,7 +39,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
-import { Bandeja } from './Bandeja';
+import { useAbrirBandeja } from './Bandeja';
 import { useCuentas } from '../datos/consultas';
 import { useTema } from '../datos/tema';
 
@@ -56,7 +56,7 @@ export function Pantalla(
   // barra de gestos: la app va a pantalla completa por `edgeToEdgeEnabled`.
   const margenes = useSafeAreaInsets();
   const styles = crearEstilos(theme, margenes);
-  const [menuAbierto, setMenuAbierto] = useState(false);
+  const abrirBandeja = useAbrirBandeja();
   // Con una sola cuenta el menu no tendria nada adentro: es lo unico que quedo
   // ahi desde que los destinos se mudaron a la barra de abajo.
   const hayQueElegirCuenta = useCuentas().length > 1;
@@ -96,7 +96,7 @@ export function Pantalla(
               tocable la sostiene el `hitSlop`, no el dibujo. */}
           {hayQueElegirCuenta ? (
             <Pressable
-              onPress={() => setMenuAbierto(true)}
+              onPress={abrirBandeja}
               style={styles.boton}
               accessibilityRole="button"
               accessibilityLabel="Cambiar de cuenta"
@@ -133,8 +133,6 @@ export function Pantalla(
       >
         {children}
       </Animated.View>
-
-      <Bandeja theme={theme} abierta={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
     </View>
   );
 }

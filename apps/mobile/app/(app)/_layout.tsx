@@ -18,6 +18,7 @@
 import { Stack } from 'expo-router';
 import { View } from 'react-native';
 import { BarraInferior } from '../../components/BarraInferior';
+import { ProveedorDeBandeja } from '../../components/Bandeja';
 import { useTema } from '../../datos/tema';
 
 export default function AppLayout() {
@@ -27,6 +28,7 @@ export default function AppLayout() {
   // arranca en blanco y al cambiar de vista se ve un destello. En web no pasaba
   // porque ahi no hay contenedor nativo por pantalla.
   return (
+    <ProveedorDeBandeja theme={theme}>
     <View style={{ flex: 1 }}>
       <Stack
         screenOptions={{
@@ -55,5 +57,6 @@ export default function AppLayout() {
 
       <BarraInferior theme={theme} />
     </View>
+    </ProveedorDeBandeja>
   );
 }

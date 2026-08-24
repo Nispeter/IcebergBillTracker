@@ -51,7 +51,7 @@ export default function Categorias() {
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >
         <Titulo
-          texto="En qué se fue"
+          texto="Categorías"
           theme={theme}
           estilo={styles.primerTitulo}
           ayuda={'Las cinco categorías más grandes llevan color propio; el resto se '
