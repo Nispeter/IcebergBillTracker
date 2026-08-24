@@ -18,7 +18,17 @@ import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import type { IconProps } from 'phosphor-react-native';
 import type { ComponentType } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View,
+} from 'react-native';
+
+/**
+ * Cuanto de la pantalla puede ocupar un desplegable abierto.
+ *
+ * Bastante, porque mientras esta abierto es lo unico que importa; pero no todo,
+ * para que se siga viendo de que campo salio.
+ */
+const FRACCION_DE_PANTALLA = 0.45;
 
 export interface OpcionDeSelector<T> {
   readonly valor: T;
@@ -73,10 +83,26 @@ export function ListaDeOpciones<T>({
 }) {
   const styles = crearEstilos(theme);
 
+  /**
+   * El alto sale de la pantalla, no de un numero fijo.
+   *
+   * Estaba en 260, que en un telefono deja ver **seis** de las trece
+   * categorias, y el corte caia justo al terminar una fila: se leia como que la
+   * lista se acababa ahi. El indicador de desplazamiento de Android se desvanece
+   * solo, asi que tampoco quedaba esa pista.
+   *
+   * Con una fraccion del alto entran mas y el corte cae **a mitad de fila**, que
+   * es la unica senal que no se desvanece: media fila asomando dice que hay mas
+   * abajo.
+   */
+  const alto = Math.round(useWindowDimensions().height * FRACCION_DE_PANTALLA);
+
   return (
-    // Se limita la altura y se deja desplazar: doce categorias en una pantalla
-    // chica empujarian la lista de movimientos fuera de la vista.
-    <ScrollView style={styles.panel} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={[styles.panel, { maxHeight: alto }]}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+    >
       {opciones.map((opcion, indice) => {
         const Icono = opcion.icono;
         const activa = opcion.valor === seleccionado;
@@ -121,7 +147,6 @@ function crearEstilos(theme: Theme) {
     chipTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs },
 
     panel: {
-      maxHeight: 260,
       marginTop: spacing.sm,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,

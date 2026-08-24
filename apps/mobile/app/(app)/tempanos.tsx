@@ -60,7 +60,7 @@ export default function Tempanos() {
   );
 
   return (
-    <Pantalla permitirFuturo>
+    <Pantalla titulo="Témpanos" permitirFuturo>
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >

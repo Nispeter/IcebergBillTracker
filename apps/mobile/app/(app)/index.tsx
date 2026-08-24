@@ -109,7 +109,7 @@ export default function Resumen() {
     });
 
   return (
-    <Pantalla>
+    <Pantalla titulo="Resumen">
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >

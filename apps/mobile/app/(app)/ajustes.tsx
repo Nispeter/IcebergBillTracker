@@ -187,7 +187,7 @@ export default function Ajustes() {
   const yo = miembros.find((m: Miembro) => m.id === identidadDelMiembro);
 
   return (
-    <Pantalla sinPeriodo>
+    <Pantalla titulo="Ajustes" sinPeriodo>
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >

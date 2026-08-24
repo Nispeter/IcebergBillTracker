@@ -46,12 +46,12 @@ export default function Categorias() {
   const muescas = notchesFor(a.mayorCategoria, unidad);
 
   return (
-    <Pantalla>
+    <Pantalla titulo="Categorías">
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >
         <Titulo
-          texto="Categorías"
+          texto="Las más grandes"
           theme={theme}
           estilo={styles.primerTitulo}
           ayuda={'Las cinco categorías más grandes llevan color propio; el resto se '

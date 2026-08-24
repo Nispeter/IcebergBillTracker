@@ -47,7 +47,7 @@ export default function DiaADia() {
   );
 
   return (
-    <Pantalla>
+    <Pantalla titulo="Día a día">
       <ScrollView
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >

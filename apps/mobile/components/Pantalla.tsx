@@ -18,6 +18,13 @@
  * El **menu de la hamburguesa quedo solo para cambiar de cuenta**, y por eso no
  * se dibuja si hay una sola: los destinos se mudaron a la barra de abajo.
  *
+ * ## El nombre de la vista, bajo el encabezado
+ *
+ * Existe por lo mismo que la barra: seis iconos sin etiqueta dicen a donde se
+ * puede ir, pero no **donde se esta**. El titulo lo confirma despues del toque,
+ * que es cuando hace falta, y ademas le pone nombre a pantallas que antes
+ * empezaban directo con una cifra sin decir de que eran.
+ *
  * ## Al entrar, el contenido se funde
  *
  * **Solo el contenido.** El encabezado, la columna de agua y la barra de abajo
@@ -44,8 +51,10 @@ import { useCuentas } from '../datos/consultas';
 import { useTema } from '../datos/tema';
 
 export function Pantalla(
-  { children, sinPeriodo, permitirFuturo }: {
+  { children, titulo, sinPeriodo, permitirFuturo }: {
     children: ReactNode;
+    /** El nombre de la vista. El mismo que lleva en la barra de abajo. */
+    titulo?: string;
     sinPeriodo?: boolean;
     /** Ver `BarraDePeriodo`: solo Tempanos necesita mirar hacia adelante. */
     permitirFuturo?: boolean;
@@ -121,6 +130,9 @@ export function Pantalla(
             </>
           )}
         </View>
+        {titulo === undefined ? null : (
+          <Text style={styles.tituloDeVista}>{titulo}</Text>
+        )}
       </View>
 
       <Animated.View
@@ -167,6 +179,20 @@ function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }) {
     marcaFila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
     boton: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+    /**
+     * Mas grande que un titulo de seccion y mas chico que una cifra.
+     *
+     * `lg` contra los `sm` de `Titulo`: tiene que leerse como el nombre de la
+     * pantalla y no como una seccion mas, pero sin competir con el numero
+     * protagonista que viene abajo en varias vistas.
+     */
+    tituloDeVista: {
+      fontFamily: fonts.texto,
+      fontWeight: pesos.semibold,
+      fontSize: fontSizes.lg,
+      color: theme.tinta,
+      marginTop: spacing.md,
+    },
 
   });
 }

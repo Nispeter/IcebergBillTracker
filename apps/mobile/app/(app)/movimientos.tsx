@@ -204,7 +204,7 @@ export default function Movimientos() {
   );
 
   return (
-    <Pantalla>
+    <Pantalla titulo="Movimientos">
       {/* Los filtros van **fuera** de la lista, no en su `ListHeaderComponent`.
           Ahi adentro no podian abrirse por encima: el envoltorio que FlatList
           le pone al encabezado lleva `zIndex: 0`, que crea un contexto de
