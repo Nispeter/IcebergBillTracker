@@ -33,7 +33,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
-import { Sidebar } from './Sidebar';
+import { Bandeja } from './Bandeja';
 import { useEstadoDelFlotante } from '../datos/desplazamiento';
 import { useTema } from '../datos/tema';
 
@@ -142,7 +142,7 @@ export function Pantalla(
         </Link>
       </Animated.View>
 
-      <Sidebar theme={theme} abierta={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
+      <Bandeja theme={theme} abierta={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
     </View>
   );
 }
