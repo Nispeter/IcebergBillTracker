@@ -12,11 +12,21 @@
  *
  * Abajo tambien: en Android la barra de gestos se come el borde inferior, y
  * varios de estos formularios terminan en un boton.
+ *
+ * ## Entra subiendo
+ *
+ * `presentation: 'modal'` ya desliza en Android, pero **en web no anima nada**:
+ * el formulario aparecia de golpe y se leia como un cambio de pantalla, no como
+ * algo que se abre encima. La animacion se hace aca para que sea la misma en los
+ * dos lados.
+ *
+ * Desde abajo por donde nace el gesto: el mas esta abajo al centro, y lo que
+ * sube desde ahi se entiende como su consecuencia.
  */
 
 import { StatusBar } from 'expo-status-bar';
-import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { Animated, Easing, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTema } from '../datos/tema';
 
@@ -24,20 +34,38 @@ export function PantallaModal({ children }: { children: ReactNode }) {
   const { nombre: tema, theme } = useTema();
   const margenes = useSafeAreaInsets();
 
+  const entrada = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(entrada, {
+      toValue: 1,
+      // Mas largo que el cambio de vista: aca si hay una escena --una hoja que
+      // se levanta-- y no un simple acuse de recibo.
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [entrada]);
+
   return (
-    <View
+    <Animated.View
       style={[
         styles.raiz,
         {
           backgroundColor: theme.fondo,
           paddingTop: margenes.top,
           paddingBottom: margenes.bottom,
+          opacity: entrada,
+          transform: [{
+            // 24 y no 8: esto no llega, se levanta. El recorrido mas largo es lo
+            // que lo distingue del cambio de vista.
+            translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }),
+          }],
         },
       ]}
     >
       <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
       {children}
-    </View>
+    </Animated.View>
   );
 }
 

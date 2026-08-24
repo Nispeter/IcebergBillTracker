@@ -5,9 +5,10 @@
  * su propio encabezado, tarde o temprano alguna se olvidaria de la barra y el
  * usuario perderia la referencia de que fecha esta mirando.
  *
- * El **mas vive en la barra de abajo**, en el medio y sobresaliendo. Ver
- * `BarraInferior`: ahi esta escrito por que dejo de flotar y por que dejo de
- * esconderse al desplazar.
+ * El **mas vive en la barra de abajo**, en el medio y sobresaliendo. Esa barra
+ * no se dibuja aca sino en `app/(app)/_layout.tsx`, un nivel mas arriba: si
+ * viviera dentro de la pantalla se desvaneceria con ella en cada transicion, y
+ * lo que tiene que hacer es quedarse quieta. Ver `BarraInferior`.
  *
  * El **fondo es una columna de agua**: un degradado que se hace mas hondo hacia
  * abajo. Va aca y no en cada pantalla para que la profundidad sea de la app y no
@@ -16,17 +17,27 @@
  *
  * El **menu de la hamburguesa quedo solo para cambiar de cuenta**, y por eso no
  * se dibuja si hay una sola: los destinos se mudaron a la barra de abajo.
+ *
+ * ## Al entrar, el contenido se funde
+ *
+ * **Solo el contenido.** El encabezado, la columna de agua y la barra de abajo
+ * se quedan quietos: son los mismos en las seis vistas, y fundirlos seria un
+ * parpadeo de cosas que no cambiaron. Lo que cambia es lo del medio.
+ *
+ * Fundido y no deslizamiento porque las seis vistas son **hermanas**: deslizar
+ * de lado contaria un avance que no existe, y ademas habria que decidir hacia
+ * que lado va cada par de destinos. Sube 8 px, lo justo para que se lea como
+ * contenido que llega y no como un destello.
  */
 
 import { capas, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { List } from 'phosphor-react-native/src/icons/List';
-import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BarraDePeriodo } from './BarraDePeriodo';
-import { BarraInferior } from './BarraInferior';
 import { Pinguino } from './Pinguino';
 import { Bandeja } from './Bandeja';
 import { useCuentas } from '../datos/consultas';
@@ -49,6 +60,20 @@ export function Pantalla(
   // Con una sola cuenta el menu no tendria nada adentro: es lo unico que quedo
   // ahi desde que los destinos se mudaron a la barra de abajo.
   const hayQueElegirCuenta = useCuentas().length > 1;
+
+  // Corre una sola vez por montaje, y cada destino monta su propia `Pantalla`:
+  // eso es lo que hace que la animacion coincida con el cambio de vista.
+  const entrada = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(entrada, {
+      toValue: 1,
+      // Corto a proposito: es el acuse de que el toque llego, no una escena.
+      // Pasando los 200 ms, navegar empieza a sentirse lento.
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [entrada]);
 
   return (
     <View style={styles.raiz}>
@@ -98,9 +123,16 @@ export function Pantalla(
         </View>
       </View>
 
-      {children}
-
-      <BarraInferior theme={theme} />
+      <Animated.View
+        style={[styles.cuerpo, {
+          opacity: entrada,
+          transform: [{
+            translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }),
+          }],
+        }]}
+      >
+        {children}
+      </Animated.View>
 
       <Bandeja theme={theme} abierta={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
     </View>
@@ -110,6 +142,9 @@ export function Pantalla(
 function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }) {
   return StyleSheet.create({
     raiz: { flex: 1, backgroundColor: theme.fondo },
+    // `flex: 1` para que envolver el contenido no le cambie el alto a ninguna
+    // pantalla: antes colgaban directo de la raiz.
+    cuerpo: { flex: 1 },
     /**
      * Elevado sobre el contenido para que el panel del periodo se abra encima.
      *

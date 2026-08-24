@@ -18,6 +18,25 @@ import { ProveedorDeExplicacion } from '../datos/explicacion';
 import { ProveedorDePeriodo } from '../datos/periodo';
 import { ProveedorDeTema, useTema } from '../datos/tema';
 
+/**
+ * Todo lo que se escribe entra desde abajo.
+ *
+ * `presentation: 'modal'` sola ya deslizaba en Android, pero **en web no anima
+ * nada**: el formulario aparecia de golpe y se leia como un cambio de pantalla,
+ * no como algo que se abre encima. Declarar la animacion la hace igual en los
+ * dos lados.
+ *
+ * Desde abajo y no de lado por donde nace el gesto: el mas esta abajo al centro,
+ * y lo que sube desde ahi se entiende como su consecuencia. 240 ms porque aca si
+ * hay una escena --una hoja que se levanta-- a diferencia del cambio de vista,
+ * que es solo un acuse de recibo.
+ */
+const COMO_HOJA = {
+  presentation: 'modal',
+  animation: 'slide_from_bottom',
+  animationDuration: 240,
+} as const;
+
 export default function RootLayout() {
   // El proveedor de tema envuelve todo, incluidas las pantallas de carga y de
   // error: si no, el arranque parpadearia en el tema equivocado.
@@ -96,13 +115,13 @@ function Contenido() {
               screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.fondo } }}
             >
               <Stack.Screen name="(app)" />
-              <Stack.Screen name="nuevo" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="movimiento/[id]" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="regla/nueva" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="regla/[id]" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="importar" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="cuenta/[id]" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="reglas-categoria" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="nuevo" options={COMO_HOJA} />
+              <Stack.Screen name="movimiento/[id]" options={COMO_HOJA} />
+              <Stack.Screen name="regla/nueva" options={COMO_HOJA} />
+              <Stack.Screen name="regla/[id]" options={COMO_HOJA} />
+              <Stack.Screen name="importar" options={COMO_HOJA} />
+              <Stack.Screen name="cuenta/[id]" options={COMO_HOJA} />
+              <Stack.Screen name="reglas-categoria" options={COMO_HOJA} />
             </Stack>
           </ProveedorDeExplicacion>
           </ProveedorDeCuenta>
