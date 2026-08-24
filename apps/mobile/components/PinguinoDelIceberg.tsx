@@ -12,6 +12,10 @@
  * **Cada uno arranca con su retraso.** Con todos en fase se ven como una sola
  * figura repetida; desfasados se ven como varios animales.
  *
+ * El del medio se puede tocar y da un salto. Los demás no: uno solo que responda
+ * se descubre por accidente, seis que respondan se leen como botones y la
+ * pantalla pasa a tener seis controles que no hacen nada.
+ *
  * ## Dónde se para
  *
  * En los dos casos, sobre **la línea de agua**: es el único borde del dibujo
@@ -32,8 +36,8 @@
  */
 
 import { type Theme } from '@iceberg/ui';
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet } from 'react-native';
 import { Pinguino } from './Pinguino';
 
 /** Desde qué proporción de gasto variable el pingüino se pone a saltar. */
@@ -45,12 +49,14 @@ const ALTO = TAMANO * (72 / 64);
 
 /** Cuánto sube en cada salto. */
 const SALTO = 9;
+/** Cuánto brinca al tocarlo. Más alto que el salto solo: es una reacción. */
+const REBOTE = 14;
 /** Cuánto se mece nadando, a lo ancho y a lo alto. */
 const VAIVEN = 7;
 const CABECEO = 3;
 
 export function PinguinosDelIceberg(
-  { theme, variable, yLinea, bordeDelHielo, cuantos }: {
+  { theme, variable, yLinea, bordeDelHielo, cuantos, onTocar }: {
     theme: Theme;
     /** Proporción del gasto que es variable, de 0 a 1. */
     variable: number;
@@ -60,9 +66,14 @@ export function PinguinosDelIceberg(
     bordeDelHielo: number;
     /** Cuántos dibujar. Ver `usePinguinos`. */
     cuantos: number;
+    /** Lo llama el del medio cuando lo tocan. */
+    onTocar?: () => void;
   },
 ) {
   const salta = variable > MUCHO_VARIABLE;
+  // Con dos, el "del medio" es el primero: `floor` deja el de la izquierda, que
+  // es el que uno mira primero.
+  const elDelMedio = Math.floor((cuantos - 1) / 2);
 
   return (
     <>
@@ -74,6 +85,7 @@ export function PinguinosDelIceberg(
           yLinea={yLinea}
           x={donde(salta, indice, cuantos, bordeDelHielo)}
           retraso={indice * (salta ? 240 : 380)}
+          alTocar={indice === elDelMedio ? onTocar : undefined}
         />
       ))}
     </>
@@ -101,12 +113,13 @@ function donde(salta: boolean, indice: number, cuantos: number, borde: number): 
 }
 
 function Uno(
-  { theme, salta, yLinea, x, retraso }: {
+  { theme, salta, yLinea, x, retraso, alTocar }: {
     theme: Theme;
     salta: boolean;
     yLinea: number;
     x: number;
     retraso: number;
+    alTocar?: (() => void) | undefined;
   },
 ) {
   const paso = useRef(new Animated.Value(0)).current;
@@ -132,6 +145,23 @@ function Uno(
     return () => { clearTimeout(arranque); ciclo.stop(); };
   }, [salta, paso, retraso]);
 
+  /**
+   * El salto de cuando lo tocan, aparte del vaiven de siempre.
+   *
+   * Va en su propio valor y en su propia entrada del `transform`: dos
+   * `translateY` en el mismo arreglo se suman, asi que el toque se monta encima
+   * de lo que el pinguino ya estuviera haciendo sin cortarlo.
+   */
+  const rebote = useRef(new Animated.Value(0)).current;
+  const saltar = useCallback(() => {
+    alTocar?.();
+    rebote.setValue(0);
+    Animated.sequence([
+      Animated.timing(rebote, { toValue: 1, duration: 130, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.spring(rebote, { toValue: 0, friction: 4, tension: 90, useNativeDriver: true }),
+    ]).start();
+  }, [alTocar, rebote]);
+
   const movimiento = salta
     ? [{ translateY: paso.interpolate({ inputRange: [0, 1], outputRange: [0, -SALTO] }) }]
     : [
@@ -139,21 +169,37 @@ function Uno(
       { translateY: paso.interpolate({ inputRange: [0, 1], outputRange: [0, CABECEO] }) },
     ];
 
+  const dibujo = <Pinguino theme={theme} tamano={TAMANO} estado="contento" />;
+
   return (
     <Animated.View
-      pointerEvents="none"
-      accessibilityElementsHidden
+      // Solo el que responde recibe toques; los demas dejan pasar el del
+      // iceberg, que tiene lo suyo escondido.
+      pointerEvents={alTocar ? 'box-none' : 'none'}
+      accessibilityElementsHidden={alTocar === undefined}
       style={[
         styles.enLaEscena,
         {
           // Saltando se para sobre el hielo; nadando, medio hundido en el agua.
           top: salta ? yLinea - ALTO : yLinea - ALTO * 0.62,
           marginLeft: x,
-          transform: movimiento,
+          transform: [
+            ...movimiento,
+            { translateY: rebote.interpolate({ inputRange: [0, 1], outputRange: [0, -REBOTE] }) },
+          ],
         },
       ]}
     >
-      <Pinguino theme={theme} tamano={TAMANO} estado="contento" />
+      {alTocar ? (
+        <Pressable
+          onPress={saltar}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="El pingüino"
+        >
+          {dibujo}
+        </Pressable>
+      ) : dibujo}
     </Animated.View>
   );
 }
