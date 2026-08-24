@@ -111,7 +111,7 @@ export default function Tempanos() {
         {candidatas.length > 0 ? (
           <>
             <Titulo
-              texto="Encontradas en tu historial"
+              texto="Detectadas en tu historial"
               theme={theme}
               ayuda={'Movimientos que se repiten con la misma frecuencia y un monto '
                 + 'parecido. Son una propuesta: nada se crea hasta que la confirmes.'}

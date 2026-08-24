@@ -18,9 +18,23 @@ import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import type { IconProps } from 'phosphor-react-native';
 import type { ComponentType } from 'react';
-import {
-  Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+/**
+ * El `ScrollView` de `react-native-gesture-handler`, **no el de React Native**.
+ *
+ * El panel de opciones es un scroll adentro del scroll de la pantalla, y en
+ * Android el de afuera se queda con el gesto: la lista de categorias se veia
+ * cortada y no habia forma de bajar. `nestedScrollEnabled` es el remedio que
+ * documenta React Native y no alcanzo.
+ *
+ * El de gesture-handler resuelve el conflicto con el sistema de gestos en vez de
+ * con el protocolo de scroll anidado de Android, que es lo que falla. La app ya
+ * monta `GestureHandlerRootView` en la raiz, que es lo unico que pedia.
+ *
+ * En web los dos se comportan igual, asi que el cambio no se nota ahi. **Sin
+ * probar en Android**: hace falta un telefono.
+ */
+import { ScrollView } from 'react-native-gesture-handler';
 
 /**
  * Cuanto de la pantalla puede ocupar un desplegable abierto.

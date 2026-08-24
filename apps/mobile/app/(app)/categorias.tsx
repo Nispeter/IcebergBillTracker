@@ -51,7 +51,7 @@ export default function Categorias() {
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >
         <Titulo
-          texto="Las más grandes"
+          texto="Reparto del gasto"
           theme={theme}
           estilo={styles.primerTitulo}
           ayuda={'Las cinco categorías más grandes llevan color propio; el resto se '
@@ -80,7 +80,7 @@ export default function Categorias() {
         {a.porCategoria.length > 0 ? (
           <>
             <Titulo
-              texto="Todas"
+              texto="Todas las categorías"
               theme={theme}
               ayuda={'Cada barra es una categoría del período, de mayor a menor. Tocar '
                 + 'una lleva al listado filtrado por ella. Las muescas son de un mismo '

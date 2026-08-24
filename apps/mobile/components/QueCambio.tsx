@@ -60,8 +60,14 @@ export function QueCambio(
           "vs. 10 al 16 de agosto" no entra en 84px, y sin el la seccion no se
           entiende en ningun alcance. */}
       <Titulo
-        texto="Qué cambió"
+        texto="Variación por categoría"
         theme={theme}
+        ayuda={'Compara lo gastado en cada categoría contra el período anterior del '
+          + 'mismo largo. En rojo lo que subió, en verde lo que bajó.\n\n'
+          + 'Solo aparecen las categorías que cambiaron: las que quedaron igual no '
+          + 'explican nada.\n\n'
+          + 'La flecha lleva al listado filtrado por esa categoría. Una que bajó a cero '
+          + 'no la lleva, porque el listado saldría vacío.'}
         derecha={<Text style={styles.referencia} numberOfLines={1}>vs. {referencia}</Text>}
       />
 

@@ -129,7 +129,7 @@ export default function DiaADia() {
           );
         })}
 
-        <Titulo texto="Detalle" theme={theme} />
+        <Titulo texto="Detalle del período" theme={theme} />
         <Panel theme={theme}>
           <Dato styles={styles} etiqueta="Día más caro"
             valor={masCaro === null ? '—' : `${money.format(masCaro.gasto)}`} />
