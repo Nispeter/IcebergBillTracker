@@ -11,10 +11,14 @@
  *
  * ## El color
  *
- * Blanco para variable, cian para comprometido, como el hielo y el agua del
- * iceberg. Ojo: en el dibujo es al reves --el hielo blanco es lo comprometido y
- * el agua lo variable--, asi que si algun dia hay que unificarlos, este es el
- * que se da vuelta.
+ * **Blanco para comprometido, cian para variable**, igual que el iceberg: el
+ * hielo sobre la linea de agua es lo comprometido y el agua de abajo lo
+ * variable.
+ *
+ * Nacio al reves, y estuvo asi una version entera. Que dos partes de la app
+ * usen los mismos dos colores para decir cosas opuestas es peor que no
+ * colorearlas: quien aprendio el iceberg leia el interruptor al reves sin
+ * enterarse.
  */
 
 import { radii, type Theme } from '@iceberg/ui';
@@ -28,7 +32,7 @@ const MARGEN = (ALTO - PERILLA) / 2;
 
 export function Interruptor(
   { encendido, onCambiar, theme, accesible }: {
-    /** Verdadero mueve la perilla a la derecha y pinta la pista de cian. */
+    /** Verdadero mueve la perilla a la derecha y pinta la pista de blanco. */
     encendido: boolean;
     onCambiar: (valor: boolean) => void;
     theme: Theme;
@@ -62,7 +66,9 @@ export function Interruptor(
           {
             backgroundColor: progreso.interpolate({
               inputRange: [0, 1],
-              outputRange: [theme.hieloSobreAgua, theme.acento],
+              // Apagado es variable, que es el agua; encendido es comprometido,
+              // que es el hielo.
+              outputRange: [theme.acento, theme.hieloSobreAgua],
             }),
           },
         ]}

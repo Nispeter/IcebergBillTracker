@@ -36,15 +36,19 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Pinguino } from '../../components/Pinguino';
+import { PinguinosDelIceberg } from '../../components/PinguinoDelIceberg';
 import { DetalleDeCifra, type Detalle } from '../../components/DetalleDeCifra';
 import { Hoja } from '../../components/Hoja';
-import { Iceberg, alturaDeLineaDeAgua, anchoDelIceberg } from '../../components/Iceberg';
+import {
+  Iceberg, alturaDeLineaDeAgua, anchoDelIceberg, bordeDelHieloEn,
+} from '../../components/Iceberg';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useAireInferior } from '../../datos/desplazamiento';
 import {
   esGastoComprometido, useAnalisisDeRango, useAnomalias, useComprometidas, useDesgloseDelSaldo,
-  useMovimientosDeRegla, useMovimientosFiltrados, useSaldoInicial, type DesgloseDelSaldo,
+  useMovimientosDeRegla, useMovimientosFiltrados, usePinguinos, useSaldoInicial,
+  type DesgloseDelSaldo,
 } from '../../datos/consultas';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
@@ -71,6 +75,8 @@ const TAMANO_DEL_PINGUINO = 16;
 
 /** Lo que ocupa un porcentaje escrito. Si su franja no lo tiene, no se dibuja. */
 const ALTO_ETIQUETA = 30;
+/** Lo que ocupa "100%" a lo ancho. Debajo de esto, el numero no entra. */
+const ANCHO_ETIQUETA = 42;
 
 export default function Resumen() {
   const { theme } = useTema();
@@ -91,6 +97,7 @@ export default function Resumen() {
   const anomalias = useAnomalias();
   const deRegla = useMovimientosDeRegla(rango);
   const [cifra, setCifra] = useState<Cifra | null>(null);
+  const cuantosPinguinos = usePinguinos();
 
   /**
    * El huevo de pascua: cinco toques al iceberg y aparece la colonia.
@@ -124,9 +131,19 @@ export default function Resumen() {
   // periodica-- la linea queda en el borde y la etiqueta caia sobre la punta
   // del hielo, donde no hay ancho para leerla. El centro de la franja siempre
   // es la parte mas ancha.
-  const arriba = hayGasto && yLinea >= ALTO_ETIQUETA
+  const arribaIdeal = hayGasto && yLinea >= ALTO_ETIQUETA
     ? yLinea / 2 - ALTO_ETIQUETA / 2
     : null;
+  /**
+   * Si el porcentaje cabe dentro del hielo a su altura.
+   *
+   * Con muy poco comprometido la linea de agua sube casi hasta la punta, y ahi
+   * el hielo mide menos que el numero: quedaba escrito medio sobre el hielo y
+   * medio sobre el fondo, y en el fondo su color no contrasta. Se veia cortado.
+   */
+  const cabeArriba = arribaIdeal !== null
+    && bordeDelHieloEn(arribaIdeal + ALTO_ETIQUETA / 2, ALTO_HIELO) * 2 >= ANCHO_ETIQUETA;
+
   const abajo = hayGasto && ALTO_HIELO - yLinea >= ALTO_ETIQUETA
     ? yLinea + (ALTO_HIELO - yLinea) / 2 - ALTO_ETIQUETA / 2
     : null;
@@ -221,6 +238,21 @@ export default function Resumen() {
               <Pinguino theme={theme} tamano={TAMANO_DEL_PINGUINO} estado="contento" />
             </View>
           )) : null}
+          {/*
+            El pinguino del reparto: salta sobre el hielo si hay mucho gasto
+            variable y nada en el mar si hay poco. Sin gastos no hay reparto que
+            contar, asi que tampoco aparece.
+          */}
+          {hayGasto ? (
+            <PinguinosDelIceberg
+              theme={theme}
+              variable={1 - share}
+              yLinea={yLinea}
+              bordeDelHielo={bordeDelHieloEn(yLinea, ALTO_HIELO)}
+              cuantos={cuantosPinguinos}
+            />
+          ) : null}
+
           {/* Sin gastos no hay reparto, y sin reparto no hay nivel que marcar:
               la linea quedaba pegada al borde de arriba, suelta bajo el saldo,
               afirmando una division que no existe. */}
@@ -234,8 +266,19 @@ export default function Resumen() {
             y el agua junto a la superficie es un cian claro. Con blanco no
             servia --sobre el cian da 2,4:1--.
           */}
-          {arriba === null ? null : (
-            <Text style={[styles.parteEnElHielo, { top: arriba }]}>
+          {arribaIdeal === null ? null : cabeArriba ? (
+            <Text style={[styles.parteEnElHielo, { top: arribaIdeal }]}>
+              {Math.round(share * 100)}%
+            </Text>
+          ) : (
+            // No cabe: se sale del hielo, al lado del pico, donde hay fondo de
+            // sobra. Con el color de fuera, que si contrasta ahi.
+            <Text
+              style={[styles.parteFueraDelHielo, {
+                top: arribaIdeal,
+                marginLeft: bordeDelHieloEn(arribaIdeal + ALTO_ETIQUETA / 2, ALTO_HIELO) + 6,
+              }]}
+            >
               {Math.round(share * 100)}%
             </Text>
           )}
@@ -544,6 +587,21 @@ function crearEstilos(theme: Theme) {
       fontWeight: pesos.medium,
       fontSize: fontSizes.sm,
       color: theme.sobreElHielo,
+    },
+    /**
+     * El mismo porcentaje, cuando no entra en el hielo.
+     *
+     * Anclado al centro y corrido con `marginLeft` hasta pasar el borde, igual
+     * que el pinguino. Lleva la tinta de la pantalla y no la del hielo: aca el
+     * fondo es la columna de agua, no el dibujo.
+     */
+    parteFueraDelHielo: {
+      position: 'absolute',
+      left: '50%',
+      fontFamily: fonts.mono,
+      fontWeight: pesos.medium,
+      fontSize: fontSizes.sm,
+      color: theme.silencio,
     },
 
     /**

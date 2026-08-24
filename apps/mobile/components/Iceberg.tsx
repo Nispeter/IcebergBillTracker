@@ -71,6 +71,35 @@ export function anchoDelIceberg(alto: number): number {
   return alto * (ANCHO / ALTO);
 }
 
+/**
+ * Hasta donde llega el hielo a una altura dada, en pixeles desde el centro.
+ *
+ * Hace falta para parar cosas **sobre** el iceberg. El ancho total no sirve: la
+ * silueta es un pico arriba y se ensancha abajo, asi que a la altura de la linea
+ * de agua el hielo puede ser mucho mas angosto que el dibujo. Con mucho gasto
+ * variable la linea sube casi hasta la punta y ahi el hielo mide cuatro pixeles.
+ *
+ * Se resuelve cruzando una horizontal con cada lado del poligono y quedandose
+ * con el cruce mas a la derecha. Devuelve cero si la altura cae fuera de la
+ * figura.
+ */
+export function bordeDelHieloEn(y: number, alto: number): number {
+  const enElDibujo = (y / alto) * ALTO;
+  let derecha = -Infinity;
+
+  for (let i = 0, j = SILUETA.length - 1; i < SILUETA.length; j = i++) {
+    const [xi, yi] = SILUETA[i]!;
+    const [xj, yj] = SILUETA[j]!;
+    if ((yi > enElDibujo) === (yj > enElDibujo)) continue;
+    const x = xi + ((xj - xi) * (enElDibujo - yi)) / (yj - yi);
+    if (x > derecha) derecha = x;
+  }
+
+  if (derecha === -Infinity) return 0;
+  // De unidades del `viewBox` a pixeles, y desde el centro.
+  return ((derecha - ANCHO / 2) / ANCHO) * anchoDelIceberg(alto);
+}
+
 export function Iceberg(
   { shareComprometido, theme, agua, profundidad, alto = 200, dibujarLinea = true }: IcebergProps,
 ) {

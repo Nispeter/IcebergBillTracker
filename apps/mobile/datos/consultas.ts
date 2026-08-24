@@ -22,7 +22,7 @@ import {
   consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
   consultaDeResumen, resumenDesde,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
-  CLAVE_CATEGORIAS_COMPROMETIDAS, consultaDeAjuste,
+  CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_PINGUINOS, consultaDeAjuste,
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
@@ -224,6 +224,30 @@ export function useComprometidas(): ReadonlySet<string> {
       return new Set(COMPROMETIDAS_POR_OMISION);
     }
   }, [crudo]);
+}
+
+/** Cuantos pinguinos pueden acompanar al iceberg. */
+export const PINGUINOS_MINIMO = 1;
+export const PINGUINOS_MAXIMO = 6;
+export const PINGUINOS_POR_OMISION = 1;
+
+/**
+ * Cuantos pinguinos mostrar, segun lo que haya elegido el usuario.
+ *
+ * Reactiva por lo mismo que `useComprometidas`: se cambia en Ajustes y el
+ * Resumen tiene que reflejarlo sin salir y volver a entrar.
+ */
+export function usePinguinos(): number {
+  const { db } = useDatos();
+  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_PINGUINOS), [db]);
+  const { data } = useLiveQuery(consulta);
+  const crudo = data?.[0]?.valor;
+
+  const cuantos = Number(crudo);
+  if (!Number.isFinite(cuantos)) return PINGUINOS_POR_OMISION;
+  // Se acota al leer y no solo al escribir: el valor pudo quedar de una version
+  // con otros limites, y una pantalla no puede romperse por un ajuste viejo.
+  return Math.min(PINGUINOS_MAXIMO, Math.max(PINGUINOS_MINIMO, Math.round(cuantos)));
 }
 
 /** Si un gasto de esa categoria cuenta como compromiso fijo. */

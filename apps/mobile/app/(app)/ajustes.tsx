@@ -8,7 +8,7 @@
 
 import { crypto, dates, money } from '@iceberg/core';
 import {
-  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_CATEGORIAS_COMPROMETIDAS,
+  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_PINGUINOS,
   CLAVE_DISPOSITIVO, CLAVE_HOGAR,
   CLAVE_MIEMBRO, borrarCategoria, escribirAjuste, borrarTodo, crearCategoria, crearCuenta,
   deshacerLote, editarCuenta, leerAjuste, renombrarMiembro, unirseAHogar,
@@ -21,6 +21,8 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
+import { Minus } from 'phosphor-react-native/src/icons/Minus';
+import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { Star } from 'phosphor-react-native/src/icons/Star';
 import { Trash } from 'phosphor-react-native/src/icons/Trash';
 import { Interruptor } from '../../components/Interruptor';
@@ -31,7 +33,8 @@ import { useAireInferior } from '../../datos/desplazamiento';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
-  useCuentas, useLotes, useMiembros, useMovimientos, useSaldo, useSaldoInicial,
+  PINGUINOS_MAXIMO, PINGUINOS_MINIMO, useCuentas, useLotes, useMiembros, useMovimientos,
+  usePinguinos, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
 import { useCategorias } from '../../datos/catalogo';
 import { useCuentaActiva } from '../../datos/cuenta';
@@ -82,6 +85,7 @@ export default function Ajustes() {
   const [ajenosEnCarpeta, setAjenosEnCarpeta] = useState(0);
   const [nombrePropio, setNombrePropio] = useState<string | null>(null);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
+  const pinguinos = usePinguinos();
 
   const vacia = movimientos.length === 0;
 
@@ -141,6 +145,14 @@ export default function Ajustes() {
     } finally {
       setSincronizando(false);
     }
+  }
+
+  /** Suma o resta uno, sin salirse de los limites. */
+  function cambiarPinguinos(cuanto: number) {
+    const van = Math.min(PINGUINOS_MAXIMO, Math.max(PINGUINOS_MINIMO, pinguinos + cuanto));
+    if (van === pinguinos) return;
+    escribirAjuste(db, CLAVE_PINGUINOS, String(van));
+    avisar(van === 1 ? 'Queda un pingüino' : `Quedan ${van} pingüinos`);
   }
 
   function agregarCategoria() {
@@ -205,7 +217,10 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Apariencia"
-          ayuda={'Deshielo es el tema claro y Noche polar el oscuro. Por ahora la elección '
+          ayuda={'Los pingüinos acompañan al iceberg del Resumen: saltan sobre el hielo '
+            + 'cuando la mayor parte del gasto es variable y nadan en el mar cuando es '
+            + 'poca. De uno a seis, y no hacen nada más que estar ahí.\n\n'
+            + 'Deshielo es el tema claro y Noche polar el oscuro. Por ahora la elección '
             + 'dura hasta que cierres la app: al volver a abrirla arranca en Noche polar.'}
         />
         <View style={styles.fila}>
@@ -218,6 +233,33 @@ export default function Ajustes() {
           >
             <Text style={styles.botonTexto}>{tema === 'dark' ? 'Noche polar' : 'Deshielo'}</Text>
           </Pressable>
+        </View>
+
+        <View style={styles.fila}>
+          <Text style={styles.etiqueta}>Pingüinos</Text>
+          <View style={styles.contador}>
+            <Pressable
+              onPress={() => cambiarPinguinos(-1)}
+              disabled={pinguinos <= PINGUINOS_MINIMO}
+              hitSlop={8}
+              style={[styles.botonDeContador, pinguinos <= PINGUINOS_MINIMO && styles.apagado]}
+              accessibilityRole="button"
+              accessibilityLabel="Un pingüino menos"
+            >
+              <Minus size={14} weight="bold" color={theme.acentoTexto} />
+            </Pressable>
+            <Text style={styles.cuantosPinguinos}>{pinguinos}</Text>
+            <Pressable
+              onPress={() => cambiarPinguinos(1)}
+              disabled={pinguinos >= PINGUINOS_MAXIMO}
+              hitSlop={8}
+              style={[styles.botonDeContador, pinguinos >= PINGUINOS_MAXIMO && styles.apagado]}
+              accessibilityRole="button"
+              accessibilityLabel="Un pingüino más"
+            >
+              <Plus size={14} weight="bold" color={theme.acentoTexto} />
+            </Pressable>
+          </View>
         </View>
 
         <Seccion
@@ -884,6 +926,27 @@ function crearEstilos(theme: Theme) {
       marginTop: spacing.lg,
       marginBottom: spacing.xs,
     },
+    contador: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    botonDeContador: {
+      width: 26,
+      height: 26,
+      borderRadius: radii.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: elevation.hairlineWidth,
+      borderColor: theme.hairline,
+    },
+    // Ancho fijo: sin el, la fila se corre un pixel al pasar de un digito a
+    // otro y los dos botones bailan.
+    cuantosPinguinos: {
+      minWidth: 14,
+      textAlign: 'center',
+      fontFamily: fonts.mono,
+      fontWeight: pesos.medium,
+      fontSize: fontSizes.sm,
+      color: theme.tinta,
+    },
+
     /** Un boton que sigue a un texto o a un campo, no a otro boton. */
     botonConAire: { marginTop: spacing.md },
     /**

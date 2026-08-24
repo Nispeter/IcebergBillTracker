@@ -63,6 +63,15 @@ export const CLAVE_CARPETA = 'carpetaCompartida';
  */
 export const CLAVE_ARCHIVO_PROPIO = 'archivoPropio';
 
+/**
+ * Cuantos pinguinos acompanan al iceberg, de 1 a 6.
+ *
+ * Es una preferencia de esta pantalla y de este telefono, asi que vive en
+ * `ajustes` y no viaja al sincronizar: a la otra persona no le importa cuantos
+ * pinguinos quieras ver.
+ */
+export const CLAVE_PINGUINOS = 'pinguinos';
+
 export function leerAjuste(db: BaseDeDatos, clave: string): string | null {
   const filas = db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1).all();
   return filas[0]?.valor ?? null;
