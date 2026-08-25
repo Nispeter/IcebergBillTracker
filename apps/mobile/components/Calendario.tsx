@@ -15,6 +15,7 @@ import type { analytics } from '@iceberg/core';
 import {
   charts, elevation, fonts, pesos, radii, spacing, type Theme,
 } from '@iceberg/ui';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Pinguino } from './Pinguino';
 
@@ -25,13 +26,20 @@ const DIAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const PISO = 0.22;
 
 /**
- * El pinguino que marca hoy, en pixeles.
+ * Cuanto de la celda ocupa el pinguino que marca hoy.
  *
- * Doce es lo mas chico que sigue leyendose como pinguino y lo mas grande que
- * cabe en la esquina de una celda sin acercarse al monto. Va `normal`: a este
- * tamano los estados no se distinguen.
+ * Va en proporcion y no en pixeles porque la celda es un septimo del ancho de
+ * la pantalla: un tamano fijo que se ve bien en un telefono grande queda encima
+ * del numero en uno chico.
+ *
+ * El tope lo pone el monto, que es el texto mas ancho de la celda: cuatro
+ * caracteres centrados dejan libre poco menos de un tercio a cada lado. Con
+ * 0,34 el pinguino ya lo tocaba en pantallas de 360 px de ancho.
  */
-const TAMANO_DE_HOY = 12;
+const PROPORCION_DE_HOY = 0.32;
+
+/** Por si la medicion todavia no llego: es el tamano que tenia antes. */
+const TAMANO_MINIMO_DE_HOY = 12;
 
 /**
  * La intensidad de una celda, comprimida con raiz cuadrada.
@@ -69,7 +77,12 @@ export function Calendario(
   },
 ) {
   const styles = crearEstilos(theme);
+  // El ancho de la celda no se sabe hasta que la grilla se mide: es un
+  // porcentaje. Lo unico que depende de el es el pinguino de hoy.
+  const [anchoDeCelda, setAnchoDeCelda] = useState(0);
   if (serie.length === 0) return null;
+
+  const tamanoDeHoy = Math.max(TAMANO_MINIMO_DE_HOY, anchoDeCelda * PROPORCION_DE_HOY);
 
   const mayor = serie.reduce((max, dia) => Math.max(max, dia.gasto.amountMinor), 0);
   // El periodo no empieza en lunes: se rellena para que cada columna sea
@@ -84,7 +97,10 @@ export function Calendario(
         ))}
       </View>
 
-      <View style={styles.grilla}>
+      <View
+        style={styles.grilla}
+        onLayout={(e) => setAnchoDeCelda(e.nativeEvent.layout.width / DIAS.length)}
+      >
         {/*
           Detrás de la rejilla y muy apagado: es una marca de agua, no un
           dibujo. `pointerEvents="none"` porque cubre las celdas y si no se
@@ -120,7 +136,7 @@ export function Calendario(
               )}
               {esHoy ? (
                 <View style={styles.hoy} pointerEvents="none">
-                  <Pinguino theme={theme} tamano={TAMANO_DE_HOY} />
+                  <Pinguino theme={theme} tamano={tamanoDeHoy} />
                 </View>
               ) : null}
               <View style={styles.textos}>
@@ -192,11 +208,16 @@ function crearEstilos(theme: Theme) {
      * dos. El pinguino no le quita el puesto a nada y se encuentra igual de
      * rapido, porque en una grilla de numeros lo que salta es la figura.
      *
-     * Arriba del numero y absoluto: en la esquina se leia como si fuera del dia
-     * de al lado, y en el flujo empujaria el monto y desalinearia la grilla solo
-     * en la columna de hoy.
+     * Va **al costado** del numero, no encima. Encima solo cabe un pinguino
+     * diminuto: el numero y el monto son de tamano fijo y quedan centrados, asi
+     * que sobre ellos hay una banda que en un telefono no llega a los 15 px.
+     * A los lados sobra harto mas, porque el numero son dos digitos en el medio
+     * de la celda. De ahi que se pueda hacer casi el doble de grande.
+     *
+     * Absoluto y no en el flujo: en el flujo empujaria el monto y desalinearia
+     * la grilla solo en la columna de hoy.
      */
-    hoy: { position: 'absolute', top: 3, left: 0, right: 0, alignItems: 'center' },
+    hoy: { position: 'absolute', top: 2, left: 1 },
     monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 8, color: theme.silencio },
     // Sobre una celda muy saturada, la tinta del tema claro no contrasta: se
     // usa el fondo, que es su opuesto por definicion.
