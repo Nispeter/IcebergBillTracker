@@ -23,6 +23,11 @@
  * línea sube casi hasta la punta y ahí el hielo mide cuatro píxeles, así que un
  * pingüino colocado por porcentaje del dibujo queda flotando al lado del pico.
  *
+ * A lo alto **no puede subir más allá del techo de la escena**. Con todo el gasto
+ * variable la línea de agua queda pegada al borde de arriba, y un pingüino
+ * puesto encima de ella se salía del dibujo y se montaba sobre el título de la
+ * sección.
+ *
  * ## Las animaciones van por transformación
  *
  * `translateX` y `translateY` son de las pocas cosas que el hilo nativo sabe
@@ -89,8 +94,12 @@ export function PinguinosDelIceberg(
  */
 function donde(salta: boolean, indice: number, cuantos: number, borde: number): number {
   if (salta) {
-    // Repartidos dentro del hielo, sin llegar al borde mismo.
-    const util = Math.max(TAMANO, borde * 1.5);
+    // Repartidos dentro del hielo, sin llegar al borde mismo, pero nunca tan
+    // apretados que se monten unos sobre otros: con todo el gasto variable la
+    // linea queda en la punta, ahi el hielo no mide nada y los seis caian en el
+    // mismo pixel. `MINIMO` es el ancho que hace falta para que quepan.
+    const MINIMO = (TAMANO * 0.8 * (cuantos + 1)) / 2;
+    const util = Math.max(MINIMO, borde * 1.5);
     const paso = (util * 2) / (cuantos + 1);
     return -util + paso * (indice + 1) - TAMANO / 2;
   }
@@ -98,6 +107,24 @@ function donde(salta: boolean, indice: number, cuantos: number, borde: number): 
   const escalon = Math.floor(indice / 2);
   const lejos = borde + TAMANO * (1 + escalon * 1.5);
   return aLaDerecha ? lejos : -lejos - TAMANO;
+}
+
+/**
+ * A qué altura se dibuja, en píxeles desde el techo de la escena.
+ *
+ * Saltando se para sobre el hielo; nadando queda medio hundido en el agua. Con
+ * todo el gasto variable la línea queda pegada al techo, y ahí hay que frenarlo:
+ * arriba de la escena empieza el título de la sección y el pingüino se le montaba
+ * encima.
+ *
+ * El piso no es cero sino `SALTO`, porque el brinco son `translateY` negativos
+ * **sobre** esta altura: dejarlo en cero alcanza para la pose quieta y se sale
+ * igual en la punta del salto.
+ */
+function alto(salta: boolean, yLinea: number): number {
+  return salta
+    ? Math.max(SALTO, yLinea - ALTO)
+    : Math.max(0, yLinea - ALTO * 0.62);
 }
 
 function Uno(
@@ -147,7 +174,7 @@ function Uno(
         styles.enLaEscena,
         {
           // Saltando se para sobre el hielo; nadando, medio hundido en el agua.
-          top: salta ? yLinea - ALTO : yLinea - ALTO * 0.62,
+          top: alto(salta, yLinea),
           marginLeft: x,
           transform: movimiento,
         },
