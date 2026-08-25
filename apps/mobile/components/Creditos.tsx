@@ -29,7 +29,7 @@ interface Retrato {
 const RETRATOS: readonly Retrato[] = [
   {
     fuente: require('../assets/lei.jpg'),
-    nombre: 'La Reineta',
+    nombre: 'Señorita Rei',
     titulo: 'princesa de los dinosaurios y los ñandús',
   },
   {
@@ -77,13 +77,6 @@ function crearEstilos(theme: Theme) {
     // desplazar la hoja para ver al segundo.
     retratos: { flexDirection: 'row', gap: spacing.md },
     retrato: { flex: 1, gap: spacing.xs },
-    /**
-     * Cuadradas y no verticales.
-     *
-     * Las fotos vienen en 3:4, y a media columna eso da un recorte altisimo que
-     * se come al gato: quedaba el cojin y el suelo. Un cuadrado toma la franja
-     * del medio, que es donde esta la cara.
-     */
     /**
      * Alto fijo, no proporcion.
      *

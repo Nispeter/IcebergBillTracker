@@ -80,9 +80,13 @@ export function Calendario(
           Detrás de la rejilla y muy apagado: es una marca de agua, no un
           dibujo. `pointerEvents="none"` porque cubre las celdas y si no se
           comería los toques de los días.
+
+          Contento y no dormido: acá siempre hay algo que mirar --el calendario
+          se dibuja solo cuando hay serie-- así que el dormido, que es el de las
+          pantallas vacías, decía lo contrario de lo que se está viendo.
         */}
         <View style={styles.marcaDeAgua} pointerEvents="none">
-          <Pinguino theme={theme} tamano={150} estado="dormido" />
+          <Pinguino theme={theme} tamano={150} estado="contento" />
         </View>
 
         {Array.from({ length: relleno }, (_, i) => <View key={`v${i}`} style={styles.celda} />)}
