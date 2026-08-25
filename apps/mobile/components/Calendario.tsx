@@ -25,6 +25,15 @@ const DIAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const PISO = 0.22;
 
 /**
+ * El pinguino que marca hoy, en pixeles.
+ *
+ * Doce es lo mas chico que sigue leyendose como pinguino y lo mas grande que
+ * cabe en la esquina de una celda sin acercarse al monto. Va `normal`: a este
+ * tamano los estados no se distinguen.
+ */
+const TAMANO_DE_HOY = 12;
+
+/**
  * La intensidad de una celda, comprimida con raiz cuadrada.
  *
  * En escala lineal el mapa no funcionaba: el gasto de un mes tiene una cola
@@ -104,16 +113,20 @@ export function Calendario(
               onPress={onElegirDia ? () => onElegirDia(dia.fecha) : undefined}
               disabled={!onElegirDia || gastado === 0}
               accessibilityRole={onElegirDia && gastado > 0 ? 'button' : undefined}
-              accessibilityLabel={`${dates.formatDate(dia.fecha)}: ${money.format(dia.gasto)}`}
+              accessibilityLabel={`${esHoy ? 'Hoy, ' : ''}${dates.formatDate(dia.fecha)}: ${money.format(dia.gasto)}`}
             >
               {gastado === 0 ? null : (
                 <View style={[styles.marca, { backgroundColor: charts[0], opacity: intensidad }]} />
               )}
+              {esHoy ? (
+                <View style={styles.hoy} pointerEvents="none">
+                  <Pinguino theme={theme} tamano={TAMANO_DE_HOY} />
+                </View>
+              ) : null}
               <View style={styles.textos}>
                 <Text style={[
                   styles.numero,
                   gastado === 0 && styles.numeroApagado,
-                  esHoy && styles.numeroHoy,
                   fuerte && styles.sobreFuerte,
                 ]}>
                   {dates.day(dia.fecha)}
@@ -170,7 +183,20 @@ function crearEstilos(theme: Theme) {
     numeroApagado: { color: theme.silencio },
     textos: { alignItems: 'center' },
     numero: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
-    numeroHoy: { fontWeight: pesos.bold, color: theme.acentoTexto },
+    /**
+     * Hoy se marca con el pinguino, no con color.
+     *
+     * Antes era el numero en cian y en negrita. El cian de la app quiere decir
+     * "variable" en el iceberg y "seleccionado" en los controles; gastarlo
+     * tambien en "hoy" le agrega un tercer significado a un color que ya tenia
+     * dos. El pinguino no le quita el puesto a nada y se encuentra igual de
+     * rapido, porque en una grilla de numeros lo que salta es la figura.
+     *
+     * Arriba del numero y absoluto: en la esquina se leia como si fuera del dia
+     * de al lado, y en el flujo empujaria el monto y desalinearia la grilla solo
+     * en la columna de hoy.
+     */
+    hoy: { position: 'absolute', top: 3, left: 0, right: 0, alignItems: 'center' },
     monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 8, color: theme.silencio },
     // Sobre una celda muy saturada, la tinta del tema claro no contrasta: se
     // usa el fondo, que es su opuesto por definicion.
