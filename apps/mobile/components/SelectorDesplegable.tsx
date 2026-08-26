@@ -45,6 +45,17 @@ import { useAltoDisponible } from './ConDesplegable';
  */
 const FRACCION_DE_PANTALLA = 0.45;
 
+/**
+ * Lo que el panel se separa del disparador.
+ *
+ * Sale como constante porque se usa dos veces y **tienen que ser el mismo
+ * numero**: una para dibujar la separacion y otra para descontarla del alto
+ * disponible. Cuando no se descontaba, el panel pedia todo el sitio y ademas se
+ * corria hacia abajo, asi que se pasaba por el pie justo esta cantidad y el
+ * contenedor le recortaba el final de la ultima fila.
+ */
+const AIRE_SOBRE_EL_PANEL = spacing.sm;
+
 export interface OpcionDeSelector<T> {
   readonly valor: T;
   readonly etiqueta: string;
@@ -118,7 +129,9 @@ export function ListaDeOpciones<T>({
    */
   const sitio = useAltoDisponible();
   const fraccion = Math.round(useWindowDimensions().height * FRACCION_DE_PANTALLA);
-  const alto = sitio === null ? fraccion : Math.min(fraccion, sitio);
+  const alto = sitio === null
+    ? fraccion
+    : Math.max(Math.min(fraccion, sitio - AIRE_SOBRE_EL_PANEL), 0);
 
   return (
     <ScrollView
@@ -170,7 +183,7 @@ function crearEstilos(theme: Theme) {
     chipTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs },
 
     panel: {
-      marginTop: spacing.sm,
+      marginTop: AIRE_SOBRE_EL_PANEL,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
       borderRadius: radii.sm,

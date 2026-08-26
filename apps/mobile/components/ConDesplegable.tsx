@@ -30,6 +30,12 @@
  * - Se mide dónde quedó el disparador con `measureInWindow`, que da coordenadas
  *   de pantalla y no del padre. `onLayout` no sirve para esto: dice dónde está
  *   dentro de su contenedor, que es justo lo que no importa acá.
+ * - **Al alto de la ventana se le descuentan los márgenes del sistema.** En
+ *   Android `useWindowDimensions` devuelve la ventana entera, con la franja de
+ *   la barra de gestos incluida, y esa franja no es sitio: es el pedazo por
+ *   donde el sistema dibuja encima. Sin descontarla el panel se pasaba justo lo
+ *   que mide la barra, y la última categoría quedaba abajo de ella --se veía el
+ *   borde cortado al ras del pie de la pantalla, sin más para desplazar--.
  * - Si abajo no entra un panel usable, se abre **hacia arriba**. Un disparador
  *   al pie de la pantalla es el caso normal, no el raro.
  * - El alto que sobra viaja por contexto hasta el panel, que se encoge y
@@ -44,6 +50,7 @@ import {
   createContext, useContext, useEffect, useRef, useState, type ReactNode,
 } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Aparecer } from './Aparecer';
 
 /** Por encima de las filas de contenido y del botón flotante. */
@@ -91,12 +98,17 @@ export function ConDesplegable(
   const [sitio, setSitio] = useState<Sitio | null>(null);
   const raiz = useRef<View>(null);
   const { height: pantalla } = useWindowDimensions();
+  const margenes = useSafeAreaInsets();
 
   useEffect(() => {
     if (!abierto) return;
     raiz.current?.measureInWindow((_x, y, _ancho, altoDelDisparador) => {
-      const abajo = pantalla - (y + altoDelDisparador) - AIRE;
-      const arriba = y - AIRE;
+      // El pie util no es el fin de la ventana: abajo esta la barra de gestos y
+      // arriba el reloj, y los dos se dibujan encima de la app.
+      const pie = pantalla - margenes.bottom;
+      const techo = margenes.top;
+      const abajo = pie - (y + altoDelDisparador) - AIRE;
+      const arriba = y - techo - AIRE;
       // Se prefiere abajo mientras sea usable: es hacia donde el caret apunta.
       // Solo se da vuelta cuando arriba hay bastante más.
       const cabeAbajo = abajo >= MINIMO || abajo >= arriba;
@@ -105,7 +117,7 @@ export function ConDesplegable(
         maximo: Math.max(cabeAbajo ? abajo : arriba, 0),
       });
     });
-  }, [abierto, pantalla, alto]);
+  }, [abierto, pantalla, margenes.top, margenes.bottom, alto]);
 
   const posicion = sitio?.arriba ? { bottom: alto } : { top: alto };
 
