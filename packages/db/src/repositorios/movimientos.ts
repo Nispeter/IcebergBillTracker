@@ -268,6 +268,36 @@ export function consultaDeResumen(
     .where(vivos(contexto, condicionesDe(filtro)));
 }
 
+/**
+ * El dia del movimiento mas viejo, o `null` si no hay ninguno.
+ *
+ * Es "desde cuando esta app sabe algo". Se pregunta con un `min` y no trayendo
+ * los movimientos ordenados al reves porque la respuesta es **una fecha**: pedir
+ * las filas para mirarles la primera carga toda la tabla para leer un campo.
+ *
+ * Sale de una consulta propia y no del resumen porque no es una cifra del
+ * periodo: el resumen se pide por rango, y esto justamente tiene que ignorar el
+ * rango para poder decir si el periodo empieza antes de que hubiera datos.
+ */
+export function consultaDelPrimerDia(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  filtro: FiltroDeMovimientos = {},
+) {
+  return db.select({ dia: sql<string | null>`min(${movimientos.ocurridoEn})` })
+    .from(movimientos)
+    .where(vivos(contexto, condicionesDe(filtro)));
+}
+
+export function primerDiaConMovimiento(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  filtro: FiltroDeMovimientos = {},
+): dates.PlainDate | null {
+  const dia = consultaDelPrimerDia(db, contexto, filtro).all()[0]?.dia;
+  return dia == null ? null : (dia as dates.PlainDate);
+}
+
 /** Arma el resumen a partir de la fila que devuelve `consultaDeResumen`. */
 export function resumenDesde(
   fila: { cantidad: number; ingreso: number; gasto: number } | undefined,

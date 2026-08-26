@@ -7,7 +7,7 @@
  * paso en el medio.
  */
 
-import { eachDate, weekday, type DateRange, type PlainDate } from '../dates/index';
+import { compareDates, eachDate, weekday, type DateRange, type PlainDate } from '../dates/index';
 import { money, type Money } from '../money/index';
 import { esGasto, esIngreso, type MovimientoAnalizable } from './movimiento';
 import { enRango } from './resumen';
@@ -52,6 +52,16 @@ export interface DiaConSaldo {
   readonly fecha: PlainDate;
   /** Saldo al **cerrar** ese dia, ya aplicados sus movimientos. */
   readonly saldo: Money;
+  /**
+   * Lo que entro y salio **ese dia**, que es lo que movio el saldo.
+   *
+   * Va aca y no en una serie aparte porque quien mira la curva y pregunta "por
+   * que baja aca" necesita las dos cosas juntas: el saldo dice donde quedo y el
+   * gasto dice por que. Tenerlas separadas obligaba a cruzar dos arreglos por
+   * indice en la pantalla, que es la clase de cruce que se desincroniza.
+   */
+  readonly gasto: Money;
+  readonly ingreso: Money;
 }
 
 /**
@@ -72,7 +82,12 @@ export function saldoAcumulado(
   let corriente = saldoAlEmpezar.amountMinor;
   return serie.map((dia) => {
     corriente += dia.ingreso.amountMinor - dia.gasto.amountMinor;
-    return { fecha: dia.fecha, saldo: money(corriente, saldoAlEmpezar.currency) };
+    return {
+      fecha: dia.fecha,
+      saldo: money(corriente, saldoAlEmpezar.currency),
+      gasto: dia.gasto,
+      ingreso: dia.ingreso,
+    };
   });
 }
 
@@ -124,16 +139,40 @@ export function gastoPorDiaDeSemana(serie: readonly DiaDeLaSerie[]): GastoPorDia
   });
 }
 
+/** Los dias que cuentan para la racha. Fuera de esto no se mira nada. */
+export interface VentanaDeRacha {
+  /** El primero que cuenta. Antes de esto no habia datos, no habia ahorro. */
+  readonly desde?: PlainDate;
+  /** El ultimo que cuenta. Despues de esto el dia no ha pasado todavia. */
+  readonly hasta?: PlainDate;
+}
+
 /**
  * Rachas de dias seguidos sin gastar nada.
  *
  * La mas larga es el dato interesante: dice cuanto se aguanta sin gastar, que
  * es distinto de gastar poco.
+ *
+ * **La ventana no es un adorno: sin ella el numero miente.** La serie trae todos
+ * los dias del rango, incluidos los que estan fuera de lo que la app sabe. Un mes
+ * donde se empezo a anotar el 22 tenia veintiun dias vacios al principio y se
+ * reportaban como "21 dias sin gastar", cuando en realidad son veintiun dias sin
+ * datos. Lo mismo por el otro lado: los dias que todavia no llegan aparecen
+ * vacios porque no han pasado.
+ *
+ * Los dias de afuera se **saltan**, no se cuentan como dia con gasto. Como la
+ * serie viene en orden y sin huecos, saltarse las puntas deja adentro un tramo
+ * igual de continuo.
  */
-export function rachaMasLargaSinGasto(serie: readonly DiaDeLaSerie[]): number {
+export function rachaMasLargaSinGasto(
+  serie: readonly DiaDeLaSerie[],
+  ventana: VentanaDeRacha = {},
+): number {
   let mejor = 0;
   let actual = 0;
   for (const dia of serie) {
+    if (ventana.desde !== undefined && compareDates(dia.fecha, ventana.desde) < 0) continue;
+    if (ventana.hasta !== undefined && compareDates(dia.fecha, ventana.hasta) > 0) continue;
     if (dia.gasto.amountMinor === 0) {
       actual += 1;
       if (actual > mejor) mejor = actual;

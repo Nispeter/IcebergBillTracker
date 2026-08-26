@@ -4,7 +4,8 @@ import { crearBaseDePrueba, type BaseDePrueba } from '../pruebas';
 import { crearCuenta } from './cuentas';
 import {
   RepositorioError, borrarMovimiento, contarMovimientos, crearMovimiento, editarMovimiento,
-  listarConLapidas, listarMovimientos, obtenerMovimiento, resumenDeMovimientos, totalPorTipo,
+  listarConLapidas, listarMovimientos, obtenerMovimiento, primerDiaConMovimiento,
+  resumenDeMovimientos, totalPorTipo,
 } from './movimientos';
 
 const d = dates.requirePlainDate;
@@ -124,6 +125,26 @@ describe('listar y filtrar', () => {
   it('totalPorTipo suma solo el tipo pedido', () => {
     expect(totalPorTipo(base.db, base.contexto, 'gasto').amountMinor).toBe(77_000);
     expect(totalPorTipo(base.db, base.contexto, 'ingreso').amountMinor).toBe(1_480_000);
+  });
+});
+
+describe('primerDiaConMovimiento', () => {
+  it('sin movimientos no hay primer dia', () => {
+    expect(primerDiaConMovimiento(base.db, base.contexto)).toBeNull();
+  });
+
+  it('devuelve el mas viejo, no el primero que se anoto', () => {
+    nuevo({ ocurridoEn: d('2026-08-15') });
+    nuevo({ ocurridoEn: d('2026-06-02') });
+    nuevo({ ocurridoEn: d('2026-07-20') });
+    expect(primerDiaConMovimiento(base.db, base.contexto)).toBe('2026-06-02');
+  });
+
+  it('un movimiento borrado deja de contar', () => {
+    const viejo = nuevo({ ocurridoEn: d('2026-06-02') });
+    nuevo({ ocurridoEn: d('2026-07-20') });
+    borrarMovimiento(base.db, base.contexto, viejo.id);
+    expect(primerDiaConMovimiento(base.db, base.contexto)).toBe('2026-07-20');
   });
 });
 

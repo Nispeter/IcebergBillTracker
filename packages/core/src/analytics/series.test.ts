@@ -132,6 +132,34 @@ describe('rachaMasLargaSinGasto', () => {
   it('sin ningun gasto la racha es todo el rango', () => {
     expect(rachaMasLargaSinGasto(seriePorDia([], AGOSTO))).toBe(31);
   });
+
+  it('los dias anteriores a la ventana no son racha, son falta de datos', () => {
+    // Se empezo a anotar el 22: del 1 al 21 no hubo ahorro, hubo silencio.
+    const serie = seriePorDia([gasto('2026-08-22', 1_000)], AGOSTO);
+    expect(rachaMasLargaSinGasto(serie)).toBe(21);
+    expect(rachaMasLargaSinGasto(serie, { desde: d('2026-08-22') })).toBe(9);
+  });
+
+  it('los dias que todavia no pasaron tampoco cuentan', () => {
+    const serie = seriePorDia([gasto('2026-08-22', 1_000)], AGOSTO);
+    expect(rachaMasLargaSinGasto(serie, {
+      desde: d('2026-08-22'),
+      hasta: d('2026-08-25'),
+    })).toBe(3);
+  });
+
+  it('una ventana que abarca todo el rango no cambia nada', () => {
+    const serie = seriePorDia([gasto('2026-08-22', 1_000)], AGOSTO);
+    expect(rachaMasLargaSinGasto(serie, {
+      desde: d('2026-07-01'),
+      hasta: d('2026-09-30'),
+    })).toBe(21);
+  });
+
+  it('con la ventana entera fuera del rango no hay racha', () => {
+    const serie = seriePorDia([gasto('2026-08-22', 1_000)], AGOSTO);
+    expect(rachaMasLargaSinGasto(serie, { desde: d('2026-09-01') })).toBe(0);
+  });
 });
 
 describe('saldoAcumulado', () => {
