@@ -20,7 +20,7 @@ import { analytics, dates, money, recurrence } from '@iceberg/core';
 import {
   combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeLotes,
   consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
-  consultaDeResumen, resumenDesde,
+  consultaDeResumen, consultaDelPrimerDia, resumenDesde,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
   CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_PINGUINOS, consultaDeAjuste,
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
@@ -29,6 +29,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useMemo } from 'react';
 import { useDatos } from './BaseDeDatos';
 import { useCuentaActiva } from './cuenta';
+import { useHoy } from './hoy';
 
 /**
  * Aplica el alcance de cuenta a un filtro, sin pisar lo que ya venga puesto.
@@ -386,8 +387,29 @@ export function useSaldoInicial(): number {
 export function useFechaDeCorte(): dates.PlainDate {
   const movimientos = useMovimientos(1);
   const masNuevo = movimientos[0]?.ocurridoEn as dates.PlainDate | undefined;
-  const hoy = dates.today();
+  // `useHoy` y no `dates.today()`: con la app abierta cruzando la medianoche,
+  // una llamada suelta se queda con el dia de ayer hasta que algo mas redibuje.
+  const hoy = useHoy();
   return masNuevo === undefined ? hoy : dates.minDate(masNuevo, hoy);
+}
+
+/**
+ * Desde cuando esta app sabe algo: el dia del movimiento mas viejo.
+ *
+ * `null` mientras no haya ninguno. Sirve para distinguir **un dia sin gastar**
+ * de **un dia del que no hay datos**, que en una serie por dia se ven igual: los
+ * dos vienen en cero.
+ *
+ * Ignora la cuenta activa a proposito. La pregunta es cuando empezo a usarse la
+ * app, no cuando empezo a usarse una cuenta; si no, cambiar de cuenta movia el
+ * comienzo de la historia.
+ */
+export function usePrimerDia(): dates.PlainDate | null {
+  const { db, contexto } = useDatos();
+  const consulta = useMemo(() => consultaDelPrimerDia(db, contexto), [db, contexto]);
+  const { data } = useLiveQuery(consulta);
+  const dia = data?.[0]?.dia;
+  return dia == null ? null : (dia as dates.PlainDate);
 }
 
 /**
