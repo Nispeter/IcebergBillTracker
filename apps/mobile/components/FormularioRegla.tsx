@@ -373,7 +373,7 @@ function crearEstilos(theme: Theme) {
     opcion: {
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
-      borderRadius: radii.full,
+      borderRadius: radii.sm,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },

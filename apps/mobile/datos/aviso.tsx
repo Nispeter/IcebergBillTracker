@@ -125,7 +125,7 @@ function crearEstilos(theme: Theme, aireDelSistema: number) {
       maxWidth: '86%',
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.lg,
-      borderRadius: radii.full,
+      borderRadius: radii.md,
       // `superficie` es lo que flota por encima del contenido; el panel hundido
       // seria lo contrario de lo que este elemento hace. Ver `Panel.tsx`.
       backgroundColor: theme.superficie,

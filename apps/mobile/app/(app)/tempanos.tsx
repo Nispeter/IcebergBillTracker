@@ -377,7 +377,7 @@ function crearEstilos(theme: Theme) {
     crearChico: {
       paddingVertical: 5,
       paddingHorizontal: spacing.md,
-      borderRadius: radii.full,
+      borderRadius: radii.sm,
       backgroundColor: theme.acento,
     },
     crearChicoTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },

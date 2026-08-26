@@ -213,7 +213,7 @@ function crearEstilos(theme: Theme) {
     campo: {
       paddingVertical: 5,
       paddingHorizontal: spacing.sm,
-      borderRadius: radii.full,
+      borderRadius: radii.sm,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },

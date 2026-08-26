@@ -972,7 +972,7 @@ function crearEstilos(theme: Theme) {
     boton: {
       paddingVertical: 4,
       paddingHorizontal: spacing.md,
-      borderRadius: radii.full,
+      borderRadius: radii.sm,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },
@@ -1038,7 +1038,7 @@ function crearEstilos(theme: Theme) {
     botonSecundario: {
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
-      borderRadius: radii.full,
+      borderRadius: radii.sm,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
       alignSelf: 'flex-start',
