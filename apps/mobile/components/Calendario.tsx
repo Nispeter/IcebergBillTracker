@@ -135,9 +135,12 @@ export function Calendario(
                 <View style={[styles.marca, { backgroundColor: charts[0], opacity: intensidad }]} />
               )}
               {esHoy ? (
-                <View style={styles.hoy} pointerEvents="none">
-                  <Pinguino theme={theme} tamano={tamanoDeHoy} />
-                </View>
+                <>
+                  <View style={styles.contornoDeHoy} pointerEvents="none" />
+                  <View style={styles.hoy} pointerEvents="none">
+                    <Pinguino theme={theme} tamano={tamanoDeHoy} />
+                  </View>
+                </>
               ) : null}
               <View style={styles.textos}>
                 <Text style={[
@@ -188,6 +191,28 @@ function crearEstilos(theme: Theme) {
       opacity: 0.06,
     },
     marca: { position: 'absolute', top: 2, right: 2, bottom: 2, left: 2, borderRadius: radii.sm },
+    /**
+     * El contorno punteado de hoy.
+     *
+     * Va **encima** de la marca de color y con el mismo encuadre, para que sea
+     * el borde de esa misma pastilla y no un segundo rectangulo desalineado.
+     *
+     * Punteado y no lleno: un borde continuo se lee como seleccion --como el dia
+     * que uno acaba de tocar-- y hoy no esta seleccionado, esta señalado. En
+     * `silencio` por lo mismo que el pinguino no usa cian: el color ya tiene dos
+     * trabajos en la app y este no necesita uno nuevo.
+     */
+    contornoDeHoy: {
+      position: 'absolute',
+      top: 2,
+      right: 2,
+      bottom: 2,
+      left: 2,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.silencio,
+    },
     /**
      * Un dia sin gasto no dibuja nada, ni siquiera un contorno.
      *
