@@ -20,7 +20,8 @@ import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useAireInferior } from '../../datos/desplazamiento';
-import { useAnalisisDeRango, useSaldoAlEmpezar } from '../../datos/consultas';
+import { useAnalisisDeRango, usePrimerDia, useSaldoAlEmpezar } from '../../datos/consultas';
+import { useHoy } from '../../datos/hoy';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
@@ -32,12 +33,24 @@ export default function DiaADia() {
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   const { rango, corte, tipo } = usePeriodo();
   const router = useRouter();
+  const hoy = useHoy();
+  const primerDia = usePrimerDia();
 
   const a = useAnalisisDeRango(rango, corte);
 
   const porDiaDeSemana = useMemo(() => analytics.gastoPorDiaDeSemana(a.serie), [a.serie]);
   const mayorPromedio = Math.max(...porDiaDeSemana.map((d) => d.promedio.amountMinor), 1);
-  const racha = analytics.rachaMasLargaSinGasto(a.serie);
+  /**
+   * La racha se mide solo entre lo que la app vivio.
+   *
+   * Sin la ventana, un mes en el que se empezo a anotar el 22 reportaba "21 dias
+   * sin gastar": son veintiun dias sin datos, que es lo contrario de un merito.
+   * Por el otro lado, los dias que todavia no llegan tampoco son racha.
+   */
+  const racha = useMemo(
+    () => analytics.rachaMasLargaSinGasto(a.serie, { desde: primerDia ?? undefined, hasta: hoy }),
+    [a.serie, primerDia, hoy],
+  );
   const masCaro = analytics.diaDeMayorGasto(a.serie);
 
   const saldoAlEmpezar = useSaldoAlEmpezar(rango);
@@ -65,10 +78,15 @@ export default function DiaADia() {
             El calendario se ve por día, semana o mes. Un año son 365 celdas de tres píxeles.
           </Text>
         ) : (
+          /*
+            `hoy` y no `corte`: el corte es hasta donde llegan los datos y se
+            queda en el ultimo movimiento anotado, asi que el pinguino marcaba el
+            25 cuando ya era 26 solo porque ese dia no habia nada escrito.
+          */
           <Calendario
             serie={a.serie}
             theme={theme}
-            hoy={corte}
+            hoy={hoy}
             onElegirDia={(fecha) => router.push({ pathname: '/movimientos', params: { dia: fecha } })}
           />
         )}
@@ -77,7 +95,8 @@ export default function DiaADia() {
           texto="Saldo día a día"
           theme={theme}
           ayuda={'Cuánta plata te quedaba al cerrar cada día. Baja con cada gasto y sube '
-            + 'cuando entra un ingreso. El punto ámbar marca el día en que estuviste más abajo.'}
+            + 'cuando entra un ingreso. El punto ámbar marca el día en que estuviste más abajo.\n\n'
+            + 'Tocá la curva para ver un día: cuánto quedaba al cerrarlo y qué se movió ese día.'}
         />
         <LineaDeSaldo serie={serieDeSaldo} theme={theme} />
 
@@ -129,7 +148,14 @@ export default function DiaADia() {
           );
         })}
 
-        <Titulo texto="Detalle del período" theme={theme} />
+        <Titulo
+          texto="Detalle del período"
+          theme={theme}
+          ayuda={'La **racha sin gastar** son los días seguidos sin un solo gasto. Se cuenta '
+            + 'desde que empezaste a anotar y hasta hoy: los días anteriores al primer '
+            + 'movimiento están vacíos porque no hay datos, no porque no se haya gastado, y '
+            + 'los que todavía no llegan no han pasado.'}
+        />
         <Panel theme={theme}>
           <Dato styles={styles} etiqueta="Día más caro"
             valor={masCaro === null ? '—' : `${money.format(masCaro.gasto)}`} />

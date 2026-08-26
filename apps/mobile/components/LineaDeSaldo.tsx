@@ -24,13 +24,26 @@
  *
  * El ancho lo da `onLayout` en vez de estirar un `viewBox` fijo: estirar
  * deformaria el grosor del trazo en horizontal.
+ *
+ * ## Se puede tocar
+ *
+ * Una curva sola muestra la forma y esconde los dias: se ve que hubo una caida
+ * pero no cuando ni de cuanto. Tocarla elige el dia mas cercano y lo dice con
+ * numeros --que quedaba al cerrarlo y que se movio ese dia--, que es la pregunta
+ * que la curva provoca y no contestaba.
+ *
+ * **Es un toque y no un arrastre.** Arrastrar obligaria a reclamar el gesto
+ * desde que el dedo baja, y este grafico vive dentro de un `ScrollView`: un dedo
+ * que empieza sobre la curva casi siempre viene a desplazar la pantalla. Un
+ * `Pressable` cede solo si el dedo se mueve, asi que el desplazamiento sigue
+ * funcionando encima del dibujo.
  */
 
 import { dates, money } from '@iceberg/core';
 import type { analytics } from '@iceberg/core';
 import { charts, elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as TextoSvg } from 'react-native-svg';
 
 /**
@@ -57,11 +70,27 @@ function abreviar(minor: number): string {
   return `${signo}${valor}`;
 }
 
+/**
+ * A que distancia del borde izquierdo del grafico cayo el toque.
+ *
+ * En Android viene en `locationX`, que es el campo de React Native y ya es
+ * relativo al elemento. En web ese campo **no llega**: el evento que pasa
+ * react-native-web es el del DOM, donde lo equivalente se llama `offsetX`. Sin
+ * el respaldo la curva no responde en el navegador, que es donde se prueba.
+ *
+ * Devuelve `NaN` si no hay ninguno de los dos, y quien llama decide que hacer.
+ */
+function dondeSeToco(evento: { locationX?: number; offsetX?: number }): number {
+  return evento.locationX ?? evento.offsetX ?? NaN;
+}
+
 export function LineaDeSaldo(
   { serie, theme }: { serie: readonly analytics.DiaConSaldo[]; theme: Theme },
 ) {
   const styles = crearEstilos(theme);
   const [ancho, setAncho] = useState(0);
+  /** Que dia se esta mirando, por indice. `null` es "ninguno". */
+  const [elegido, setElegido] = useState<number | null>(null);
 
   if (serie.length < 2) {
     return <Text style={styles.vacio}>Se necesitan al menos dos días para dibujar la línea.</Text>;
@@ -105,9 +134,44 @@ export function LineaDeSaldo(
    */
   const marcas = [...new Set(cruzaCero ? [maximo, 0, minimo] : [maximo, minimo])];
 
+  /**
+   * De donde se toco al dia mas cercano, o `null` si no se puede saber.
+   *
+   * Redondeando y no truncando: truncar le da al dia de la izquierda todo el
+   * tramo hasta el siguiente, asi que tocar justo encima de un punto elegia el
+   * anterior. El extremo derecho ademas se volvia inalcanzable.
+   *
+   * El `isFinite` no es paranoia: `locationX` puede no venir --paso con eventos
+   * sinteticos en web-- y entonces la cuenta da `NaN`. `NaN` sobrevive a
+   * `Math.min` y a `Math.max`, asi que se colaba hasta el indice y dejaba la
+   * pantalla en blanco. Una curva no puede tumbar la pantalla por un toque raro.
+   */
+  const diaTocado = (x: number): number | null => {
+    if (!Number.isFinite(x)) return null;
+    const crudo = Math.round((x / Math.max(ancho, 1)) * (serie.length - 1));
+    return Math.min(Math.max(crudo, 0), serie.length - 1);
+  };
+
+  // `?? null` y no `!`: al cambiar de periodo la serie se acorta y el indice
+  // guardado puede quedar apuntando afuera.
+  const dia = elegido === null ? null : serie[elegido] ?? null;
+
   return (
     <View>
-      <View style={styles.lienzo} onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
+      <Pressable
+        style={styles.lienzo}
+        onLayout={(e) => setAncho(e.nativeEvent.layout.width)}
+        onPress={(e) => {
+          const cual = diaTocado(dondeSeToco(e.nativeEvent));
+          if (cual === null) return;
+          // Volver a tocar el mismo dia lo suelta: es la salida sin agregar
+          // un boton de cerrar a un grafico de 180 px.
+          setElegido((antes) => (antes === cual ? null : cual));
+        }}
+        accessibilityRole="adjustable"
+        accessibilityLabel="Saldo día a día"
+        accessibilityHint="Tocar un punto de la curva para ver el saldo de ese día"
+      >
         {ancho > 0 ? (
           <Svg width={ancho} height={ALTO}>
             {/* Las guias horizontales van primero: son fondo, no dibujo. */}
@@ -146,9 +210,30 @@ export function LineaDeSaldo(
                 mismo color de la curva, asi que el punto desaparecia encima de ella.
                 El ambar quedo como la unica señal de "mira esto". */}
             <Circle cx={x(indiceMinimo)} cy={y(minimo)} r={3.5} fill={theme.alerta} />
+
+            {/* El dia elegido va al final: es lo unico que tiene que quedar
+                por encima de la curva y del punto ambar. */}
+            {elegido === null || dia === null ? null : (
+              <>
+                <Line
+                  x1={x(elegido)}
+                  y1={0}
+                  x2={x(elegido)}
+                  y2={ALTO}
+                  stroke={theme.silencio}
+                  strokeWidth={1}
+                  strokeDasharray="2 3"
+                />
+                {/* Dos circulos y no uno: el de abajo es del color del fondo y
+                    hace de aro, para que el punto no se pierda encima del
+                    trazo, que es del mismo color. */}
+                <Circle cx={x(elegido)} cy={y(dia.saldo.amountMinor)} r={6} fill={theme.fondo} />
+                <Circle cx={x(elegido)} cy={y(dia.saldo.amountMinor)} r={4} fill={charts[0]} />
+              </>
+            )}
           </Svg>
         ) : null}
-      </View>
+      </Pressable>
 
       {/* El eje horizontal va en texto y no en SVG: son dos etiquetas, y asi
           heredan la fuente y el color del tema sin repetirlos. */}
@@ -156,6 +241,23 @@ export function LineaDeSaldo(
         <Text style={styles.fecha}>{dates.formatDate(serie[0]!.fecha)}</Text>
         <Text style={styles.fecha}>{dates.formatDate(cierre.fecha)}</Text>
       </View>
+
+      {/*
+        El dia elegido va arriba del pie y no en su lugar: "mas bajo" y "cierra"
+        son del periodo entero y siguen siendo ciertos mientras uno recorre los
+        dias. Reemplazarlos obligaba a soltar el dia para volver a verlos.
+      */}
+      {dia === null ? (
+        <Text style={styles.pista}>Tocá la curva para ver un día.</Text>
+      ) : (
+        <View style={styles.elegido}>
+          <View style={styles.filaElegido}>
+            <Text style={styles.fechaElegida}>{dates.formatDateLong(dia.fecha)}</Text>
+            <Text style={styles.saldoElegido}>{money.format(dia.saldo)}</Text>
+          </View>
+          <Text style={styles.movimientoElegido}>{queSeMovio(dia)}</Text>
+        </View>
+      )}
 
       <View style={styles.pie}>
         <Text style={styles.dato}>
@@ -171,6 +273,23 @@ export function LineaDeSaldo(
   );
 }
 
+/**
+ * Que paso ese dia, en una linea.
+ *
+ * Un dia quieto se dice y no se deja en blanco: en una curva plana, "no se movió
+ * nada" **es** la respuesta a por que no baja, y un espacio vacio se lee como
+ * que falta un dato.
+ */
+function queSeMovio(dia: analytics.DiaConSaldo): string {
+  const gasto = dia.gasto.amountMinor;
+  const ingreso = dia.ingreso.amountMinor;
+  if (gasto === 0 && ingreso === 0) return 'No se movió nada';
+  const partes: string[] = [];
+  if (ingreso > 0) partes.push(`entró ${money.format(dia.ingreso)}`);
+  if (gasto > 0) partes.push(`salió ${money.format(dia.gasto)}`);
+  return partes.join(' · ');
+}
+
 function crearEstilos(theme: Theme) {
   return StyleSheet.create({
     lienzo: { height: ALTO, width: '100%' },
@@ -178,6 +297,27 @@ function crearEstilos(theme: Theme) {
     // las fechas se alinean solas con el y con el resto de la pantalla.
     ejeX: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.xs },
     fecha: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 9, color: theme.silencio },
+    /**
+     * La invitacion a tocar y el detalle ocupan el mismo lugar.
+     *
+     * No mide lo mismo cada uno, pero se turnan: sin reservar el sitio, elegir
+     * un dia empujaba media pantalla hacia abajo y el grafico se movia bajo el
+     * dedo justo al tocarlo.
+     */
+    pista: {
+      minHeight: 34,
+      paddingTop: spacing.sm,
+      fontFamily: fonts.texto,
+      fontWeight: pesos.regular,
+      fontSize: 10,
+      color: theme.silencio,
+    },
+    elegido: { minHeight: 34, paddingTop: spacing.sm },
+    filaElegido: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+    fechaElegida: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    saldoElegido: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
+    movimientoElegido: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+
     pie: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm },
     dato: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
     etiqueta: { fontFamily: fonts.texto, color: theme.silencio },
