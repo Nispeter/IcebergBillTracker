@@ -20,9 +20,22 @@
  * Se resuelve no montandola cuando no hay nada que mostrar. Para no perder la
  * animacion de salida se queda montada mientras se va: `onClose` avisa cuando
  * termino de cerrarse, y recien ahi se desmonta.
+ *
+ * ## El contenido desplaza
+ *
+ * `BottomSheetScrollView` y no `BottomSheetView`. El segundo es una caja quieta:
+ * cuando el texto pasaba del alto de la hoja, el sobrante quedaba abajo del borde
+ * sin forma de alcanzarlo. Le paso a la ayuda de sincronizacion, y se "arreglo"
+ * acortando el texto --que es tapar el problema, porque el siguiente texto largo
+ * lo repite--. El desplazamiento no le hace nada a las hojas cortas: solo aparece
+ * cuando sobra contenido.
+ *
+ * Es la misma falla que tenia el desplegable de categorias, en otro envase:
+ * contenido que se pasa de la pantalla sin ningun camino para llegar a el. Ver
+ * `ConDesplegable`.
  */
 
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import {
   ALTO_DE_LA_BARRA, capas, elevation, fontSizes, fonts, pesos, spacing, type Theme,
 } from '@iceberg/ui';
@@ -85,11 +98,11 @@ export function Hoja(
       backgroundStyle={styles.fondo}
       handleIndicatorStyle={styles.tirador}
     >
-      <BottomSheetView style={styles.contenido}>
+      <BottomSheetScrollView contentContainerStyle={styles.contenido}>
         <Text style={styles.titulo}>{titulo}</Text>
         <View style={styles.linea} />
         {children}
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </BottomSheet>
   );
 }

@@ -35,6 +35,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
  * probar en Android**: hace falta un telefono.
  */
 import { ScrollView } from 'react-native-gesture-handler';
+import { useAltoDisponible } from './ConDesplegable';
 
 /**
  * Cuanto de la pantalla puede ocupar un desplegable abierto.
@@ -108,8 +109,16 @@ export function ListaDeOpciones<T>({
    * Con una fraccion del alto entran mas y el corte cae **a mitad de fila**, que
    * es la unica senal que no se desvanece: media fila asomando dice que hay mas
    * abajo.
+   *
+   * **Pero la fraccion sola no alcanzaba.** Es un numero ciego: no sabe donde
+   * quedo el disparador, asi que abriendo cerca del pie de la pantalla el panel
+   * pedia mas alto del que habia y se salia por abajo, donde no hay como
+   * desplazarse. `useAltoDisponible` es lo que el desplegable midio contra la
+   * pantalla; entre los dos gana el menor.
    */
-  const alto = Math.round(useWindowDimensions().height * FRACCION_DE_PANTALLA);
+  const sitio = useAltoDisponible();
+  const fraccion = Math.round(useWindowDimensions().height * FRACCION_DE_PANTALLA);
+  const alto = sitio === null ? fraccion : Math.min(fraccion, sitio);
 
   return (
     <ScrollView
@@ -151,7 +160,7 @@ function crearEstilos(theme: Theme) {
       gap: spacing.xs,
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
-      borderRadius: radii.full,
+      borderRadius: radii.sm,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
       backgroundColor: theme.superficie,
