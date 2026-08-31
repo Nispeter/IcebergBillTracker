@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { format, formatNumber, formatSigned, parseMoney } from './format';
+import {
+  agruparMientrasSeEscribe, format, formatNumber, formatSigned, parseMoney,
+} from './format';
 import { money } from './money';
 
 const clp = (n: number) => money(n, 'CLP');
@@ -86,5 +88,45 @@ describe('parseMoney con los dos signos de resta', () => {
   it('ida y vuelta con format, que es de donde sale el texto pegado', () => {
     const original = money(-45_000, 'CLP');
     expect(parseMoney(format(original))?.amountMinor).toBe(original.amountMinor);
+  });
+});
+
+describe('agruparMientrasSeEscribe', () => {
+  it('pone los puntos a medida que crece el numero', () => {
+    expect(agruparMientrasSeEscribe('1')).toBe('1');
+    expect(agruparMientrasSeEscribe('12')).toBe('12');
+    expect(agruparMientrasSeEscribe('123')).toBe('123');
+    expect(agruparMientrasSeEscribe('1234')).toBe('1.234');
+    expect(agruparMientrasSeEscribe('1250000')).toBe('1.250.000');
+  });
+
+  it('reagrupa lo que ya venia agrupado, que es lo que pasa al borrar', () => {
+    expect(agruparMientrasSeEscribe('1.250')).toBe('1.250');
+    // Se borro el ultimo digito de "1.250".
+    expect(agruparMientrasSeEscribe('1.25')).toBe('125');
+  });
+
+  it('deja el campo vacio si no queda ningun digito', () => {
+    expect(agruparMientrasSeEscribe('')).toBe('');
+    expect(agruparMientrasSeEscribe('$')).toBe('');
+    expect(agruparMientrasSeEscribe('abc')).toBe('');
+  });
+
+  it('se come los ceros de la izquierda pero no el cero solo', () => {
+    expect(agruparMientrasSeEscribe('007')).toBe('7');
+    expect(agruparMientrasSeEscribe('0')).toBe('0');
+  });
+
+  it('conserva el signo: un saldo inicial de tarjeta arranca debiendo', () => {
+    expect(agruparMientrasSeEscribe('-1234')).toBe('-1.234');
+    expect(agruparMientrasSeEscribe('−1234')).toBe('−1.234');
+    // Recien escrito el signo, sin digitos todavia.
+    expect(agruparMientrasSeEscribe('-')).toBe('-');
+  });
+
+  it('lo que devuelve lo entiende parseMoney', () => {
+    const escrito = agruparMientrasSeEscribe('1250000');
+    expect(parseMoney(escrito)?.amountMinor).toBe(1_250_000);
+    expect(parseMoney(agruparMientrasSeEscribe('-1234'))?.amountMinor).toBe(-1234);
   });
 });

@@ -114,3 +114,34 @@ export function parseMoney(input: string, currency: CurrencyCode = 'CLP'): Money
 
   return money(sign * amount, currency);
 }
+
+/**
+ * Agrupa en miles lo que se esta escribiendo, **sin cambiar lo que vale**.
+ *
+ * Es solo presentacion: el campo del monto muestra `1.250.000` mientras la
+ * persona teclea, en vez de `1250000`, que a partir del quinto digito hay que
+ * contar con el dedo para saber si son cien mil o un millon. Lo que se guarda
+ * sigue saliendo de `parseMoney`, que ya sabe leer los puntos.
+ *
+ * Descarta todo lo que no sea digito --puntos incluidos-- y vuelve a agrupar
+ * desde cero. Eso es lo que hace que funcione al **borrar**: quitar un digito de
+ * `1.250` deja `1.25`, que reagrupado es `125` y no un numero con el separador
+ * en un lugar imposible.
+ *
+ * Los ceros a la izquierda se van (`007` -> `7`), pero un `0` solo se queda:
+ * mientras se escribe, borrarle el cero al campo seria escribir por la persona.
+ * Y la cadena vacia devuelve vacia, para que el campo se pueda dejar en blanco.
+ *
+ * El signo de adelante se conserva. No lo necesita el monto de un movimiento
+ * --que es siempre positivo y el gasto o ingreso lo dice el selector-- pero si
+ * el saldo inicial de una tarjeta de credito, que arranca debiendo.
+ */
+export function agruparMientrasSeEscribe(entrada: string): string {
+  const signo = /^\s*([+\-−])/.exec(entrada)?.[1] ?? '';
+  const digitos = entrada.replace(/\D/g, '');
+  if (digitos === '') return signo === '' ? '' : signo;
+
+  const sinCeros = digitos.replace(/^0+(?=\d)/, '');
+  // De atras hacia adelante: el ultimo grupo es el que puede quedar incompleto.
+  return signo + sinCeros.replace(/\B(?=(\d{3})+$)/g, '.');
+}
