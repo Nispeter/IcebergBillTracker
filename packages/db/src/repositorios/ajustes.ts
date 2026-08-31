@@ -72,6 +72,36 @@ export const CLAVE_ARCHIVO_PROPIO = 'archivoPropio';
  */
 export const CLAVE_PINGUINOS = 'pinguinos';
 
+/**
+ * Cuanto se agranda la letra de toda la app: 0.9, 1, 1.15 o 1.3.
+ *
+ * Preferencia de este telefono, como los pinguinos: quien comparte el libro
+ * puede necesitar letra grande sin que el otro la quiera. Ausente significa
+ * "normal", asi que nadie tiene que configurar nada.
+ */
+export const CLAVE_ESCALA_DE_LETRA = 'escalaDeLetra';
+
+/**
+ * La frase con la que se cifra el archivo de la carpeta compartida.
+ *
+ * La app se la inventa la primera vez --ver `core/crypto/frase`-- para que el
+ * archivo salga cifrado **siempre**, sin que nadie tenga que acordarse de
+ * escribir una. Se puede cambiar, y la otra persona tiene que poner la misma.
+ *
+ * ## Si, la llave vive al lado de la puerta
+ *
+ * Guardarla en la base parece dejarla junto a lo que protege, y en parte lo es.
+ * Pero lo que se defiende es **la carpeta compartida**, que sale del telefono:
+ * va a una nube de terceros, se sincroniza a otros aparatos y sobrevive a este.
+ * La base local no sale a ninguna parte, y quien ya tiene la base tiene los
+ * datos y no necesita la frase para nada. La alternativa --pedirla en cada
+ * pasada-- es lo que habia antes, y el resultado fue que nadie cifraba nunca.
+ *
+ * Va en `ajustes`, que **no se exporta**: la frase no viaja dentro del archivo
+ * que ella misma cifra.
+ */
+export const CLAVE_FRASE_DE_CIFRADO = 'fraseDeCifrado';
+
 export function leerAjuste(db: BaseDeDatos, clave: string): string | null {
   const filas = db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1).all();
   return filas[0]?.valor ?? null;
