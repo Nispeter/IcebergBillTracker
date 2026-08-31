@@ -15,6 +15,7 @@ import { ProveedorDeDatos } from '../datos/BaseDeDatos';
 import { useFechaDeCorte } from '../datos/consultas';
 import { ProveedorDeCuenta } from '../datos/cuenta';
 import { ProveedorDeExplicacion } from '../datos/explicacion';
+import { ProveedorDeLetra } from '../datos/letra';
 import { ProveedorDePeriodo } from '../datos/periodo';
 import { ProveedorDeTema, useTema } from '../datos/tema';
 
@@ -81,9 +82,6 @@ function Contenido() {
         `Pantalla`.
       */}
       <SafeAreaProvider>
-      {/* Envuelve todo para que el aviso de guardado se dibuje al final del
-          arbol, encima de cualquier pantalla. Ver `datos/aviso.tsx`. */}
-      <ProveedorDeAviso theme={theme}>
       <ProveedorDeDatos
         cargando={
           <View style={centro}>
@@ -105,6 +103,13 @@ function Contenido() {
           </View>
         )}
       >
+        {/* El tamano de letra sale de la base, asi que cuelga de ella. Lo de
+            arriba --la pantalla de carga y la de error-- se dibuja con el
+            tamano de siempre, que es todo lo que se puede hacer sin base. */}
+        <ProveedorDeLetra>
+        {/* Envuelve el resto para que el aviso de guardado se dibuje al final
+            del arbol, encima de cualquier pantalla. Ver `datos/aviso.tsx`. */}
+        <ProveedorDeAviso theme={theme}>
         <ConPeriodo>
           {/* La cuenta activa es un alcance global, igual que el periodo. */}
           <ProveedorDeCuenta>
@@ -126,8 +131,9 @@ function Contenido() {
           </ProveedorDeExplicacion>
           </ProveedorDeCuenta>
         </ConPeriodo>
+        </ProveedorDeAviso>
+        </ProveedorDeLetra>
       </ProveedorDeDatos>
-      </ProveedorDeAviso>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
