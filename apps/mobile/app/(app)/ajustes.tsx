@@ -15,7 +15,7 @@ import {
   type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  ESCALAS_DE_LETRA, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -43,6 +43,8 @@ import { TIPOS, usePeriodo } from '../../datos/periodo';
 import {
   CarpetaPerdidaError, HAY_CARPETA, elegirCarpeta, nombreDeCarpeta,
 } from '../../datos/carpeta';
+import { useFraseDeCifrado } from '../../datos/cifrado';
+import { useCambiarEscala, useLetra } from '../../datos/letra';
 import { sincronizarCarpeta } from '../../datos/sincronizar';
 import { cargarSemilla } from '../../datos/semilla';
 import { useTema } from '../../datos/tema';
@@ -53,7 +55,8 @@ export default function Ajustes() {
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const comprometidas = useComprometidas();
   const categorias = useCategorias();
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const letra = useLetra();
+  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const { db, contexto, cambiarHogar } = useDatos();
   const avisar = useAvisar();
   const periodo = usePeriodo();
@@ -66,7 +69,13 @@ export default function Ajustes() {
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<'borrar' | null>(null);
   const [conflictos, setConflictos] = useState<readonly ConflictoLegible[]>([]);
-  const [frase, setFrase] = useState('');
+  /**
+   * La palabra con la que se cifra. La app ya se la invento: no hay estado
+   * "sin cifrar" que este componente pueda producir.
+   */
+  const cifrado = useFraseDeCifrado();
+  /** Lo que hay escrito en el campo, o `null` si nadie lo toco todavia. */
+  const [fraseEditada, setFraseEditada] = useState<string | null>(null);
   const [codigoDeHogar, setCodigoDeHogar] = useState('');
   /** La carpeta compartida, o `null` si todavia no se eligio ninguna. */
   const [carpeta, setCarpeta] = useState<string | null>(
@@ -76,7 +85,7 @@ export default function Ajustes() {
   /**
    * Lo que salio mal con la carpeta, dicho **junto a la carpeta**.
    *
-   * El aviso general se dibuja al final de Ajustes, a once secciones de aca: un
+   * El aviso general se dibuja al final de Ajustes, a varias secciones de aca: un
    * error al elegir carpeta aparecia fuera de la pantalla y el usuario se
    * quedaba sin saber por que no habia pasado nada.
    */
@@ -86,6 +95,7 @@ export default function Ajustes() {
   const [nombrePropio, setNombrePropio] = useState<string | null>(null);
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const pinguinos = usePinguinos();
+  const cambiarEscala = useCambiarEscala();
 
   const vacia = movimientos.length === 0;
 
@@ -117,7 +127,9 @@ export default function Ajustes() {
     setProblemaDeCarpeta(null);
     setSincronizando(true);
     try {
-      const r = await sincronizarCarpeta(db, contexto, carpeta, { frase, permitirOtroHogar });
+      const r = await sincronizarCarpeta(
+        db, contexto, carpeta, { frase: cifrado.frase, permitirOtroHogar },
+      );
       setConflictos(r.ejemplos);
       setAjenosEnCarpeta(r.ajenos);
 
@@ -129,7 +141,10 @@ export default function Ajustes() {
       setAviso(
         cambios
         + (r.ajenos === 0 ? '' : ` Se saltaron ${r.ajenos} de otro hogar.`)
-        + (r.cerrados === 0 ? '' : ` ${r.cerrados} no se pudieron abrir con esa frase.`),
+        + (r.cerrados === 0
+          ? ''
+          : ` ${r.cerrados} no se pudieron abrir: revisa que la palabra de cifrado`
+            + ' sea la misma en los dos teléfonos.'),
       );
     } catch (e) {
       // **La carpeta no se borra por un error cualquiera.** Antes si, y el
@@ -153,6 +168,26 @@ export default function Ajustes() {
     if (van === pinguinos) return;
     escribirAjuste(db, CLAVE_PINGUINOS, String(van));
     avisar(van === 1 ? 'Queda un pingüino' : `Quedan ${van} pingüinos`);
+  }
+
+  /** Un paso mas grande o mas chica, sin salirse de la tabla. */
+  function cambiarTamanoDeLetra(cuanto: number) {
+    const donde = ESCALAS_DE_LETRA.findIndex((e) => e.valor === letra.escala);
+    const siguiente = ESCALAS_DE_LETRA[
+      Math.min(ESCALAS_DE_LETRA.length - 1, Math.max(0, donde + cuanto))
+    ];
+    if (siguiente === undefined || siguiente.valor === letra.escala) return;
+    cambiarEscala(siguiente.valor);
+    avisar(`Letra ${siguiente.etiqueta.toLowerCase()}`);
+  }
+
+  /** Deja la palabra escrita como la definitiva. Vacia no se acepta. */
+  function guardarFrase() {
+    const escrita = (fraseEditada ?? '').trim();
+    if (escrita === '' || escrita === cifrado.frase) { setFraseEditada(null); return; }
+    cifrado.cambiar(escrita);
+    setFraseEditada(null);
+    setAviso('Palabra guardada. La otra persona tiene que poner la misma.');
   }
 
   function agregarCategoria() {
@@ -221,7 +256,10 @@ export default function Ajustes() {
             + 'cuando la mayor parte del gasto es variable y nadan en el mar cuando es '
             + 'poca. De uno a seis, y no hacen nada más que estar ahí.\n\n'
             + 'Deshielo es el tema claro y Noche polar el oscuro. Por ahora la elección '
-            + 'dura hasta que cierres la app: al volver a abrirla arranca en Noche polar.'}
+            + 'dura hasta que cierres la app: al volver a abrirla arranca en Noche polar.'
+            + '\n\n'
+            + 'El **tamaño de letra** sí se queda guardado, y vale para toda la app: '
+            + 'cuatro pasos, de Chica a Enorme.'}
         />
         <View style={styles.fila}>
           <Text style={styles.etiqueta}>Tema</Text>
@@ -262,233 +300,48 @@ export default function Ajustes() {
           </View>
         </View>
 
-        <Seccion
-          styles={styles}
-          theme={theme}
-          titulo="Quién escribe"
-          ayuda={'Cada movimiento guarda quién lo escribió. Ponerle nombre a este teléfono '
-            + 'hace que al sincronizar se pueda ver de quién viene cada versión.'}
-        />
-        {/* Solo los **otros** dispositivos se listan. El propio no: su nombre ya
-            esta abajo, dentro del campo que lo edita, y mostrarlo dos veces era
-            la mitad del desorden de esta seccion --y un subrayado de mas--. */}
-        {miembros.filter((m: Miembro) => m.id !== identidadDelMiembro).map((miembro: Miembro) => (
-          <View key={miembro.id} style={styles.lote}>
-            <View style={styles.loteTexto}>
-              <Text style={styles.loteArchivo} numberOfLines={1}>{miembro.nombre}</Text>
-              <Text style={styles.loteDetalle}>Otro dispositivo</Text>
-            </View>
-          </View>
-        ))}
-        {yo === undefined ? null : (
-          <>
-            <Text style={styles.etiqueta}>Este teléfono</Text>
-            <TextInput
-              value={nombrePropio ?? yo.nombre}
-              onChangeText={setNombrePropio}
-              placeholder="Cómo se llama este teléfono"
-              placeholderTextColor={theme.silencio}
-              style={styles.entradaFrase}
-              accessibilityLabel="Nombre de este dispositivo"
-            />
+        {/*
+          El tamano de letra, con los mismos dos botones que los pinguinos.
+
+          El ajuste del sistema no alcanza: React Native solo lo aplica cuando el
+          estilo no fija `fontSize`, y en esta app todos lo fijan. Media pantalla
+          de Iceberg son cifras de once o doce puntos, asi que hacia falta uno
+          propio. Se ve en el acto y en toda la app, porque el mismo objeto
+          alimenta los estilos de cada pantalla. Ver `datos/letra`.
+        */}
+        <View style={styles.fila}>
+          <Text style={styles.etiqueta}>Tamaño de letra</Text>
+          <View style={styles.contador}>
             <Pressable
-              onPress={() => {
-                try {
-                  renombrarMiembro(db, contexto, yo.id, nombrePropio ?? yo.nombre);
-                  setNombrePropio(null);
-                  setAviso('Listo. El nombre viaja en la próxima sincronización.');
-                } catch (e) {
-                  setAviso((e as Error).message);
-                }
-              }}
-              style={styles.botonSecundario}
+              onPress={() => cambiarTamanoDeLetra(-1)}
+              disabled={letra.escala === ESCALAS_DE_LETRA[0]!.valor}
+              hitSlop={8}
+              style={[
+                styles.botonDeContador,
+                letra.escala === ESCALAS_DE_LETRA[0]!.valor && styles.apagado,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="Guardar el nombre de este dispositivo"
+              accessibilityLabel="Letra más chica"
             >
-              <Text style={styles.botonTexto}>Guardar nombre</Text>
+              <Minus size={14} weight="bold" color={theme.acentoTexto} />
             </Pressable>
-          </>
-        )}
-
-        <Seccion
-          styles={styles}
-          theme={theme}
-          titulo="Frase de cifrado"
-          ayuda={'Si escribes una, el archivo que exportes queda cifrado y sin ella no se '
-            + 'puede abrir, ni por ti. Se usa también para abrir archivos cifrados. '
-            + 'No se guarda en ninguna parte.'}
-        />
-        <TextInput
-          value={frase}
-          onChangeText={setFrase}
-          placeholder="Sin cifrar"
-          placeholderTextColor={theme.silencio}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.entradaFrase}
-          accessibilityLabel="Frase de cifrado"
-        />
-        {frase.trim() === '' ? null : (
-          <Text style={crypto.fraseDebil(frase) === null ? styles.fraseOk : styles.fraseFloja}>
-            {crypto.fraseDebil(frase) ?? 'Se cifrará con esta frase.'}
-          </Text>
-        )}
-
-        <Seccion
-          styles={styles}
-          theme={theme}
-          titulo="Sincronizar"
-          ayuda={'Sincronizar deja tus datos en una carpeta del teléfono y trae lo que '
-            + 'hayan dejado los demás. La app no habla con ninguna nube: solo con esa '
-            + 'carpeta.\n\n'
-            + '**Para compartir con otra persona**, una sola vez:\n\n'
-            + '1. Instalen **Syncthing** en los dos teléfonos y compartan una carpeta.\n'
-            + '2. Cada uno la elige acá con Elegir carpeta.\n'
-            + '3. Toca tu código de hogar para enviárselo.\n'
-            + '4. Esa persona lo pega en "Unirme a otro hogar".\n\n'
-            + 'De ahí en adelante Syncthing mueve la carpeta sola, y a ustedes solo les '
-            + 'queda tocar Sincronizar para ponerse al día.\n\n'
-            + '**Google Drive no sirve**: deja elegir sus carpetas, pero no que otras '
-            + 'apps escriban en ellas.\n\n'
-            + 'Sincronizar nunca borra nada. Si el mismo movimiento se editó en los dos '
-            + 'teléfonos, gana la edición más nueva.\n\n'
-            + 'Las cuentas marcadas como no compartidas no viajan, así que tampoco '
-            + 'quedan respaldadas en la carpeta. Y si usas frase de cifrado, los dos '
-            + 'tienen que escribir la misma.'}
-        />
-        {!HAY_CARPETA ? (
-          <Text style={styles.nota}>
-            Este navegador no sabe abrir una carpeta. Usa la app del teléfono para
-            sincronizar.
-          </Text>
-        ) : carpeta === null ? (
-          <Pressable
-            onPress={elegir}
-            style={[styles.botonSecundario, styles.botonConAire]}
-            accessibilityRole="button"
-            accessibilityLabel="Elegir la carpeta compartida"
-          >
-            <Text style={styles.botonTexto}>Elegir carpeta compartida</Text>
-          </Pressable>
-        ) : (
-          <>
-            <Text style={styles.etiquetaSuelta}>Carpeta</Text>
-            <Text style={styles.valor} numberOfLines={1}>{nombreDeCarpeta(carpeta)}</Text>
-            {/* En fila: los dos textos son cortos y caben. Estaban en columna de
-                cuando decian "Fusionar con un archivo" y "Exportar para
-                compartir", que no cabian ni de lejos. */}
-            <View style={[styles.acciones, styles.botonConAire]}>
-              <Pressable
-                onPress={() => sincronizar()}
-                disabled={sincronizando}
-                style={[styles.botonSecundario, sincronizando && styles.apagado]}
-                accessibilityRole="button"
-                accessibilityLabel="Sincronizar con la carpeta"
-              >
-                <Text style={styles.botonTexto}>
-                  {sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={elegir}
-                style={styles.botonSecundario}
-                accessibilityRole="button"
-                accessibilityLabel="Cambiar la carpeta compartida"
-              >
-                <Text style={styles.botonTexto}>Cambiar carpeta</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
-
-        {problemaDeCarpeta === null ? null : (
-          <Text style={styles.problemaDeCarpeta}>{problemaDeCarpeta}</Text>
-        )}
-
-        {ajenosEnCarpeta === 0 ? null : (
-          <View style={styles.avisoDeHogar}>
-            <Text style={styles.avisoDeHogarTexto}>
-              {ajenosEnCarpeta === 1
-                ? 'Hay un archivo en la carpeta que no es de tu hogar. '
-                : 'Hay ' + ajenosEnCarpeta + ' archivos en la carpeta que no son de tu hogar. '}
-              Lo que corresponde es unirte a ese hogar con el código. Si los mezclas igual,
-              sus movimientos quedan con los tuyos y no hay forma de separarlos después.
-            </Text>
-            <View style={styles.acciones}>
-              <Pressable
-                onPress={() => sincronizar(true)}
-                style={[styles.botonSecundario, styles.botonDestructivo]}
-                accessibilityRole="button"
-                accessibilityLabel="Mezclar igual, aunque sean de otro hogar"
-              >
-                <Text style={styles.botonTextoDestructivo}>Mezclar igual</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setAjenosEnCarpeta(0)}
-                style={styles.botonSecundario}
-                accessibilityRole="button"
-                accessibilityLabel="Dejarlos fuera"
-              >
-                <Text style={styles.botonTexto}>Dejarlos fuera</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.tamanoDeLetra}>{letra.etiqueta}</Text>
+            <Pressable
+              onPress={() => cambiarTamanoDeLetra(1)}
+              disabled={letra.escala === ESCALAS_DE_LETRA[ESCALAS_DE_LETRA.length - 1]!.valor}
+              hitSlop={8}
+              style={[
+                styles.botonDeContador,
+                letra.escala === ESCALAS_DE_LETRA[ESCALAS_DE_LETRA.length - 1]!.valor
+                  && styles.apagado,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Letra más grande"
+            >
+              <Plus size={14} weight="bold" color={theme.acentoTexto} />
+            </Pressable>
           </View>
-        )}
-
-        <Text style={styles.etiquetaSuelta}>Código de tu hogar</Text>
-        <Pressable
-          onPress={() => Share.share({ message: identidad.hogar ?? '' })}
-          style={styles.codigo}
-          accessibilityRole="button"
-          accessibilityLabel="Compartir el código de tu hogar"
-        >
-          <Text style={styles.codigoTexto} numberOfLines={1}>{identidad.hogar ?? '—'}</Text>
-        </Pressable>
-
-        <Text style={styles.etiquetaSuelta}>Unirme a otro hogar</Text>
-        <TextInput
-          value={codigoDeHogar}
-          onChangeText={setCodigoDeHogar}
-          placeholder="Pega aquí el código del otro teléfono"
-          placeholderTextColor={theme.silencio}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          style={styles.entradaFrase}
-          accessibilityLabel="Código del hogar al que unirse"
-        />
-        <Pressable
-          onPress={emparejar}
-          disabled={codigoDeHogar.trim() === ''}
-          style={[
-            styles.botonSecundario, styles.botonConAire,
-            codigoDeHogar.trim() === '' && styles.apagado,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Unirme a ese hogar"
-        >
-          <Text style={styles.botonTexto}>Unirme a ese hogar</Text>
-        </Pressable>
-
-        {conflictos.length === 0 ? null : (
-          <View style={styles.conflictos}>
-            <Text style={styles.conflictosTitulo}>
-              Se descartaron estas versiones por ser más antiguas
-            </Text>
-            {conflictos.map((conflicto) => (
-              <View key={`${conflicto.tabla}|${conflicto.id}`} style={styles.conflicto}>
-                <Text style={styles.conflictoGana} numberOfLines={1}>
-                  {conflicto.ganadora}
-                  {conflicto.escribioGanadora === '' ? '' : ` · ${conflicto.escribioGanadora}`}
-                </Text>
-                <Text style={styles.conflictoPierde} numberOfLines={1}>
-                  antes: {conflicto.descartada}
-                  {conflicto.escribioDescartada === '' ? '' : ` · ${conflicto.escribioDescartada}`}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
+        </View>
 
         <Seccion
           styles={styles}
@@ -700,6 +553,327 @@ export default function Ajustes() {
         <Seccion
           styles={styles}
           theme={theme}
+          titulo="Sincronizar"
+          ayuda={'Sincronizar deja tus datos en una carpeta del teléfono y trae lo que '
+            + 'hayan dejado los demás. La app no habla con ninguna nube: solo con esa '
+            + 'carpeta.\n\n'
+            + '**Para compartir con otra persona**, una sola vez:\n\n'
+            + '1. Instalen **Syncthing** en los dos teléfonos y compartan una carpeta.\n'
+            + '2. Cada uno la elige acá con Elegir carpeta.\n'
+            + '3. Envíale tu código de hogar y tu palabra de cifrado.\n'
+            + '4. Esa persona lo pega en "Unirme a otro hogar".\n\n'
+            + 'De ahí en adelante Syncthing mueve la carpeta sola, y a ustedes solo les '
+            + 'queda tocar Sincronizar para ponerse al día.\n\n'
+            + '**Google Drive no sirve**: deja elegir sus carpetas, pero no que otras '
+            + 'apps escriban en ellas.\n\n'
+            + 'Sincronizar nunca borra nada. Si el mismo movimiento se editó en los dos '
+            + 'teléfonos, gana la edición más nueva.\n\n'
+            + 'Las cuentas marcadas como no compartidas no viajan, así que tampoco '
+            + 'quedan respaldadas en la carpeta.'
+            + '\n\n'
+            + 'Lo que se deja en la carpeta va **siempre cifrado**, con la palabra que '
+            + 'la app se inventó. Los dos teléfonos tienen que tener la misma: '
+            + 'envíasela con el botón y pégala allá.'}
+        />
+        {!HAY_CARPETA ? (
+          <Text style={styles.nota}>
+            Este navegador no sabe abrir una carpeta. Usa la app del teléfono para
+            sincronizar.
+          </Text>
+        ) : carpeta === null ? (
+          <Pressable
+            onPress={elegir}
+            style={[styles.botonSecundario, styles.botonConAire]}
+            accessibilityRole="button"
+            accessibilityLabel="Elegir la carpeta compartida"
+          >
+            <Text style={styles.botonTexto}>Elegir carpeta compartida</Text>
+          </Pressable>
+        ) : (
+          <>
+            <Text style={styles.etiquetaSuelta}>Carpeta</Text>
+            <Text style={styles.valor} numberOfLines={1}>{nombreDeCarpeta(carpeta)}</Text>
+            {/* En fila: los dos textos son cortos y caben. Estaban en columna de
+                cuando decian "Fusionar con un archivo" y "Exportar para
+                compartir", que no cabian ni de lejos. */}
+            <View style={[styles.acciones, styles.botonConAire]}>
+              <Pressable
+                onPress={() => sincronizar()}
+                disabled={sincronizando}
+                style={[styles.botonSecundario, sincronizando && styles.apagado]}
+                accessibilityRole="button"
+                accessibilityLabel="Sincronizar con la carpeta"
+              >
+                <Text style={styles.botonTexto}>
+                  {sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={elegir}
+                style={styles.botonSecundario}
+                accessibilityRole="button"
+                accessibilityLabel="Cambiar la carpeta compartida"
+              >
+                <Text style={styles.botonTexto}>Cambiar carpeta</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+
+        {problemaDeCarpeta === null ? null : (
+          <Text style={styles.problemaDeCarpeta}>{problemaDeCarpeta}</Text>
+        )}
+
+        {ajenosEnCarpeta === 0 ? null : (
+          <View style={styles.avisoDeHogar}>
+            <Text style={styles.avisoDeHogarTexto}>
+              {ajenosEnCarpeta === 1
+                ? 'Hay un archivo en la carpeta que no es de tu hogar. '
+                : 'Hay ' + ajenosEnCarpeta + ' archivos en la carpeta que no son de tu hogar. '}
+              Lo que corresponde es unirte a ese hogar con el código. Si los mezclas igual,
+              sus movimientos quedan con los tuyos y no hay forma de separarlos después.
+            </Text>
+            <View style={styles.acciones}>
+              <Pressable
+                onPress={() => sincronizar(true)}
+                style={[styles.botonSecundario, styles.botonDestructivo]}
+                accessibilityRole="button"
+                accessibilityLabel="Mezclar igual, aunque sean de otro hogar"
+              >
+                <Text style={styles.botonTextoDestructivo}>Mezclar igual</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setAjenosEnCarpeta(0)}
+                style={styles.botonSecundario}
+                accessibilityRole="button"
+                accessibilityLabel="Dejarlos fuera"
+              >
+                <Text style={styles.botonTexto}>Dejarlos fuera</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/*
+          La palabra de cifrado, dentro de Sincronizar y no en una seccion
+          aparte.
+
+          Antes era su propia seccion, arrancaba vacia, y vacia queria decir
+          "sin cifrar": el archivo con el historial financiero completo salia en
+          claro a una carpeta de nube salvo que a alguien se le ocurriera
+          escribir una frase. Nadie lo hacia, porque no hay motivo para
+          escribir una frase antes de que pase algo.
+
+          Ahora la app se la inventa sola --cuatro palabras y un numero, para
+          poder dictarla-- y lo unico que queda por decidir es si se cambia. Va
+          aca porque solo significa algo junto a la carpeta: es lo que hay que
+          pasarle a la otra persona para que sus archivos se abran.
+        */}
+        <Text style={styles.etiquetaSuelta}>Palabra de cifrado</Text>
+        <TextInput
+          value={fraseEditada ?? cifrado.frase}
+          onChangeText={setFraseEditada}
+          onBlur={guardarFrase}
+          placeholder="Inventándola…"
+          placeholderTextColor={theme.silencio}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.entradaFrase}
+          accessibilityLabel="Palabra de cifrado"
+        />
+        {/* A la vista y sin puntitos: hay que poder leerla para dictarla, y lo
+            que protege es la carpeta, no esta pantalla.
+
+            Mientras el campo este vacio no se dice nada: el unico momento en que
+            eso pasa es el instante antes de que la app termine de inventarla, y
+            ahi "usa al menos 8 caracteres" seria un reproche por algo que no
+            hizo nadie. */}
+        {(fraseEditada ?? cifrado.frase) === '' ? null
+          : crypto.fraseDebil(fraseEditada ?? cifrado.frase) === null ? (
+            <Text style={styles.fraseOk}>
+              Todo lo que sale a la carpeta va cifrado con esta palabra.
+            </Text>
+          ) : (
+            <Text style={styles.fraseFloja}>
+              {crypto.fraseDebil(fraseEditada ?? cifrado.frase)}
+            </Text>
+          )}
+        <View style={[styles.acciones, styles.botonConAire]}>
+          <Pressable
+            onPress={() => Share.share({ message: cifrado.frase })}
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel="Enviar la palabra de cifrado"
+          >
+            <Text style={styles.botonTexto}>Enviársela a alguien</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              cifrado.renovar();
+              setFraseEditada(null);
+              setAviso('Palabra nueva. Hasta que la otra persona la ponga, sus archivos no se abren.');
+            }}
+            style={styles.botonSecundario}
+            accessibilityRole="button"
+            accessibilityLabel="Inventar otra palabra de cifrado"
+          >
+            <Text style={styles.botonTexto}>Inventar otra</Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.etiquetaSuelta}>Código de tu hogar</Text>
+        <Pressable
+          onPress={() => Share.share({ message: identidad.hogar ?? '' })}
+          style={styles.codigo}
+          accessibilityRole="button"
+          accessibilityLabel="Compartir el código de tu hogar"
+        >
+          <Text style={styles.codigoTexto} numberOfLines={1}>{identidad.hogar ?? '—'}</Text>
+        </Pressable>
+
+        <Text style={styles.etiquetaSuelta}>Unirme a otro hogar</Text>
+        <TextInput
+          value={codigoDeHogar}
+          onChangeText={setCodigoDeHogar}
+          placeholder="Pega aquí el código del otro teléfono"
+          placeholderTextColor={theme.silencio}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          style={styles.entradaFrase}
+          accessibilityLabel="Código del hogar al que unirse"
+        />
+        <Pressable
+          onPress={emparejar}
+          disabled={codigoDeHogar.trim() === ''}
+          style={[
+            styles.botonSecundario, styles.botonConAire,
+            codigoDeHogar.trim() === '' && styles.apagado,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Unirme a ese hogar"
+        >
+          <Text style={styles.botonTexto}>Unirme a ese hogar</Text>
+        </Pressable>
+
+        {conflictos.length === 0 ? null : (
+          <View style={styles.conflictos}>
+            <Text style={styles.conflictosTitulo}>
+              Se descartaron estas versiones por ser más antiguas
+            </Text>
+            {conflictos.map((conflicto) => (
+              <View key={`${conflicto.tabla}|${conflicto.id}`} style={styles.conflicto}>
+                <Text style={styles.conflictoGana} numberOfLines={1}>
+                  {conflicto.ganadora}
+                  {conflicto.escribioGanadora === '' ? '' : ` · ${conflicto.escribioGanadora}`}
+                </Text>
+                <Text style={styles.conflictoPierde} numberOfLines={1}>
+                  antes: {conflicto.descartada}
+                  {conflicto.escribioDescartada === '' ? '' : ` · ${conflicto.escribioDescartada}`}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Quién escribe"
+          ayuda={'Cada movimiento guarda quién lo escribió. Ponerle nombre a este teléfono '
+            + 'hace que al sincronizar se pueda ver de quién viene cada versión.'}
+        />
+        {/* Solo los **otros** dispositivos se listan. El propio no: su nombre ya
+            esta abajo, dentro del campo que lo edita, y mostrarlo dos veces era
+            la mitad del desorden de esta seccion --y un subrayado de mas--. */}
+        {miembros.filter((m: Miembro) => m.id !== identidadDelMiembro).map((miembro: Miembro) => (
+          <View key={miembro.id} style={styles.lote}>
+            <View style={styles.loteTexto}>
+              <Text style={styles.loteArchivo} numberOfLines={1}>{miembro.nombre}</Text>
+              <Text style={styles.loteDetalle}>Otro dispositivo</Text>
+            </View>
+          </View>
+        ))}
+        {yo === undefined ? null : (
+          <>
+            <Text style={styles.etiqueta}>Este teléfono</Text>
+            <TextInput
+              value={nombrePropio ?? yo.nombre}
+              onChangeText={setNombrePropio}
+              placeholder="Cómo se llama este teléfono"
+              placeholderTextColor={theme.silencio}
+              style={styles.entradaFrase}
+              accessibilityLabel="Nombre de este dispositivo"
+            />
+            <Pressable
+              onPress={() => {
+                try {
+                  renombrarMiembro(db, contexto, yo.id, nombrePropio ?? yo.nombre);
+                  setNombrePropio(null);
+                  setAviso('Listo. El nombre viaja en la próxima sincronización.');
+                } catch (e) {
+                  setAviso((e as Error).message);
+                }
+              }}
+              style={styles.botonSecundario}
+              accessibilityRole="button"
+              accessibilityLabel="Guardar el nombre de este dispositivo"
+            >
+              <Text style={styles.botonTexto}>Guardar nombre</Text>
+            </Pressable>
+          </>
+        )}
+
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Período"
+          ayuda={'El rango que están mirando todas las pantallas. Se cambia desde la barra '
+            + 'de arriba, no desde aquí: acá solo se ve cuál está puesto.'}
+        />
+        <Panel theme={theme}>
+          <Dato
+            styles={styles}
+            etiqueta="Tipo"
+            valor={TIPOS.find((t) => t.valor === periodo.tipo)?.etiqueta ?? periodo.tipo}
+          />
+          <Dato styles={styles} etiqueta="Desde" valor={periodo.rango.start} />
+          <Dato styles={styles} etiqueta="Hasta" valor={periodo.rango.end} />
+        </Panel>
+
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Datos"
+          ayuda={'Cuánto hay guardado en este teléfono. El saldo sale del saldo inicial de '
+            + 'las cuentas más todo lo que entró menos todo lo que salió, y por eso no '
+            + 'cuadra con el banco si no pusiste el saldo inicial.'}
+        />
+        <Panel theme={theme}>
+          <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
+          <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
+          <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
+        </Panel>
+        <Text style={styles.nota}>
+          La base arranca vacía, con una cuenta y nada más. Los datos de prueba se cargan
+          desde aquí cuando quieras verlos, y se borran igual de fácil.
+        </Text>
+
+        <Seccion
+          styles={styles}
+          theme={theme}
+          titulo="Este dispositivo"
+          ayuda={'Se crean una sola vez y no cambian. Cada movimiento guarda desde qué '
+            + 'dispositivo se escribió, que es lo que hace posible el modo hogar.'}
+        />
+        <Panel theme={theme}>
+          <Dato styles={styles} etiqueta="Dispositivo" valor={identidad.dispositivo ?? '—'} mono />
+          <Dato styles={styles} etiqueta="Hogar" valor={identidad.hogar ?? '—'} mono />
+          <Dato styles={styles} etiqueta="Miembro" valor={identidad.miembro ?? '—'} mono />
+        </Panel>
+
+        <Seccion
+          styles={styles}
+          theme={theme}
           titulo="Empezar de cero"
           ayuda={'Borra cuentas, movimientos, reglas e importaciones de este dispositivo. '
             + 'No se puede deshacer: exporta un respaldo antes si hay algo que conservar.'}
@@ -751,55 +925,9 @@ export default function Ajustes() {
           </>
         )}
 
+        {/* El aviso general, al final de todo: lo escriben acciones de
+            varias secciones y no es de ninguna. */}
         {aviso === null ? null : <Text style={styles.aviso}>{aviso}</Text>}
-
-        <Seccion
-          styles={styles}
-          theme={theme}
-          titulo="Período"
-          ayuda={'El rango que están mirando todas las pantallas. Se cambia desde la barra '
-            + 'de arriba, no desde aquí: acá solo se ve cuál está puesto.'}
-        />
-        <Panel theme={theme}>
-          <Dato
-            styles={styles}
-            etiqueta="Tipo"
-            valor={TIPOS.find((t) => t.valor === periodo.tipo)?.etiqueta ?? periodo.tipo}
-          />
-          <Dato styles={styles} etiqueta="Desde" valor={periodo.rango.start} />
-          <Dato styles={styles} etiqueta="Hasta" valor={periodo.rango.end} />
-        </Panel>
-
-        <Seccion
-          styles={styles}
-          theme={theme}
-          titulo="Datos"
-          ayuda={'Cuánto hay guardado en este teléfono. El saldo sale del saldo inicial de '
-            + 'las cuentas más todo lo que entró menos todo lo que salió, y por eso no '
-            + 'cuadra con el banco si no pusiste el saldo inicial.'}
-        />
-        <Panel theme={theme}>
-          <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
-          <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
-          <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
-        </Panel>
-        <Text style={styles.nota}>
-          La base arranca vacía, con una cuenta y nada más. Los datos de prueba se cargan
-          desde aquí cuando quieras verlos, y se borran igual de fácil.
-        </Text>
-
-        <Seccion
-          styles={styles}
-          theme={theme}
-          titulo="Este dispositivo"
-          ayuda={'Se crean una sola vez y no cambian. Cada movimiento guarda desde qué '
-            + 'dispositivo se escribió, que es lo que hace posible el modo hogar.'}
-        />
-        <Panel theme={theme}>
-          <Dato styles={styles} etiqueta="Dispositivo" valor={identidad.dispositivo ?? '—'} mono />
-          <Dato styles={styles} etiqueta="Hogar" valor={identidad.hogar ?? '—'} mono />
-          <Dato styles={styles} etiqueta="Miembro" valor={identidad.miembro ?? '—'} mono />
-        </Panel>
 
       </ScrollView>
     </Pantalla>
@@ -846,7 +974,7 @@ function Dato(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
@@ -884,7 +1012,7 @@ function crearEstilos(theme: Theme) {
     },
     codigoTexto: {
       fontFamily: fonts.mono, fontWeight: pesos.regular,
-      fontSize: fontSizes.xs, color: theme.tinta,
+      fontSize: letra.xs, color: theme.tinta,
     },
     avisoDeHogar: {
       gap: spacing.sm,
@@ -895,7 +1023,7 @@ function crearEstilos(theme: Theme) {
     },
     avisoDeHogarTexto: {
       fontFamily: fonts.texto, fontWeight: pesos.regular,
-      fontSize: fontSizes.xs, lineHeight: 18, color: theme.tinta,
+      fontSize: letra.xs, lineHeight: letra.px(18), color: theme.tinta,
     },
 
     claseDeCategoria: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -906,10 +1034,10 @@ function crearEstilos(theme: Theme) {
     botonTextoDestructivo: {
       fontFamily: fonts.texto,
       fontWeight: pesos.medium,
-      fontSize: fontSizes.xs,
+      fontSize: letra.xs,
       color: theme.vencidoTexto,
     },
-    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
+    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencioHondo },
     /**
      * La misma etiqueta, pero encabezando un control en vez de viviendo en una
      * fila de dos columnas.
@@ -921,7 +1049,7 @@ function crearEstilos(theme: Theme) {
     etiquetaSuelta: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.xs,
+      fontSize: letra.xs,
       color: theme.silencioHondo,
       marginTop: spacing.lg,
       marginBottom: spacing.xs,
@@ -943,7 +1071,17 @@ function crearEstilos(theme: Theme) {
       textAlign: 'center',
       fontFamily: fonts.mono,
       fontWeight: pesos.medium,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
+      color: theme.tinta,
+    },
+    // Igual que el contador de pinguinos, pero el valor es una palabra: el
+    // ancho fijo lo pone la mas larga para que los botones no bailen.
+    tamanoDeLetra: {
+      minWidth: 62,
+      textAlign: 'center',
+      fontFamily: fonts.texto,
+      fontWeight: pesos.medium,
+      fontSize: letra.sm,
       color: theme.tinta,
     },
 
@@ -959,13 +1097,13 @@ function crearEstilos(theme: Theme) {
     huecoDeBasurero: { width: 14 },
     filaDeAgregar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     entradaDeCategoria: { flex: 1 },
-    valor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
+    valor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.tinta },
     valorMono: {
       flex: 1,
       textAlign: 'right',
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
-      fontSize: 10,
+      fontSize: letra.px(10),
       color: theme.tinta,
     },
 
@@ -983,8 +1121,8 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.acento,
       marginBottom: spacing.sm,
     },
-    botonPrincipalTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
-    notaImportar: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio, paddingBottom: spacing.sm },
+    botonPrincipalTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.sobreAcento },
+    notaImportar: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio, paddingBottom: spacing.sm },
     lote: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -994,16 +1132,16 @@ function crearEstilos(theme: Theme) {
       borderBottomColor: theme.hairline,
     },
     loteTexto: { flex: 1, gap: 1 },
-    loteArchivo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    loteDetalle: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-    deshacerTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
-    acciones: { flexDirection: 'row', gap: spacing.sm },
+    loteArchivo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    loteDetalle: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
+    deshacerTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.vencidoTexto },
+    acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
     // Los botones se dimensionan por su contenido, asi que el contenedor los
     // alinea a la izquierda en vez de estirarlos a lo ancho.
     entradaFrase: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
       color: theme.tinta,
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
@@ -1012,8 +1150,8 @@ function crearEstilos(theme: Theme) {
       // leian como una sola pieza.
       marginBottom: spacing.md,
     },
-    fraseOk: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.ingresoTexto },
-    fraseFloja: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.vencidoTexto },
+    fraseOk: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.ingresoTexto },
+    fraseFloja: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.vencidoTexto },
     conflictos: {
       gap: spacing.sm,
       padding: spacing.md,
@@ -1023,10 +1161,10 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
       backgroundColor: theme.superficie,
     },
-    conflictosTitulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    conflictosTitulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
     conflicto: { gap: 1 },
-    conflictoGana: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    conflictoPierde: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, textDecorationLine: 'line-through' },
+    conflictoGana: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    conflictoPierde: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio, textDecorationLine: 'line-through' },
     // Sin subrayado: la estrella, las dos lineas de texto y el "Editar" ya
     // separan una cuenta de la siguiente.
     cuenta: {
@@ -1043,17 +1181,17 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
       alignSelf: 'flex-start',
     },
-    botonTextoAlerta: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.vencidoTexto },
-    aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, lineHeight: 18, color: theme.acentoTexto, paddingTop: spacing.sm },
-    botonTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    botonTextoAlerta: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.vencidoTexto },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.acentoTexto, paddingTop: spacing.sm },
+    botonTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.acentoTexto },
 
-    nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.sm },
+    nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio, marginTop: spacing.sm },
     /** En rojo y con aire: es lo unico de la seccion que exige una decision. */
     problemaDeCarpeta: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: 18,
+      fontSize: letra.xs,
+      lineHeight: letra.px(18),
       color: theme.vencidoTexto,
       marginTop: spacing.md,
     },
