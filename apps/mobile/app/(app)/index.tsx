@@ -28,7 +28,7 @@
 import { money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
-  charts, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  charts, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { Info } from 'phosphor-react-native/src/icons/Info';
@@ -50,6 +50,7 @@ import {
   useMovimientosDeRegla, useMovimientosFiltrados, usePinguinos, useSaldoInicial,
   type DesgloseDelSaldo,
 } from '../../datos/consultas';
+import { useLetra } from '../../datos/letra';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 import { useAvisar } from '../../datos/aviso';
@@ -81,8 +82,9 @@ const ANCHO_ETIQUETA = 42;
 
 export default function Resumen() {
   const { theme } = useTema();
+  const letra = useLetra();
   const aireInferior = useAireInferior();
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const { tipo, rango, corte } = usePeriodo();
 
   const desglose = useDesgloseDelSaldo(useSaldoInicial());
@@ -534,7 +536,7 @@ function Leyenda(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
@@ -555,15 +557,15 @@ function crearEstilos(theme: Theme) {
     hero: { paddingTop: spacing.xl, paddingBottom: spacing.lg, alignItems: 'center' },
     heroFila: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
     heroSimbolo: {
-      fontFamily: fonts.texto, fontWeight: pesos.ligero, fontSize: fontSizes.md,
+      fontFamily: fonts.texto, fontWeight: pesos.ligero, fontSize: letra.md,
       color: theme.silencio, marginTop: 10,
     },
     heroCifra: {
-      fontFamily: fonts.texto, fontWeight: pesos.ligero, fontSize: 52, lineHeight: 58,
+      fontFamily: fonts.texto, fontWeight: pesos.ligero, fontSize: letra.px(52), lineHeight: letra.px(58),
       color: theme.tinta, letterSpacing: -1.5,
     },
     heroPieFila: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: 2 },
-    heroPie: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    heroPie: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
 
     /**
      * El hielo y el mar.
@@ -587,7 +589,7 @@ function crearEstilos(theme: Theme) {
       textAlign: 'center',
       fontFamily: fonts.mono,
       fontWeight: pesos.medium,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
       color: theme.sobreElHielo,
     },
     /**
@@ -602,7 +604,7 @@ function crearEstilos(theme: Theme) {
       left: '50%',
       fontFamily: fonts.mono,
       fontWeight: pesos.medium,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
       color: theme.silencio,
     },
 
@@ -626,8 +628,8 @@ function crearEstilos(theme: Theme) {
     reparto: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
     leyenda: { flex: 1, gap: 2 },
     leyendaDerecha: { alignItems: 'flex-end' },
-    leyendaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.lg, color: theme.tinta },
+    leyendaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
+    leyendaMonto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.lg, color: theme.tinta },
 
     /**
      * Las tres cifras del periodo, mas hondas que el reparto.
@@ -646,15 +648,15 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.superficieHonda,
     },
     celda: { flex: 1, gap: 2, alignItems: 'center' },
-    celdaEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
-    celdaValor: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.tinta },
-    delta: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10 },
-    deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    celdaEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencioHondo },
+    celdaValor: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.md, color: theme.tinta },
+    delta: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10) },
+    deltaVacio: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
 
     // Discreto a proposito: no compite con los movimientos que tiene encima.
     verTodos: { marginTop: spacing.md, alignItems: 'flex-end' },
-    verTodosTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    verTodosTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.acentoTexto },
     vacio: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
-    sinMovimientos: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
+    sinMovimientos: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }

@@ -13,10 +13,11 @@
 import { dates, money } from '@iceberg/core';
 import type { analytics } from '@iceberg/core';
 import {
-  charts, elevation, fonts, pesos, radii, spacing, type Theme,
+  charts, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLetra } from '../datos/letra';
 import { Pinguino } from './Pinguino';
 
 /** Lunes primero, como el resto de la app. */
@@ -76,7 +77,8 @@ export function Calendario(
     onElegirDia?: (fecha: dates.PlainDate) => void;
   },
 ) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   // El ancho de la celda no se sabe hasta que la grilla se mide: es un
   // porcentaje. Lo unico que depende de el es el pinguino de hoy.
   const [anchoDeCelda, setAnchoDeCelda] = useState(0);
@@ -92,8 +94,8 @@ export function Calendario(
   return (
     <View>
       <View style={styles.cabecera}>
-        {DIAS.map((letra, indice) => (
-          <Text key={indice} style={styles.diaSemana}>{letra}</Text>
+        {DIAS.map((inicial, indice) => (
+          <Text key={indice} style={styles.diaSemana}>{inicial}</Text>
         ))}
       </View>
 
@@ -160,7 +162,7 @@ export function Calendario(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     cabecera: { flexDirection: 'row', marginBottom: spacing.xs },
     diaSemana: {
@@ -168,7 +170,7 @@ function crearEstilos(theme: Theme) {
       textAlign: 'center',
       fontFamily: fonts.texto,
       fontWeight: pesos.medium,
-      fontSize: 9,
+      fontSize: letra.px(9),
       color: theme.silencio,
     },
     grilla: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -223,7 +225,7 @@ function crearEstilos(theme: Theme) {
      */
     numeroApagado: { color: theme.silencio },
     textos: { alignItems: 'center' },
-    numero: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
+    numero: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.tinta },
     /**
      * Hoy se marca con el pinguino, no con color.
      *
@@ -243,7 +245,7 @@ function crearEstilos(theme: Theme) {
      * la grilla solo en la columna de hoy.
      */
     hoy: { position: 'absolute', top: 2, left: 1 },
-    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 8, color: theme.silencio },
+    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(8), color: theme.silencio },
     // Sobre una celda muy saturada, la tinta del tema claro no contrasta: se
     // usa el fondo, que es su opuesto por definicion.
     sobreFuerte: { color: theme.fondo },

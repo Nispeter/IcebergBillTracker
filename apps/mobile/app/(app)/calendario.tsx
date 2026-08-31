@@ -7,7 +7,7 @@
 
 import { money } from '@iceberg/core';
 import {
-  charts, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  charts, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { analytics } from '@iceberg/core';
 import { useRouter } from 'expo-router';
@@ -22,6 +22,7 @@ import { Titulo } from '../../components/Titulo';
 import { useAireInferior } from '../../datos/desplazamiento';
 import { useAnalisisDeRango, usePrimerDia, useSaldoAlEmpezar } from '../../datos/consultas';
 import { useHoy } from '../../datos/hoy';
+import { useLetra } from '../../datos/letra';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
@@ -29,8 +30,9 @@ const NOMBRES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
 
 export default function DiaADia() {
   const { theme } = useTema();
+  const letra = useLetra();
   const aireInferior = useAireInferior();
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const { rango, corte, tipo } = usePeriodo();
   const router = useRouter();
   const hoy = useHoy();
@@ -179,7 +181,7 @@ function Dato({ styles, etiqueta, valor }: { styles: Estilos; etiqueta: string; 
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     /** Encabeza lo que viene justo abajo, sin el aire de una seccion suelta. */
     tituloJunto: { marginTop: spacing.lg, marginBottom: spacing.xs },
@@ -190,32 +192,32 @@ function crearEstilos(theme: Theme) {
       width: '100%',
       alignSelf: 'center',
     },
-    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
 
     // Elevada para que la burbuja de la ayuda tape lo que viene debajo.
 
     diaSemana: { paddingVertical: 5 },
     filaSemana: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    nombreDia: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    nombreDia: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
     // El dia mas caro se marca: es lo que uno viene a buscar a este grafico.
-    nombreDiaMayor: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    nombreDiaMayor: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
     rellenoMayor: { backgroundColor: theme.acento },
     detalleDia: {
       marginLeft: 72 + spacing.sm,
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: 10,
+      fontSize: letra.px(10),
       color: theme.silencio,
     },
     pista: { flex: 1, flexDirection: 'row', height: 6 },
     relleno: { backgroundColor: charts[0], borderRadius: radii.sm },
-    montoDia: { width: 62, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, marginTop: spacing.xs },
+    montoDia: { width: 62, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio, marginTop: spacing.xs },
 
     // Sin subrayado: el panel agrupa, y dos columnas alineadas ya se leen como
     // tabla. La etiqueta va en el gris que se lee sobre el fondo hundido.
     dato: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencioHondo },
-    datoValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
+    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencioHondo },
+    datoValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.tinta },
   });
 }

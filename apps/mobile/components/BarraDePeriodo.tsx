@@ -12,7 +12,7 @@
 
 import { dates } from '@iceberg/core';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft';
@@ -20,6 +20,7 @@ import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useLetra } from '../datos/letra';
 import { TIPOS, nombreDePeriodo, usePeriodo, type TipoDePeriodo } from '../datos/periodo';
 import { ConDesplegable } from './ConDesplegable';
 
@@ -36,7 +37,8 @@ export function BarraDePeriodo(
     permitirFuturo?: boolean;
   },
 ) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const periodo = usePeriodo();
   const [abierto, setAbierto] = useState(false);
   const [desde, setDesde] = useState<string>(periodo.rango.start);
@@ -177,7 +179,7 @@ export function BarraDePeriodo(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     // Todo el grupo va centrado en vez de estirarse: las flechas quedan al lado
     // del nombre, no en los extremos de la fila. El `hitSlop` de cada una
@@ -185,7 +187,7 @@ function crearEstilos(theme: Theme) {
     barra: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     flecha: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
     centro: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-    nombre: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    nombre: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
 
     panel: {
       marginTop: spacing.sm,
@@ -202,8 +204,8 @@ function crearEstilos(theme: Theme) {
       paddingHorizontal: spacing.md,
     },
     opcionConLinea: { borderTopWidth: elevation.hairlineWidth, borderTopColor: theme.hairline },
-    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
 
     libre: {
       padding: spacing.md,
@@ -216,14 +218,14 @@ function crearEstilos(theme: Theme) {
       flex: 1,
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.xs,
+      fontSize: letra.xs,
       color: theme.tinta,
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
       paddingVertical: 4,
     },
     entradaMala: { borderBottomColor: theme.vencidoTexto },
-    guion: { fontFamily: fonts.mono, fontSize: fontSizes.xs, color: theme.silencio },
+    guion: { fontFamily: fonts.mono, fontSize: letra.xs, color: theme.silencio },
     aplicar: {
       paddingVertical: spacing.sm,
       alignItems: 'center',
@@ -231,6 +233,6 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.acento,
     },
     aplicarApagado: { opacity: 0.4 },
-    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
   });
 }

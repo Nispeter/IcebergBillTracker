@@ -37,7 +37,7 @@
  * contenido que llega y no como un destello.
  */
 
-import { capas, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import { capas, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { List } from 'phosphor-react-native/src/icons/List';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -49,6 +49,7 @@ import { BarraDePeriodo } from './BarraDePeriodo';
 import { Pinguino } from './Pinguino';
 import { useAbrirBandeja } from './Bandeja';
 import { useCuentas } from '../datos/consultas';
+import { useLetra } from '../datos/letra';
 import { useTema } from '../datos/tema';
 
 export function Pantalla(
@@ -70,10 +71,11 @@ export function Pantalla(
   },
 ) {
   const { nombre: tema, theme } = useTema();
+  const letra = useLetra();
   // Sin esto el encabezado se dibuja debajo del reloj y el flotante debajo de la
   // barra de gestos: la app va a pantalla completa por `edgeToEdgeEnabled`.
   const margenes = useSafeAreaInsets();
-  const styles = crearEstilos(theme, margenes);
+  const styles = crearEstilos(theme, margenes, letra);
   const abrirBandeja = useAbrirBandeja();
   // Con una sola cuenta el menu no tendria nada adentro: es lo unico que quedo
   // ahi desde que los destinos se mudaron a la barra de abajo.
@@ -163,7 +165,7 @@ export function Pantalla(
   );
 }
 
-function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }) {
+function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }, letra: Letra) {
   return StyleSheet.create({
     raiz: { flex: 1, backgroundColor: theme.fondo },
     // `flex: 1` para que envolver el contenido no le cambie el alto a ninguna
@@ -191,7 +193,7 @@ function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }) {
     encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, zIndex: capas.encabezado },
     periodo: { flex: 1, zIndex: capas.encabezado },
     marcaFila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xs, color: theme.tinta, letterSpacing: 3 },
+    marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xs, color: theme.tinta, letterSpacing: 3 },
     boton: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
     /**
      * Mas grande que un titulo de seccion y mas chico que una cifra.
@@ -203,7 +205,7 @@ function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }) {
     tituloDeVista: {
       fontFamily: fonts.texto,
       fontWeight: pesos.semibold,
-      fontSize: fontSizes.lg,
+      fontSize: letra.lg,
       color: theme.tinta,
     },
     // La `i` pegada al titulo y no al borde derecho: explica **esto**, y a diez

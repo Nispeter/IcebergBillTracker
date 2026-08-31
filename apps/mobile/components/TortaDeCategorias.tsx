@@ -23,7 +23,7 @@
 
 import { money } from '@iceberg/core';
 import {
-  charts, donutArcPath, fontSizes, fonts, pesos, sectoresDeTorta, spacing, type Theme,
+  charts, donutArcPath, fonts, pesos, sectoresDeTorta, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { useCallback, useRef } from 'react';
@@ -32,6 +32,7 @@ import Svg, { Path } from 'react-native-svg';
 import { iconoDeCategoria } from './iconos';
 import { Pinguino } from './Pinguino';
 import { useCategorias } from '../datos/catalogo';
+import { useLetra } from '../datos/letra';
 
 export interface PorcionDeTorta {
   readonly categoriaId: string;
@@ -110,7 +111,8 @@ export function TortaDeCategorias(
     onTocarPinguino?: () => void;
   },
 ) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   /**
    * El brinco del pinguino del hueco.
    *
@@ -222,7 +224,7 @@ export function TortaDeCategorias(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     bloque: { alignItems: 'center', gap: spacing.md },
     leyenda: { alignSelf: 'stretch', gap: 2 },
@@ -238,10 +240,10 @@ function crearEstilos(theme: Theme) {
     fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
     sinCaret: { width: ANCHO_CARET },
     punto: { width: 8, height: 8, borderRadius: 4 },
-    nombre: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
-    porcentaje: { width: 30, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    nombre: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.tinta },
+    porcentaje: { width: 30, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
+    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
     sinGastos: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
     enElHueco: {
       position: 'absolute',

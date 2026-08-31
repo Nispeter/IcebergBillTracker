@@ -25,7 +25,7 @@
  * superficie del menu, una lista en `superficie` seria invisible.
  */
 
-import { fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import { fonts, pesos, radii, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import { useEffect, useState } from 'react';
@@ -34,6 +34,7 @@ import { ConDesplegable } from './ConDesplegable';
 import { Panel } from './Panel';
 import { useCuentas } from '../datos/consultas';
 import { useCuentaActiva } from '../datos/cuenta';
+import { useLetra } from '../datos/letra';
 
 /** Lo que se muestra cuando el alcance son todas juntas. */
 const TODAS = 'Todas las cuentas';
@@ -44,7 +45,8 @@ export function SelectorDeCuenta(
   const cuentas = useCuentas();
   const { cuentaId, elegir } = useCuentaActiva();
   const [abierto, setAbierto] = useState(false);
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
 
   /**
    * Si la cuenta activa ya no existe, volver a "todas".
@@ -117,13 +119,13 @@ export function SelectorDeCuenta(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     tarjeta: { marginBottom: spacing.md, gap: spacing.xs },
     titulo: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: 10,
+      fontSize: letra.px(10),
       color: theme.silencioHondo,
     },
     disparador: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -131,7 +133,7 @@ function crearEstilos(theme: Theme) {
       flex: 1,
       fontFamily: fonts.texto,
       fontWeight: pesos.medium,
-      fontSize: fontSizes.xs,
+      fontSize: letra.xs,
       color: theme.tinta,
     },
 
@@ -160,12 +162,12 @@ function crearEstilos(theme: Theme) {
     opcionTexto: {
       flex: 1,
       fontFamily: fonts.texto, fontWeight: pesos.regular,
-      fontSize: fontSizes.xs, color: theme.silencioHondo,
+      fontSize: letra.xs, color: theme.silencioHondo,
     },
     opcionActiva: {
       flex: 1,
       fontFamily: fonts.texto, fontWeight: pesos.medium,
-      fontSize: fontSizes.xs, color: theme.tinta,
+      fontSize: letra.xs, color: theme.tinta,
     },
   });
 }

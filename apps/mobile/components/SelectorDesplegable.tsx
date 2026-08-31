@@ -12,7 +12,7 @@
  */
 
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { Check } from 'phosphor-react-native/src/icons/Check';
@@ -36,6 +36,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
  */
 import { ScrollView } from 'react-native-gesture-handler';
 import { useAltoDisponible } from './ConDesplegable';
+import { useLetra } from '../datos/letra';
 
 /**
  * Cuanto de la pantalla puede ocupar un desplegable abierto.
@@ -76,7 +77,8 @@ export function ChipDisparador({
   onPress: () => void;
   accesible: string;
 }) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const color = activo ? theme.fondo : theme.tinta;
 
   return (
@@ -107,7 +109,8 @@ export function ListaDeOpciones<T>({
   seleccionado: T;
   onElegir: (valor: T) => void;
 }) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
 
   /**
    * El alto sale de la pantalla, no de un numero fijo.
@@ -165,7 +168,7 @@ export function ListaDeOpciones<T>({
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     chip: {
       flexDirection: 'row',
@@ -180,7 +183,7 @@ function crearEstilos(theme: Theme) {
     },
     chipActivo: { backgroundColor: theme.tinta, borderColor: theme.tinta },
     chipAbierto: { borderColor: theme.silencio },
-    chipTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs },
+    chipTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs },
 
     panel: {
       marginTop: AIRE_SOBRE_EL_PANEL,
@@ -198,8 +201,8 @@ function crearEstilos(theme: Theme) {
     },
     opcionConLinea: { borderTopWidth: elevation.hairlineWidth, borderTopColor: theme.hairline },
     iconoOpcion: { width: 16, alignItems: 'center' },
-    opcionTexto: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    opcionTextoActivo: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
-    detalle: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    opcionTexto: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.tinta },
+    opcionTextoActivo: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.tinta },
+    detalle: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
   });
 }

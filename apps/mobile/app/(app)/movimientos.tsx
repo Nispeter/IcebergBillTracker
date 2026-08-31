@@ -15,7 +15,7 @@
 import { money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
 import {
-  capas, elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  capas, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -29,6 +29,7 @@ import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesple
 import { iconoDeCategoria } from '../../components/iconos';
 import { Pinguino } from '../../components/Pinguino';
 import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
+import { useLetra } from '../../datos/letra';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 import { useCategorias } from '../../datos/catalogo';
@@ -59,8 +60,9 @@ type Desplegable = 'tipo' | 'categoria' | 'tanda' | null;
 
 export default function Movimientos() {
   const { theme } = useTema();
+  const letra = useLetra();
   const aireInferior = useAireInferior();
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const categorias = useCategorias();
   const { rango } = usePeriodo();
   // Se puede llegar aca desde una categoria de la torta o desde un dia del
@@ -254,7 +256,7 @@ export default function Movimientos() {
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
@@ -276,7 +278,7 @@ function crearEstilos(theme: Theme) {
     resumen: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
       color: theme.silencio,
       marginBottom: spacing.lg,
     },
@@ -290,7 +292,7 @@ function crearEstilos(theme: Theme) {
     vacioTexto: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
       color: theme.silencio,
       textAlign: 'center',
     },
@@ -303,11 +305,11 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
       borderRadius: radii.sm,
     },
-    verMasTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto },
+    verMasTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.acentoTexto },
     pie: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.xs,
+      fontSize: letra.xs,
       color: theme.silencio,
       textAlign: 'center',
       marginTop: spacing.xl,

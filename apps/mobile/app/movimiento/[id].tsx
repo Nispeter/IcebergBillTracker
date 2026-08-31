@@ -2,19 +2,21 @@
 
 import type { dates } from '@iceberg/core';
 import { borrarMovimiento, editarMovimiento, obtenerMovimiento } from '@iceberg/db';
-import { fontSizes, fonts, pesos, spacing } from '@iceberg/ui';
+import { fonts, pesos, spacing } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../../components/FormularioMovimiento';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
+import { useLetra } from '../../datos/letra';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
 import { PantallaModal } from '../../components/PantallaModal';
 
 export default function EditarMovimiento() {
   const { theme } = useTema();
+  const letra = useLetra();
 
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
@@ -32,12 +34,12 @@ export default function EditarMovimiento() {
   if (!movimiento) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.fondo, padding: spacing.xxl, gap: spacing.md }}>
-        <Text style={{ fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta }}>
+        <Text style={{ fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.tinta }}>
           Ese movimiento ya no existe
         </Text>
         <Text
           onPress={() => volver(router)}
-          style={{ fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.acentoTexto }}
+          style={{ fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.acentoTexto }}
         >
           Volver
         </Text>

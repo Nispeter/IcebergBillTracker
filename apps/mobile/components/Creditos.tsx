@@ -10,8 +10,9 @@
  * borrar la línea, sin tocar nada más.
  */
 
-import { fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import { fonts, pesos, radii, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { useLetra } from '../datos/letra';
 
 interface Retrato {
   readonly fuente: number;
@@ -40,7 +41,8 @@ const RETRATOS: readonly Retrato[] = [
 ];
 
 export function Creditos({ theme }: { theme: Theme }) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
 
   return (
     <View style={styles.todo}>
@@ -63,14 +65,14 @@ export function Creditos({ theme }: { theme: Theme }) {
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     todo: { gap: spacing.md },
     intro: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: 22,
+      fontSize: letra.sm,
+      lineHeight: letra.px(22),
       color: theme.tinta,
     },
     // En fila y repartidos: son dos, y uno debajo del otro obligaría a
@@ -89,14 +91,14 @@ function crearEstilos(theme: Theme) {
     nombre: {
       fontFamily: fonts.texto,
       fontWeight: pesos.semibold,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
       color: theme.tinta,
     },
     titulo: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: 17,
+      fontSize: letra.xs,
+      lineHeight: letra.px(17),
       color: theme.silencio,
     },
   });

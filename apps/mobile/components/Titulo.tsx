@@ -14,9 +14,10 @@
  * centimetros de distancia deja de estar claro que.
  */
 
-import { fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import { fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Ayuda } from './Ayuda';
+import { useLetra } from '../datos/letra';
 
 export function Titulo(
   { texto, ayuda, theme, estilo, derecha }: {
@@ -29,7 +30,8 @@ export function Titulo(
     derecha?: React.ReactNode;
   },
 ) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
 
   return (
     <View style={[styles.fila, estilo]}>
@@ -40,7 +42,7 @@ export function Titulo(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     fila: {
       flexDirection: 'row',
@@ -52,7 +54,7 @@ function crearEstilos(theme: Theme) {
     texto: {
       fontFamily: fonts.texto,
       fontWeight: pesos.semibold,
-      fontSize: fontSizes.sm,
+      fontSize: letra.sm,
       color: theme.tinta,
     },
     derecha: { flex: 1, alignItems: 'flex-end' },

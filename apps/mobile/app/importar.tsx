@@ -14,7 +14,7 @@ import {
   type Previsualizacion,
 } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -22,6 +22,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { MapeoDeColumnas } from '../components/MapeoDeColumnas';
 import { useDatos } from '../datos/BaseDeDatos';
 import { elegirCartola } from '../datos/archivo';
+import { useLetra } from '../datos/letra';
 import { volver } from '../datos/navegacion';
 import { useTema } from '../datos/tema';
 import { PantallaModal } from '../components/PantallaModal';
@@ -40,7 +41,8 @@ interface Archivo {
 
 export default function Importar() {
   const { theme } = useTema();
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const { db, contexto } = useDatos();
   const router = useRouter();
 
@@ -263,7 +265,7 @@ function Dato(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.xl,
@@ -279,9 +281,9 @@ function crearEstilos(theme: Theme) {
       justifyContent: 'space-between',
       paddingTop: spacing.xxl,
     },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xl, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio },
 
     elegir: {
       paddingVertical: spacing.lg,
@@ -292,7 +294,7 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.superficie,
     },
     apagado: { opacity: 0.5 },
-    elegirTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.tinta },
+    elegirTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.tinta },
 
     tarjeta: {
       gap: spacing.sm,
@@ -302,14 +304,14 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
       backgroundColor: theme.superficie,
     },
-    archivo: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.silencio, paddingBottom: spacing.xs },
+    archivo: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.silencio, paddingBottom: spacing.xs },
     dato: { gap: 1 },
     datoFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    datoValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.tinta },
-    datoNota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-    cuadra: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.ingresoTexto, paddingTop: spacing.xs },
-    noCuadra: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, lineHeight: 18, color: theme.vencidoTexto, paddingTop: spacing.xs },
+    datoEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.tinta },
+    datoValor: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.tinta },
+    datoNota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
+    cuadra: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.ingresoTexto, paddingTop: spacing.xs },
+    noCuadra: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.vencidoTexto, paddingTop: spacing.xs },
 
     importar: {
       paddingVertical: spacing.lg,
@@ -317,10 +319,10 @@ function crearEstilos(theme: Theme) {
       borderRadius: radii.sm,
       backgroundColor: theme.acento,
     },
-    importarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
-    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, lineHeight: 20, color: theme.vencidoTexto },
+    importarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.sobreAcento },
+    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, lineHeight: letra.px(20), color: theme.vencidoTexto },
     // Discreto: solo hace falta cuando la deteccion no acerto, que es raro.
     ajustar: { alignItems: 'center', paddingVertical: spacing.xs },
-    ajustarTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.acentoTexto },
+    ajustarTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.acentoTexto },
   });
 }

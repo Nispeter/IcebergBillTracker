@@ -15,13 +15,14 @@
  * los toques, asi que nunca se interpone entre el usuario y lo que iba a tocar.
  */
 
-import { capas, durations, fontSizes, fonts, pesos, radii, spacing, type Theme } from '@iceberg/ui';
+import { capas, durations, fonts, pesos, radii, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import {
   createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode,
 } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLetra } from './letra';
 
 /** Cuanto queda a la vista antes de irse solo. */
 const EN_PANTALLA = 1900;
@@ -37,7 +38,8 @@ export function useAvisar(): Avisar {
 
 export function ProveedorDeAviso({ theme, children }: { theme: Theme; children: ReactNode }) {
   const insets = useSafeAreaInsets();
-  const styles = crearEstilos(theme, insets.bottom);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, insets.bottom, letra);
   const [aviso, setAviso] = useState<{ texto: string; clave: number } | null>(null);
   const entrada = useRef(new Animated.Value(0)).current;
 
@@ -100,7 +102,7 @@ export function ProveedorDeAviso({ theme, children }: { theme: Theme; children: 
   );
 }
 
-function crearEstilos(theme: Theme, aireDelSistema: number) {
+function crearEstilos(theme: Theme, aireDelSistema: number, letra: Letra) {
   return StyleSheet.create({
     /**
      * La franja que ocupa el ancho y centra la pastilla.
@@ -133,7 +135,7 @@ function crearEstilos(theme: Theme, aireDelSistema: number) {
     texto: {
       fontFamily: fonts.texto,
       fontWeight: pesos.medium,
-      fontSize: fontSizes.xs,
+      fontSize: letra.xs,
       color: theme.tinta,
     },
   });

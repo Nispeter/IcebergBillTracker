@@ -11,8 +11,9 @@
 
 import { money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
-import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import { elevation, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { StyleSheet, Text, View } from 'react-native';
+import { useLetra } from '../datos/letra';
 
 /** Un paso de la cuenta: "Ingreso +$1.488.700". */
 export interface Renglon {
@@ -33,7 +34,8 @@ export interface Detalle {
 const TOPE = 8;
 
 export function DetalleDeCifra({ detalle, theme }: { detalle: Detalle; theme: Theme }) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const movimientos = detalle.movimientos ?? [];
   const visibles = movimientos.slice(0, TOPE);
   const resto = movimientos.length - visibles.length;
@@ -70,11 +72,11 @@ export function DetalleDeCifra({ detalle, theme }: { detalle: Detalle; theme: Th
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     raiz: { gap: 2 },
-    total: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 28, color: theme.tinta, letterSpacing: -0.5 },
-    formula: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 17, color: theme.silencio, paddingBottom: spacing.sm },
+    total: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.px(28), color: theme.tinta, letterSpacing: -0.5 },
+    formula: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(17), color: theme.silencio, paddingBottom: spacing.sm },
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -83,8 +85,8 @@ function crearEstilos(theme: Theme) {
       borderTopWidth: elevation.hairlineWidth,
       borderTopColor: theme.hairline,
     },
-    etiqueta: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    resto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio, paddingTop: spacing.sm },
+    etiqueta: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    resto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio, paddingTop: spacing.sm },
   });
 }

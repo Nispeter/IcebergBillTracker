@@ -14,10 +14,11 @@
  * cuando dijo que prefiere como muestra la informacion la `i` del saldo.
  */
 
-import { fontSizes, fonts, pesos, trozosConEnfasis, type Theme } from '@iceberg/ui';
+import { fonts, pesos, trozosConEnfasis, type Letra, type Theme } from '@iceberg/ui';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Hoja } from '../components/Hoja';
+import { useLetra } from './letra';
 
 /** Muestra una explicacion. El titulo es el de la seccion que la pidio. */
 type Explicar = (titulo: string, texto: string) => void;
@@ -30,7 +31,8 @@ export function useExplicar(): Explicar {
 
 export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; children: ReactNode }) {
   const [abierta, setAbierta] = useState<{ titulo: string; texto: string } | null>(null);
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
 
   const explicar = useCallback<Explicar>((titulo, texto) => setAbierta({ titulo, texto }), []);
 
@@ -66,13 +68,13 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     texto: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: 22,
+      fontSize: letra.sm,
+      lineHeight: letra.px(22),
       color: theme.tinta,
     },
     // Solo el peso: cambiar ademas el color haria que el enfasis pareciera un

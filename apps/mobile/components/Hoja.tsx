@@ -37,11 +37,12 @@
 
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import {
-  ALTO_DE_LA_BARRA, capas, elevation, fontSizes, fonts, pesos, spacing, type Theme,
+  ALTO_DE_LA_BARRA, capas, elevation, fonts, pesos, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLetra } from '../datos/letra';
 
 export function Hoja(
   { abierta, titulo, theme, onCerrar, children }:
@@ -57,7 +58,8 @@ export function Hoja(
   // empiezan los botones o la barra de gestos de Android, que los tapan. Cuanto
   // miden lo sabe el sistema, no nosotros.
   const insets = useSafeAreaInsets();
-  const styles = crearEstilos(theme, insets.bottom);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, insets.bottom, letra);
   const hoja = useRef<BottomSheet>(null);
   const [montada, setMontada] = useState(false);
 
@@ -107,7 +109,7 @@ export function Hoja(
   );
 }
 
-function crearEstilos(theme: Theme, aireDelSistema: number) {
+function crearEstilos(theme: Theme, aireDelSistema: number, letra: Letra) {
   return StyleSheet.create({
     capa: { zIndex: capas.hoja },
     fondo: { backgroundColor: theme.superficie },
@@ -129,7 +131,7 @@ function crearEstilos(theme: Theme, aireDelSistema: number) {
       width: '100%',
       alignSelf: 'center',
     },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.tinta },
     linea: { height: elevation.hairlineWidth, backgroundColor: theme.hairline, marginBottom: spacing.xs },
   });
 }

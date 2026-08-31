@@ -18,13 +18,14 @@
  */
 
 import { analytics, money } from '@iceberg/core';
-import { elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import { elevation, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Panel } from './Panel';
 import { Titulo } from './Titulo';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
 import { useCategorias } from '../datos/catalogo';
+import { useLetra } from '../datos/letra';
 
 /** Cuantas filas entran antes de que la lista deje de informar y solo ocupe. */
 const FILAS = 3;
@@ -46,7 +47,8 @@ export function QueCambio(
     onElegir?: (categoriaId: string) => void;
   },
 ) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const categorias = useCategorias();
 
   // Una categoria que gasto lo mismo que el periodo pasado no explica nada:
@@ -138,16 +140,16 @@ export function QueCambio(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   const columna = {
     width: ANCHO_COLUMNA,
     textAlign: 'right',
     fontFamily: fonts.mono,
-    fontSize: fontSizes.xs,
+    fontSize: letra.xs,
   } as const;
 
   return StyleSheet.create({
-    referencia: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    referencia: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
 
     cabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: 2 },
     relleno: { flex: 1 },
@@ -156,7 +158,7 @@ function crearEstilos(theme: Theme) {
       textAlign: 'right',
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: 10,
+      fontSize: letra.px(10),
       // Va sobre el fondo hundido del panel, donde el gris de siempre no llega
       // a AA en el tema claro.
       color: theme.silencioHondo,
@@ -167,9 +169,9 @@ function crearEstilos(theme: Theme) {
     fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
     sinCaret: { width: ANCHO_CARET },
     hueco: { width: 13 },
-    nombre: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    nombre: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
     gasto: { ...columna, fontWeight: pesos.regular, color: theme.tinta },
     cambio: { ...columna, fontWeight: pesos.medium },
-    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
+    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }

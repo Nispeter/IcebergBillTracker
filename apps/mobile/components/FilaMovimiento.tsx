@@ -10,13 +10,14 @@
 import { dates, money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
-  fontSizes, fonts, pesos, spacing, type Theme,
+  fonts, pesos, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
 import { useCategorias } from '../datos/catalogo';
+import { useLetra } from '../datos/letra';
 
 /** Lo que dice el `?` de las pantallas que muestran el punto. */
 export const EXPLICACION_ANOMALIA = 'El punto ámbar marca un gasto muy por encima de lo que '
@@ -49,7 +50,8 @@ export function FilaMovimiento(
     anomala?: boolean;
   },
 ) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const categorias = useCategorias();
   /**
    * El estilo va **aplanado**, y el estado de presion a mano.
@@ -97,7 +99,7 @@ export function FilaMovimiento(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     /**
      * Sin subrayado entre filas.
@@ -115,23 +117,23 @@ function crearEstilos(theme: Theme) {
     },
     filaApretada: { opacity: 0.55 },
     marcaFecha: { width: 30, alignItems: 'center' },
-    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
+    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
     mes: {
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: 10,
+      fontSize: letra.px(10),
       color: theme.silencio,
     },
     texto: { flex: 1, gap: 2 },
-    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
+    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
     meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
     // En `alerta`: marca un movimiento fuera de lo habitual, y el acento --que
     // ahora es el agua-- se confunde con el resto de la interfaz.
     punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.alerta },
-    montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.md, color: theme.gasto },
+    montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.md, color: theme.gasto },
     // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
     // hasta cumplir AA, en oscuro es la misma aurora viva.
-    montoIngreso: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.ingresoTexto },
+    montoIngreso: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.md, color: theme.ingresoTexto },
   });
 }

@@ -12,10 +12,11 @@
 
 import type { csv } from '@iceberg/core';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLetra } from '../datos/letra';
 
 /** Cuántas filas se muestran. Con esto alcanza para ver dónde empieza la tabla. */
 const FILAS_VISIBLES = 18;
@@ -47,7 +48,10 @@ export function MapeoDeColumnas(
     onCancelar: () => void;
   },
 ) {
-  const styles = crearEstilos(theme);
+  // `letra` ya es la funcion que nombra las columnas, asi que el hook va con
+  // otro nombre para no taparla.
+  const tipografia = useLetra();
+  const styles = crearEstilos(theme, tipografia);
 
   const [filaEncabezado, setFilaEncabezado] = useState(inicial?.filaEncabezado ?? 0);
   const [columnas, setColumnas] = useState<Record<Campo, number | null>>({
@@ -201,13 +205,13 @@ function letra(indice: number): string {
   return salida;
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     raiz: { gap: spacing.md },
     encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio },
 
     campos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     campo: {
@@ -218,8 +222,8 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
     },
     campoActivo: { backgroundColor: theme.acento, borderColor: theme.acento },
-    campoTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    campoTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    campoTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    campoTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
 
     grilla: {
       maxHeight: 260,
@@ -238,8 +242,8 @@ function crearEstilos(theme: Theme) {
       borderRightColor: theme.hairline,
     },
     filaElegida: { backgroundColor: theme.acento },
-    numeroTexto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 9, color: theme.silencio },
-    numeroTextoElegido: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: 9, color: theme.sobreAcento },
+    numeroTexto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(9), color: theme.silencio },
+    numeroTextoElegido: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: letra.px(9), color: theme.sobreAcento },
 
     celdaEncabezado: {
       width: 110,
@@ -249,10 +253,10 @@ function crearEstilos(theme: Theme) {
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
     },
-    letra: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: 9, color: theme.silencio },
+    letra: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: letra.px(9), color: theme.silencio },
     celda: { width: 110, paddingVertical: 4, paddingHorizontal: spacing.xs },
     celdaAsignada: { backgroundColor: theme.fondo },
-    celdaTexto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 9, color: theme.tinta },
+    celdaTexto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(9), color: theme.tinta },
 
     aplicar: {
       paddingVertical: spacing.md,
@@ -261,6 +265,6 @@ function crearEstilos(theme: Theme) {
       backgroundColor: theme.acento,
     },
     apagado: { opacity: 0.4 },
-    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
   });
 }

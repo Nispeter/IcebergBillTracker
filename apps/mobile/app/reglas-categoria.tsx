@@ -18,7 +18,7 @@ import {
   sinCategoriaQueSeReconocen, type ReglaCategoria,
 } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { Trash } from 'phosphor-react-native/src/icons/Trash';
@@ -30,6 +30,7 @@ import { iconoDeCategoria } from '../components/iconos';
 import { useAvisar } from '../datos/aviso';
 import { useDatos } from '../datos/BaseDeDatos';
 import { useMovimientos, useReglasDeCategoria } from '../datos/consultas';
+import { useLetra } from '../datos/letra';
 import { volver } from '../datos/navegacion';
 import { useTema } from '../datos/tema';
 import { PantallaModal } from '../components/PantallaModal';
@@ -40,7 +41,8 @@ const SUGERENCIAS = 8;
 
 export default function ReglasDeCategoria() {
   const { theme } = useTema();
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const categorias = useCategorias();
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
@@ -238,7 +240,7 @@ export default function ReglasDeCategoria() {
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.xl,
@@ -254,16 +256,16 @@ function crearEstilos(theme: Theme) {
       justifyContent: 'space-between',
       paddingTop: spacing.xxl,
     },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xl, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio },
 
     campo: { gap: spacing.xs },
-    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
     entrada: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.md,
+      fontSize: letra.md,
       color: theme.tinta,
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
@@ -278,7 +280,7 @@ function crearEstilos(theme: Theme) {
       alignItems: 'center',
     },
     apagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.sm, color: theme.sobreAcento },
+    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.sobreAcento },
     aplicar: {
       paddingVertical: spacing.md,
       alignItems: 'center',
@@ -286,13 +288,13 @@ function crearEstilos(theme: Theme) {
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },
-    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.acentoTexto },
+    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
+    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.acentoTexto },
 
     seccion: {
       fontFamily: fonts.texto,
       fontWeight: pesos.semibold,
-      fontSize: fontSizes.xs,
+      fontSize: letra.xs,
       color: theme.tinta,
       paddingTop: spacing.lg,
     },
@@ -304,8 +306,8 @@ function crearEstilos(theme: Theme) {
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
     },
-    sugerenciaTexto: { flex: 1, fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    veces: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    sugerenciaTexto: { flex: 1, fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    veces: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
 
     fila: {
       flexDirection: 'row',
@@ -315,8 +317,8 @@ function crearEstilos(theme: Theme) {
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
     },
-    patron: { flex: 1, fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    categoria: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
+    patron: { flex: 1, fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    categoria: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
     borrar: { padding: 2 },
   });
 }

@@ -41,10 +41,11 @@
 
 import { dates, money } from '@iceberg/core';
 import type { analytics } from '@iceberg/core';
-import { charts, elevation, fontSizes, fonts, pesos, spacing, type Theme } from '@iceberg/ui';
+import { charts, elevation, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as TextoSvg } from 'react-native-svg';
+import { useLetra } from '../datos/letra';
 
 /**
  * 180 y no 120.
@@ -87,7 +88,8 @@ function dondeSeToco(evento: { locationX?: number; offsetX?: number }): number {
 export function LineaDeSaldo(
   { serie, theme }: { serie: readonly analytics.DiaConSaldo[]; theme: Theme },
 ) {
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const [ancho, setAncho] = useState(0);
   /** Que dia se esta mirando, por indice. `null` es "ninguno". */
   const [elegido, setElegido] = useState<number | null>(null);
@@ -196,7 +198,7 @@ export function LineaDeSaldo(
                 x={0}
                 y={valor === minimo ? y(valor) + 13 : y(valor) - 5}
                 textAnchor="start"
-                fontSize={9}
+                fontSize={letra.px(9)}
                 fontFamily={fonts.mono}
                 fill={valor === 0 ? theme.vencidoTexto : theme.silencio}
               >
@@ -290,13 +292,13 @@ function queSeMovio(dia: analytics.DiaConSaldo): string {
   return partes.join(' · ');
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     lienzo: { height: ALTO, width: '100%' },
     // Sin `marginLeft` y sin regla: el trazo ya llega a los dos bordes, asi que
     // las fechas se alinean solas con el y con el resto de la pantalla.
     ejeX: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.xs },
-    fecha: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 9, color: theme.silencio },
+    fecha: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(9), color: theme.silencio },
     /**
      * La invitacion a tocar y el detalle ocupan el mismo lugar.
      *
@@ -309,18 +311,18 @@ function crearEstilos(theme: Theme) {
       paddingTop: spacing.sm,
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
-      fontSize: 10,
+      fontSize: letra.px(10),
       color: theme.silencio,
     },
     elegido: { minHeight: 34, paddingTop: spacing.sm },
     filaElegido: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-    fechaElegida: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
-    saldoElegido: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.tinta },
-    movimientoElegido: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    fechaElegida: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
+    saldoElegido: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.tinta },
+    movimientoElegido: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
 
     pie: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm },
-    dato: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: 10, color: theme.tinta },
+    dato: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.tinta },
     etiqueta: { fontFamily: fonts.texto, color: theme.silencio },
-    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio, paddingVertical: spacing.md },
+    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio, paddingVertical: spacing.md },
   });
 }

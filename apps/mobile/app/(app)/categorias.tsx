@@ -8,7 +8,7 @@
 
 import { dates, money } from '@iceberg/core';
 import {
-  elevation, fontSizes, fonts, niceUnit, notchesFor, pesos, spacing, type Theme,
+  elevation, fonts, niceUnit, notchesFor, pesos, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
@@ -25,6 +25,7 @@ import { Hoja } from '../../components/Hoja';
 import { TortaDeCategorias } from '../../components/TortaDeCategorias';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAnalisisDeRango } from '../../datos/consultas';
+import { useLetra } from '../../datos/letra';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 import { useCategorias } from '../../datos/catalogo';
@@ -40,10 +41,11 @@ const TOQUES_PARA_LOS_CREDITOS = 6;
 
 export default function Categorias() {
   const { theme } = useTema();
+  const letra = useLetra();
   const [toquesAlPinguino, setToquesAlPinguino] = useState(0);
   const [creditos, setCreditos] = useState(false);
   const aireInferior = useAireInferior();
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const categorias = useCategorias();
   const { tipo, rango, corte } = usePeriodo();
   const router = useRouter();
@@ -144,7 +146,7 @@ export default function Categorias() {
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.lg,
@@ -164,7 +166,7 @@ function crearEstilos(theme: Theme) {
       gap: spacing.sm,
       paddingVertical: spacing.sm,
     },
-    nombre: { width: 78, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    monto: { width: 66, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
+    nombre: { width: 78, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    monto: { width: 66, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
   });
 }
