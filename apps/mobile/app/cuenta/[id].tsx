@@ -15,13 +15,14 @@ import {
   type TipoDeCuenta,
 } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
+import { useLetra } from '../../datos/letra';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
 import { PantallaModal } from '../../components/PantallaModal';
@@ -36,7 +37,8 @@ const NOMBRES: Record<TipoDeCuenta, string> = {
 
 export default function EditarCuenta() {
   const { theme } = useTema();
-  const styles = crearEstilos(theme);
+  const letra = useLetra();
+  const styles = crearEstilos(theme, letra);
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
   const router = useRouter();
@@ -134,7 +136,8 @@ export default function EditarCuenta() {
             <Text style={styles.simbolo}>$</Text>
             <TextInput
               value={saldo}
-              onChangeText={setSaldo}
+              // Ver `FormularioMovimiento`: los puntos se ponen solos al escribir.
+              onChangeText={(texto) => setSaldo(money.agruparMientrasSeEscribe(texto))}
               placeholder="0"
               placeholderTextColor={theme.silencio}
               keyboardType="numeric"
@@ -226,7 +229,7 @@ export default function EditarCuenta() {
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     contenido: {
       paddingHorizontal: spacing.xl,
@@ -242,27 +245,27 @@ function crearEstilos(theme: Theme) {
       justifyContent: 'space-between',
       paddingTop: spacing.xxl,
     },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: fontSizes.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.silencio },
+    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xl, color: theme.tinta },
+    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
 
     campo: { gap: spacing.xs },
-    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
     entrada: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,
-      fontSize: fontSizes.md,
+      fontSize: letra.md,
       color: theme.tinta,
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
       paddingVertical: spacing.sm,
     },
     filaMonto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    simbolo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.lg, color: theme.silencio },
+    simbolo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.lg, color: theme.silencio },
     entradaMonto: {
       flex: 1,
       fontFamily: fonts.mono,
       fontWeight: pesos.medium,
-      fontSize: fontSizes.xl,
+      fontSize: letra.xl,
       color: theme.tinta,
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
@@ -278,12 +281,12 @@ function crearEstilos(theme: Theme) {
       borderColor: theme.hairline,
     },
     opcionActiva: { backgroundColor: theme.acento, borderColor: theme.acento },
-    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.tinta },
-    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
+    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
 
-    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, lineHeight: 18, color: theme.silencio },
-    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.vencidoTexto },
-    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.sm, color: theme.vencidoTexto },
+    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.vencidoTexto },
+    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.vencidoTexto },
 
     guardar: {
       backgroundColor: theme.acento,
@@ -293,8 +296,8 @@ function crearEstilos(theme: Theme) {
       marginTop: spacing.md,
     },
     apagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.md, color: theme.sobreAcento },
+    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.sobreAcento },
     borrar: { paddingVertical: spacing.md, alignItems: 'center' },
-    borrarTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.vencidoTexto },
+    borrarTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.vencidoTexto },
   });
 }
