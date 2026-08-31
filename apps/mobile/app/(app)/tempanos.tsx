@@ -15,11 +15,12 @@ import {
   crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
 } from '@iceberg/db';
 import {
-  elevation, fontSizes, fonts, pesos, radii, spacing, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { ArrowCounterClockwise } from 'phosphor-react-native/src/icons/ArrowCounterClockwise';
 import { Check } from 'phosphor-react-native/src/icons/Check';
+import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { X } from 'phosphor-react-native/src/icons/X';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -32,6 +33,7 @@ import { iconoDeCategoria } from '../../components/iconos';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { useCandidatasARegla, useTempanos } from '../../datos/consultas';
+import { useLetra } from '../../datos/letra';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 import { useCategorias } from '../../datos/catalogo';
@@ -40,8 +42,9 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 
 export default function Tempanos() {
   const { theme } = useTema();
+  const letra = useLetra();
   const aireInferior = useAireInferior();
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const categorias = useCategorias();
   const { rango, corte } = usePeriodo();
   const { db, contexto } = useDatos();
@@ -79,12 +82,37 @@ export default function Tempanos() {
             <Text style={styles.totalEtiqueta}>por pagar</Text>
             <Text style={styles.totalCifra}>{money.format(porPagar)}</Text>
           </View>
-          <Ayuda
-            titulo="Por pagar"
-            theme={theme}
-            texto={'Cada fila es una fecha concreta, no la cuenta entera. Marcar pagada crea '
-              + 'el movimiento; omitir no crea nada. Las dos se pueden deshacer.'}
-          />
+          {/*
+            El mas, arriba y a la vista.
+
+            Estaba al final de la lista, en un renglon de diez puntos alineado a
+            la derecha: para agregar una cuenta habia que **scrollear hasta el
+            fondo** y despues encontrar el texto mas chico de la pantalla. Aca
+            arriba se ve al entrar y no se mueve con el largo de la lista.
+
+            No compite con el mas de la barra de abajo --que es el de anotar un
+            movimiento-- porque este vive dentro de la vista y al lado de su
+            propia cifra: lo que se agrega desde aca es una cuenta que se repite.
+          */}
+          <View style={styles.accionesDeCabecera}>
+            <Link href="/regla/nueva" asChild>
+              <Pressable
+                style={styles.mas}
+                accessibilityRole="button"
+                accessibilityLabel="Nueva cuenta periódica"
+              >
+                <Plus size={20} weight="bold" color={theme.sobreAcento} />
+              </Pressable>
+            </Link>
+            <Ayuda
+              titulo="Por pagar"
+              theme={theme}
+              texto={'Cada fila es una fecha concreta, no la cuenta entera. Marcar pagada crea '
+                + 'el movimiento; omitir no crea nada. Las dos se pueden deshacer.\n\n'
+                + 'El + de arriba agrega una cuenta que se repite: arriendo, luz, una '
+                + 'suscripción.'}
+            />
+          </View>
         </View>
 
         {/*
@@ -165,8 +193,11 @@ export default function Tempanos() {
           </>
         ) : null}
 
+        {/* El mismo destino que el + de arriba, dicho con todas sus letras: al
+            terminar de leer la lista, es donde cae la mano. */}
         <Link href="/regla/nueva" asChild>
           <Pressable style={styles.agregar} accessibilityRole="button">
+            <Plus size={16} weight="bold" color={theme.acentoTexto} />
             <Text style={styles.agregarTexto}>Nueva cuenta periódica</Text>
           </Pressable>
         </Link>
@@ -310,7 +341,7 @@ function Sugerencia(
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos(theme: Theme, letra: Letra) {
   const boton = {
     width: 26,
     height: 26,
@@ -335,12 +366,26 @@ function crearEstilos(theme: Theme) {
       zIndex: 20,
     },
     total: { gap: 1 },
-    totalEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
-    totalCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: 28, color: theme.tinta, letterSpacing: -0.5 },
-    aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto, paddingBottom: spacing.sm },
+    accionesDeCabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    /**
+     * Redondo y relleno con el acento: es la unica accion de la pantalla que
+     * crea algo, y el resto de los botones de aca son de 26 px y con contorno.
+     * A 40 cae comodo bajo el pulgar sin pelearse con la cifra de al lado.
+     */
+    mas: {
+      width: 40,
+      height: 40,
+      borderRadius: radii.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.acento,
+    },
+    totalEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
+    totalCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.px(28), color: theme.tinta, letterSpacing: -0.5 },
+    aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.vencidoTexto, paddingBottom: spacing.sm },
     // En el verde de los ingresos y no en el acento: es la misma idea de "esto
     // suma", y ya esta aprendida en las otras pantallas.
-    avisoAlDia: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.ingresoTexto, paddingBottom: spacing.sm },
+    avisoAlDia: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.ingresoTexto, paddingBottom: spacing.sm },
 
     // Sin subrayado, igual que en la lista de movimientos: la fecha a la
     // izquierda y los dos renglones de cada fila ya la separan de la siguiente.
@@ -353,26 +398,26 @@ function crearEstilos(theme: Theme) {
     // Lo resuelto sigue a la vista pero deja de pedir atencion.
     filaResuelta: { opacity: 0.45 },
     marcaFecha: { width: 30, alignItems: 'center' },
-    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
-    diaVencido: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: fontSizes.md, color: theme.vencidoTexto },
-    mes: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: 10, color: theme.silencio },
+    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
+    diaVencido: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: letra.md, color: theme.vencidoTexto },
+    mes: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
     texto: { flex: 1, gap: 2 },
-    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.md, color: theme.tinta },
+    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
     meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.xs, color: theme.silencio },
-    subtituloVencido: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: fontSizes.xs, color: theme.vencidoTexto },
-    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.tinta },
-    montoResuelto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio, textDecorationLine: 'line-through' },
+    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
+    subtituloVencido: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.vencidoTexto },
+    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.tinta },
+    montoResuelto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.silencio, textDecorationLine: 'line-through' },
 
     accion: { ...boton, borderWidth: elevation.hairlineWidth, borderColor: theme.hairline },
     accionPagar: { ...boton, backgroundColor: theme.acento },
 
     vacio: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
     filaAviso: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
-    vacioTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: fontSizes.sm, color: theme.silencio, paddingVertical: spacing.lg },
+    vacioTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.silencio, paddingVertical: spacing.lg },
 
     regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 20 },
-    reglaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.tinta },
+    reglaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
     reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
     crearChico: {
       paddingVertical: 5,
@@ -380,8 +425,20 @@ function crearEstilos(theme: Theme) {
       borderRadius: radii.sm,
       backgroundColor: theme.acento,
     },
-    crearChicoTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: fontSizes.xs, color: theme.sobreAcento },
-    agregar: { marginTop: spacing.lg, alignItems: 'flex-end' },
-    agregarTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: 10, color: theme.acentoTexto },
+    crearChicoTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
+    // Un boton de verdad y no un renglon suelto: era el texto mas chico de la
+    // pantalla, en diez puntos y contra el borde derecho.
+    agregar: {
+      marginTop: spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.md,
+      borderRadius: radii.sm,
+      borderWidth: elevation.hairlineWidth,
+      borderColor: theme.hairline,
+    },
+    agregarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.acentoTexto },
   });
 }
