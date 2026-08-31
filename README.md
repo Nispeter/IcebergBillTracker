@@ -24,11 +24,13 @@ Play Store.
   gasto comprometido.
 - Detecta cuentas periódicas en tu historial y propone crearlas.
 - Marca lo que se sale de lo habitual con mediana y MAD, no con promedios.
-- Sincroniza con otro teléfono por una carpeta compartida, con cifrado opcional. Sin
+- Sincroniza con otro teléfono por una carpeta compartida, **siempre cifrada**: la app
+  se inventa la palabra sola y tú se la pasas a quien comparte la carpeta. Sin
   servidor ni cuenta: cada aparato escribe su propio archivo y lee los de los demás.
   Que la carpeta llegue al otro teléfono lo hace una app aparte, como Syncthing;
   **Google Drive no sirve**, porque no deja que otras apps escriban en sus carpetas.
 - Cuentas separadas: un libro compartido y otro personal, y decides cuál viaja.
+- Tamaño de letra en cuatro pasos, de Chica a Enorme, para toda la app.
 
 ## Desarrollo
 
