@@ -12,6 +12,7 @@
 
 import { dates } from '@iceberg/core';
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useHoy } from './hoy';
 
 export type TipoDePeriodo = 'day' | 'week' | 'month' | 'year' | 'custom';
 
@@ -42,6 +43,14 @@ interface ValorDelPeriodo {
 const ContextoDePeriodo = createContext<ValorDelPeriodo | null>(null);
 
 export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate; children: ReactNode }) {
+  /**
+   * Hoy, no el corte.
+   *
+   * Son cosas distintas: el corte es hasta donde llegan los datos y se queda en
+   * el ultimo movimiento anotado. Para elegir en que dia aterrizar al cambiar de
+   * vista lo que importa es el dia de verdad.
+   */
+  const hoy = useHoy();
   const [tipo, setTipo] = useState<TipoDePeriodo>('month');
   const [referencia, setReferencia] = useState<dates.PlainDate | null>(null);
   const [libre, setLibre] = useState<dates.DateRange | null>(null);
@@ -73,9 +82,15 @@ export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate
     esElUltimo: dates.containsDate(rango, corte),
     cambiarTipo: (nuevo) => {
       setTipo(nuevo);
-      // Se conserva la fecha mirada, no se salta a hoy: pasar de "mes" a
-      // "semana" estando en julio debe mostrar una semana de julio.
-      setReferencia(actual);
+      /*
+        Si el periodo que se esta mirando incluye hoy, se aterriza **en hoy**.
+        Antes se conservaba siempre la fecha de referencia, que despues de
+        navegar es el primer dia del rango: estando en el mes actual y pasando a
+        "Dia" la app mostraba el 1 del mes, que es el dia menos util de los
+        treinta. Si el mes es otro --julio, mirando hacia atras-- se conserva la
+        fecha mirada, porque ahi saltar a hoy seria perder el lugar.
+      */
+      setReferencia(dates.containsDate(rango, hoy) ? hoy : actual);
       if (nuevo !== 'custom') setLibre(null);
     },
     fijarRango: (desde, hasta) => {
@@ -94,7 +109,7 @@ export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate
       setReferencia(proximo.start);
     },
     alDia: () => { setReferencia(null); setLibre(null); },
-  }), [tipo, rango, corte, actual]);
+  }), [tipo, rango, corte, actual, hoy]);
 
   return <ContextoDePeriodo.Provider value={valor}>{children}</ContextoDePeriodo.Provider>;
 }
