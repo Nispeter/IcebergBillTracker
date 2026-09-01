@@ -28,7 +28,7 @@ export function BarraDePeriodo(
   { theme, permitirFuturo }: {
     theme: Theme;
     /**
-     * Deja avanzar mas alla del ultimo periodo con datos.
+     * Deja avanzar mas alla del periodo que contiene hoy.
      *
      * Por defecto la flecha se apaga ahi, para no pasear por meses vacios. Pero
      * Tempanos habla justamente de lo que **todavia no paso**: sin esto, crear
@@ -48,7 +48,7 @@ export function BarraDePeriodo(
   const hastaOk = dates.parsePlainDate(hasta);
   const rangoValido = desdeOk !== null && hastaOk !== null && desdeOk <= hastaOk;
 
-  const frenado = periodo.esElUltimo && permitirFuturo !== true;
+  const frenado = periodo.esElActual && permitirFuturo !== true;
 
   const elegir = (tipo: TipoDePeriodo) => {
     if (tipo === 'custom') {
@@ -164,7 +164,7 @@ export function BarraDePeriodo(
             </View>
           ) : null}
 
-          {!periodo.esElUltimo ? (
+          {!periodo.esElActual ? (
             <Pressable
               onPress={() => { periodo.alDia(); setAbierto(false); }}
               style={[styles.opcion, styles.opcionConLinea]}

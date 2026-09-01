@@ -34,30 +34,40 @@ interface ValorDelPeriodo {
   fijarRango(desde: dates.PlainDate, hasta: dates.PlainDate): void;
   anterior(): void;
   siguiente(): void;
-  /** Vuelve al periodo que contiene la fecha de corte. */
+  /** Vuelve al periodo que contiene hoy. */
   alDia(): void;
-  /** Si ya se esta en el periodo mas reciente con datos. */
-  readonly esElUltimo: boolean;
+  /** Salta al periodo --del tipo que este puesto-- que contiene esa fecha. */
+  irAlDia(fecha: dates.PlainDate): void;
+  /** Si el periodo que se esta mirando contiene hoy. */
+  readonly esElActual: boolean;
 }
 
 const ContextoDePeriodo = createContext<ValorDelPeriodo | null>(null);
 
 export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate; children: ReactNode }) {
   /**
-   * Hoy, no el corte.
+   * Hoy, no el corte. **La app se para en el dia, no en el ultimo dato.**
    *
-   * Son cosas distintas: el corte es hasta donde llegan los datos y se queda en
-   * el ultimo movimiento anotado. Para elegir en que dia aterrizar al cambiar de
-   * vista lo que importa es el dia de verdad.
+   * Son cosas distintas y confundirlas era un bug con nombre y hora: `corte` es
+   * `min(ultimo movimiento, hoy)` --hasta donde llegan los datos, que es lo que
+   * necesita una proyeccion-- y se usaba tambien como la fecha que se esta
+   * mirando. Con el ultimo gasto anotado el 30 de agosto, a las 00:27 del 1 de
+   * septiembre la app seguia mostrando agosto, y seguiria mostrandolo hasta que
+   * alguien anotara algo. Ningun calculo estaba mal: la pregunta "que periodo
+   * miro" nunca fue sobre los datos.
+   *
+   * `corte` sigue existiendo y sigue saliendo en el contexto: lo usan las
+   * proyecciones, que si tienen que saber hasta donde hay datos.
    */
   const hoy = useHoy();
   const [tipo, setTipo] = useState<TipoDePeriodo>('month');
   const [referencia, setReferencia] = useState<dates.PlainDate | null>(null);
   const [libre, setLibre] = useState<dates.DateRange | null>(null);
 
-  // Mientras nadie navegue, la referencia sigue al corte: al cargar mas datos,
-  // la pantalla se mueve sola al periodo nuevo en vez de quedarse pegada.
-  const actual = referencia ?? corte;
+  // Mientras nadie navegue, la referencia sigue a hoy: la app abre en el
+  // periodo actual y cruza sola la medianoche --y el fin de mes-- porque
+  // `useHoy` redibuja cuando el dia cambia.
+  const actual = referencia ?? hoy;
 
   const rango = useMemo(() => {
     if (tipo === 'custom') {
@@ -79,7 +89,7 @@ export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate
     tipo,
     rango,
     corte,
-    esElUltimo: dates.containsDate(rango, corte),
+    esElActual: dates.containsDate(rango, hoy),
     cambiarTipo: (nuevo) => {
       setTipo(nuevo);
       /*
@@ -109,6 +119,7 @@ export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate
       setReferencia(proximo.start);
     },
     alDia: () => { setReferencia(null); setLibre(null); },
+    irAlDia: (fecha) => { setReferencia(fecha); setLibre(null); },
   }), [tipo, rango, corte, actual, hoy]);
 
   return <ContextoDePeriodo.Provider value={valor}>{children}</ContextoDePeriodo.Provider>;
