@@ -3,7 +3,7 @@ import { DateError, requirePlainDate } from './plainDate';
 import {
   containsDate, currentMonth, dateRange, dayRange, eachDate, lastNDays, lengthInDays, monthRange,
   nextPeriod, overlaps, periodContaining, previousPeriod, quarterRange, sameRangeLastYear,
-  weekRange, yearRange, yearToDate,
+  trailingRange, weekRange, yearRange, yearToDate,
 } from './range';
 
 const d = requirePlainDate;
@@ -263,5 +263,49 @@ describe('periodContaining', () => {
     const libre = dateRange(d('2026-08-01'), d('2026-08-10'), 'custom');
     // Un dedazo al importar: no tiene que devolver nada bueno, tiene que volver.
     expect(() => periodContaining(libre, d('1900-01-01'))).not.toThrow();
+  });
+});
+
+describe('trailingRange', () => {
+  it('la semana termina hoy y dura siete dias, no ocho', () => {
+    // 2026-09-01 es martes. Del miercoles anterior al martes: un dia de cada uno.
+    const r = trailingRange('week', d('2026-09-01'));
+    expect(r.start).toBe('2026-08-26');
+    expect(r.end).toBe('2026-09-01');
+    expect(lengthInDays(r)).toBe(7);
+  });
+
+  it('el mes termina hoy y no arrastra un dia de mas', () => {
+    const r = trailingRange('month', d('2026-09-01'));
+    expect(r.start).toBe('2026-08-02');
+    expect(r.end).toBe('2026-09-01');
+    expect(lengthInDays(r)).toBe(31);
+  });
+
+  it('el ano termina hoy', () => {
+    const r = trailingRange('year', d('2026-09-01'));
+    expect(r.start).toBe('2025-09-02');
+    expect(r.end).toBe('2026-09-01');
+    expect(lengthInDays(r)).toBe(365);
+  });
+
+  it('sale como rango de dias, asi que el anterior son los dias justo antes', () => {
+    const r = trailingRange('month', d('2026-09-01'));
+    expect(r.kind).toBe('days');
+    const previo = previousPeriod(r);
+    expect(previo.end).toBe('2026-08-01');
+    expect(lengthInDays(previo)).toBe(lengthInDays(r));
+  });
+
+  it('el mes se apoya en el fin de mes cuando el dia no existe atras', () => {
+    // No hay 31 de febrero: `addMonths` acota, y el rango sigue siendo valido.
+    const r = trailingRange('month', d('2026-03-30'));
+    expect(r.end).toBe('2026-03-30');
+    expect(r.start).toBe('2026-03-01');
+  });
+
+  it('cruza el ano sin despeinarse', () => {
+    const r = trailingRange('month', d('2026-01-10'));
+    expect(r.start).toBe('2025-12-11');
   });
 });

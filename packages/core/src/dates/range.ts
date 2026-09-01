@@ -85,6 +85,42 @@ export function lastNDays(count: number, reference: PlainDate = today()): DateRa
   return dateRange(addDays(reference, -(count - 1)), reference, 'days');
 }
 
+/** Las unidades que puede tener una ventana movil. */
+export type TrailingUnit = 'week' | 'month' | 'year';
+
+/**
+ * La ventana que **termina en la fecha dada** y dura exactamente una unidad:
+ * "desde hace un mes hasta hoy".
+ *
+ * No es lo mismo que el mes calendario y la diferencia es el punto: el 3 de
+ * septiembre, `currentMonth` muestra tres dias de datos y `trailingRange('month')`
+ * muestra el gasto de un mes entero. Para "¿cuanto llevo gastado?" la primera
+ * contesta casi nada durante la primera semana de cada mes.
+ *
+ * ## El dia de mas
+ *
+ * Se suma un dia al extremo de atras a proposito. Un rango cerrado en los dos
+ * extremos que fuera de `addMonths(fecha, -1)` a `fecha` duraria un mes **y un
+ * dia**, y en la semana se ve mejor: del lunes al lunes son ocho dias y dos
+ * lunes, que para un promedio por dia de la semana es un lunes de mas. Es la
+ * misma cuenta que hace `lastNDays`, que cubre la fecha y los `count - 1`
+ * anteriores.
+ *
+ * Sale con `kind: 'days'` --no 'month'-- porque eso es lo que es: un largo fijo
+ * en dias. De ahi cuelga que el periodo anterior sean los dias justo antes, que
+ * es contra lo que tiene sentido compararla.
+ */
+export function trailingRange(unit: TrailingUnit, reference: PlainDate = today()): DateRange {
+  const inicio = (() => {
+    switch (unit) {
+      case 'week': return addDays(reference, -6);
+      case 'month': return addDays(addMonths(reference, -1), 1);
+      case 'year': return addDays(addYears(reference, -1), 1);
+    }
+  })();
+  return dateRange(inicio, reference, 'days');
+}
+
 /** Del 1 de enero a la fecha de referencia. */
 export function yearToDate(reference: PlainDate = today()): DateRange {
   return dateRange(plainDate(year(reference), 1, 1), reference, 'ytd');
