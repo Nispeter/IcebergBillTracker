@@ -46,6 +46,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Ayuda } from './Ayuda';
 import { BarraDePeriodo } from './BarraDePeriodo';
+import { FueraDelPeriodo } from './FueraDelPeriodo';
 import { Pinguino } from './Pinguino';
 import { useAbrirBandeja } from './Bandeja';
 import { useCuentas } from '../datos/consultas';
@@ -117,14 +118,14 @@ export function Pantalla(
           {hayQueElegirCuenta ? (
             <Pressable
               onPress={abrirBandeja}
-              style={styles.boton}
+              style={styles.lateral}
               accessibilityRole="button"
               accessibilityLabel="Cambiar de cuenta"
               hitSlop={12}
             >
               <List size={18} weight="bold" color={theme.tinta} />
             </Pressable>
-          ) : <View style={styles.boton} />}
+          ) : <View style={styles.lateral} />}
 
           {sinPeriodo ? (
             <View style={styles.marcaFila}>
@@ -134,10 +135,18 @@ export function Pantalla(
           ) : (
             <>
               <View style={styles.periodo}><BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} /></View>
-              {/* Un hueco del ancho del menu, al otro lado. Sin el, el periodo se
+              {/* El hueco del ancho del menu, al otro lado. Sin el, el periodo se
                   centra en el espacio que sobra despues del boton y queda corrido
-                  media hamburguesa a la derecha. */}
-              <View style={styles.boton} />
+                  media hamburguesa a la derecha.
+
+                  Es tambien donde vive el aviso de "esto no es hoy": a la derecha
+                  del periodo, que es lo que el aviso califica, y ocupando un
+                  hueco que ya estaba reservado. `FueraDelPeriodo` no dibuja nada
+                  cuando se esta en el periodo actual, asi que el encabezado no se
+                  mueve al aparecer. */}
+              <View style={[styles.lateral, styles.lateralDerecho]}>
+                <FueraDelPeriodo theme={theme} />
+              </View>
             </>
           )}
         </View>
@@ -194,7 +203,17 @@ function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }, l
     periodo: { flex: 1, zIndex: capas.encabezado },
     marcaFila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xs, color: theme.tinta, letterSpacing: 3 },
-    boton: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+    /**
+     * Las dos columnas de los costados, del mismo ancho.
+     *
+     * Iguales para que el periodo quede centrado en la pantalla y no en lo que
+     * sobra: si el hueco de la derecha fuera del tamano de su contenido, el
+     * nombre del mes se correria solo en las pantallas donde aparece el aviso.
+     * El ancho lo pide el lado mas lleno --el `!` mas el circulo de volver-- y
+     * al otro le sobra, que no se nota porque ahi no hay nada dibujado.
+     */
+    lateral: { width: 44, height: 22, alignItems: 'flex-start', justifyContent: 'center' },
+    lateralDerecho: { alignItems: 'flex-end' },
     /**
      * Mas grande que un titulo de seccion y mas chico que una cifra.
      *
