@@ -17,7 +17,7 @@ import { ProveedorDeCuenta } from '../datos/cuenta';
 import { ProveedorDeExplicacion } from '../datos/explicacion';
 import { ProveedorDeLetra } from '../datos/letra';
 import { ProveedorDePeriodo } from '../datos/periodo';
-import { ProveedorDeTema, useTema } from '../datos/tema';
+import { ProveedorDeTema, TemaGuardado, useTema } from '../datos/tema';
 
 /**
  * Todo lo que se escribe entra desde abajo.
@@ -106,6 +106,9 @@ function Contenido() {
         {/* El tamano de letra sale de la base, asi que cuelga de ella. Lo de
             arriba --la pantalla de carga y la de error-- se dibuja con el
             tamano de siempre, que es todo lo que se puede hacer sin base. */}
+        {/* No dibuja nada: le pasa al proveedor de tema la eleccion guardada
+            en cuanto la base abre. Ver `datos/tema`. */}
+        <TemaGuardado />
         <ProveedorDeLetra>
         {/* Envuelve el resto para que el aviso de guardado se dibuje al final
             del arbol, encima de cualquier pantalla. Ver `datos/aviso.tsx`. */}
