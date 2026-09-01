@@ -82,6 +82,16 @@ export const CLAVE_PINGUINOS = 'pinguinos';
 export const CLAVE_ESCALA_DE_LETRA = 'escalaDeLetra';
 
 /**
+ * Si las explicaciones aparecen enteras de una vez.
+ *
+ * Vacio o ausente significa que no: el pinguino las cuenta de a un parrafo, que
+ * es lo que las hace sentir una conversacion en vez de un cartel. Quien ya se
+ * las sabe --o quien simplemente prefiere leer a su ritmo-- lo apaga aca y
+ * siempre las ve completas, sin tener que tocar la pantalla cada vez.
+ */
+export const CLAVE_EXPLICACION_DE_UNA = 'explicacionDeUna';
+
+/**
  * La frase con la que se cifra el archivo de la carpeta compartida.
  *
  * La app se la inventa la primera vez --ver `core/crypto/frase`-- para que el

@@ -22,7 +22,8 @@ import {
   consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
   consultaDeResumen, consultaDelPrimerDia, resumenDesde,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
-  CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_PINGUINOS, consultaDeAjuste,
+  CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_EXPLICACION_DE_UNA, CLAVE_PINGUINOS,
+  consultaDeAjuste, escribirAjuste,
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
@@ -249,6 +250,25 @@ export function usePinguinos(): number {
   // Se acota al leer y no solo al escribir: el valor pudo quedar de una version
   // con otros limites, y una pantalla no puede romperse por un ajuste viejo.
   return Math.min(PINGUINOS_MAXIMO, Math.max(PINGUINOS_MINIMO, Math.round(cuantos)));
+}
+
+/**
+ * Si las explicaciones se muestran enteras en vez de de a un parrafo.
+ *
+ * Devuelve tambien como cambiarlo: es un interruptor de dos estados y quien lo
+ * lee en la hoja de explicaciones y quien lo mueve en Ajustes son dos pantallas
+ * distintas, asi que el par viaja junto para que no haya dos formas de
+ * escribirlo.
+ */
+export function useExplicacionDeUna(): { deUna: boolean; cambiar: (valor: boolean) => void } {
+  const { db } = useDatos();
+  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_EXPLICACION_DE_UNA), [db]);
+  const { data } = useLiveQuery(consulta);
+
+  return {
+    deUna: (data?.[0]?.valor ?? '') === '1',
+    cambiar: (valor) => escribirAjuste(db, CLAVE_EXPLICACION_DE_UNA, valor ? '1' : ''),
+  };
 }
 
 /** Si un gasto de esa categoria cuenta como compromiso fijo. */
