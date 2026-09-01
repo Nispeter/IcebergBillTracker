@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Anteriores } from '../../components/Anteriores';
 import { BarraSegmentada } from '../../components/BarraSegmentada';
 import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
@@ -132,6 +133,9 @@ export default function Categorias() {
             })}
           </>
         ) : null}
+
+        {/* Al final y solo si el periodo esta vacio: ver `Anteriores`. */}
+        <Anteriores theme={theme} />
       </ScrollView>
 
       <Hoja

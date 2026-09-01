@@ -20,6 +20,7 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Anteriores } from '../../components/Anteriores';
 import { Ayuda } from '../../components/Ayuda';
 import { ConDesplegable } from '../../components/ConDesplegable';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
@@ -227,24 +228,30 @@ export default function Movimientos() {
             <Text style={styles.vacioTexto}>Ningún movimiento con esos filtros.</Text>
           </View>
         )}
-        ListFooterComponent={
-          hayMas ? (
-            <Pressable
-              onPress={() => setPagina(pagina + 1)}
-              style={styles.verMas}
-              accessibilityRole="button"
-              accessibilityLabel="Ver más movimientos"
-            >
-              <Text style={styles.verMasTexto}>
-                Ver más · {movimientos.length} de {resumen.cantidad}
+        ListFooterComponent={(
+          <>
+            {hayMas ? (
+              <Pressable
+                onPress={() => setPagina(pagina + 1)}
+                style={styles.verMas}
+                accessibilityRole="button"
+                accessibilityLabel="Ver más movimientos"
+              >
+                <Text style={styles.verMasTexto}>
+                  Ver más · {movimientos.length} de {resumen.cantidad}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.pie}>
+                {resumen.cantidad === 0 ? '' : `${resumen.cantidad} en total`}
               </Text>
-            </Pressable>
-          ) : (
-            <Text style={styles.pie}>
-              {resumen.cantidad === 0 ? '' : `${resumen.cantidad} en total`}
-            </Text>
-          )
-        }
+            )}
+            {/* En el pie y no en `ListEmptyComponent`: la lista puede quedar
+                vacia por los filtros, y ahi ofrecer otro periodo seria contestar
+                otra pregunta. `Anteriores` mira el periodo, no el filtro. */}
+            <Anteriores theme={theme} />
+          </>
+        )}
         // Al llegar al final se trae la tanda siguiente sola; el boton queda
         // para quien prefiera pedirla.
         onEndReached={() => { if (hayMas) setPagina((actual) => actual + 1); }}

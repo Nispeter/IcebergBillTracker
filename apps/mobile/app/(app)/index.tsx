@@ -34,6 +34,7 @@ import { Link } from 'expo-router';
 import { Info } from 'phosphor-react-native/src/icons/Info';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Anteriores } from '../../components/Anteriores';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
 import { Pinguino } from '../../components/Pinguino';
 import { PinguinosDelIceberg } from '../../components/PinguinoDelIceberg';
@@ -345,6 +346,9 @@ export default function Resumen() {
             <Text style={styles.verTodosTexto}>Ver todos</Text>
           </Pressable>
         </Link>
+
+        {/* Al final y solo si el periodo esta vacio: ver `Anteriores`. */}
+        <Anteriores theme={theme} />
       </ScrollView>
 
       <Hoja

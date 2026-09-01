@@ -13,6 +13,7 @@ import { analytics } from '@iceberg/core';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Anteriores } from '../../components/Anteriores';
 import { Calendario } from '../../components/Calendario';
 import { Ayuda } from '../../components/Ayuda';
 import { LineaDeSaldo } from '../../components/LineaDeSaldo';
@@ -165,6 +166,9 @@ export default function DiaADia() {
             valor={racha === 0 ? 'ninguna' : `${racha} ${racha === 1 ? 'día' : 'días'}`} />
           <Dato styles={styles} etiqueta="Promedio diario" valor={money.format(a.ritmo.promedioDiario)} />
         </Panel>
+
+        {/* Al final y solo si el periodo esta vacio: ver `Anteriores`. */}
+        <Anteriores theme={theme} />
       </ScrollView>
     </Pantalla>
   );
