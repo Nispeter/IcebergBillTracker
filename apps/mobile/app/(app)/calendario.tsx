@@ -27,8 +27,6 @@ import { useLetra } from '../../datos/letra';
 import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 
-const NOMBRES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
 export default function DiaADia() {
   const { theme } = useTema();
   const letra = useLetra();
@@ -53,8 +51,13 @@ export default function DiaADia() {
 
   const a = useAnalisisDeRango(rango, corte);
 
-  const porDiaDeSemana = useMemo(() => analytics.gastoPorDiaDeSemana(a.serie), [a.serie]);
-  const mayorPromedio = Math.max(...porDiaDeSemana.map((d) => d.promedio.amountMinor), 1);
+  const tandas = useMemo(() => analytics.finDeSemanaContraSemana(a.serie), [a.serie]);
+  const mayorTanda = Math.max(
+    tandas.finDeSemana.promedio.amountMinor, tandas.entreSemana.promedio.amountMinor, 1,
+  );
+  const cuantoPesan = useMemo(() => analytics.concentracion(a.serie), [a.serie]);
+  const diaNormal = useMemo(() => analytics.gastoDiarioTipico(a.serie), [a.serie]);
+  const sinGastar = useMemo(() => analytics.diasSinGastar(a.serie), [a.serie]);
   /**
    * La racha se mide solo entre lo que la app vivio.
    *
@@ -116,67 +119,93 @@ export default function DiaADia() {
         <LineaDeSaldo serie={serieDeSaldo} theme={theme} />
 
         <Titulo
-          texto="Por día de la semana"
+          texto="Cuándo pesa"
           theme={theme}
-          ayuda={'La barra y la cifra grande son el **promedio por vez** que cayó ese '
-            + 'día en el período. Se promedia porque un mes tiene cuatro o cinco de cada '
-            + 'uno, y sumar sin promediar haría ganar siempre al que se repitió más.\n\n'
-            + 'Debajo va cuántas veces cayó y cuánto suma en total: son los que dicen si '
-            + 'un promedio alto es un hábito o una sola compra grande.\n\n'
-            + 'El día marcado es el de mayor promedio.'}
+          ayuda={'Se compara por **promedio diario** y no por total: un mes tiene cinco '
+            + 'veces más días entre semana que de fin de semana, así que el total le '
+            + 'daría ventaja a la semana solo por existir más veces.\n\n'
+            + 'Los **días más caros** dicen algo que el total no: dos meses que gastaron '
+            + 'lo mismo no se parecen en nada si en uno el grueso se fue en tres días y '
+            + 'en el otro en goteo. El primero se arregla mirando tres decisiones; el '
+            + 'segundo, cambiando un hábito.'}
         />
 
         {/*
-          Cada fila dice tres cosas y no una.
-          El promedio solo no se puede interpretar: 142.400 un miercoles puede ser
-          cinco miercoles parecidos o uno solo con el arriendo. El total y las
-          veces son lo que distingue un habito de una casualidad, y el analisis ya
-          los calculaba --`gastoPorDiaDeSemana` devuelve `total` y `cantidad`--;
-          la pantalla simplemente los tiraba a la basura.
+          Dos barras y no siete filas.
+
+          La tabla por dia de la semana decia lo mismo repartido en siete
+          renglones, y por eso no decia nada: para leerla habia que promediar de
+          cabeza mientras se miraba. La pregunta que uno tiene de verdad es si el
+          fin de semana sale caro, y esa se contesta con dos numeros.
         */}
-        {porDiaDeSemana.map((fila) => {
-          const parte = fila.promedio.amountMinor / mayorPromedio;
-          const esElMayor = fila.promedio.amountMinor === mayorPromedio && mayorPromedio > 1;
-          return (
-            <View key={fila.dia} style={styles.diaSemana}>
-              <View style={styles.filaSemana}>
-                <Text style={esElMayor ? styles.nombreDiaMayor : styles.nombreDia}>
-                  {NOMBRES[fila.dia - 1]}
-                </Text>
-                <View style={styles.pista}>
-                  <View style={[
-                    styles.relleno,
-                    esElMayor && styles.rellenoMayor,
-                    { flex: Math.max(parte, 0.001) },
-                  ]} />
-                  <View style={{ flex: Math.max(1 - parte, 0.001) }} />
+        <View style={styles.tandas}>
+          {([
+            ['Entre semana', tandas.entreSemana],
+            ['Fin de semana', tandas.finDeSemana],
+          ] as const).map(([nombre, tanda]) => {
+            const parte = tanda.promedio.amountMinor / mayorTanda;
+            const esLaCara = tanda.promedio.amountMinor === mayorTanda && mayorTanda > 1;
+            return (
+              <View key={nombre} style={styles.tanda}>
+                <View style={styles.filaSemana}>
+                  <Text style={esLaCara ? styles.nombreDiaMayor : styles.nombreDia}>{nombre}</Text>
+                  <View style={styles.pista}>
+                    <View style={[
+                      styles.relleno,
+                      esLaCara && styles.rellenoMayor,
+                      { flex: Math.max(parte, 0.001) },
+                    ]} />
+                    <View style={{ flex: Math.max(1 - parte, 0.001) }} />
+                  </View>
+                  <Text style={styles.montoDia}>{money.formatNumber(tanda.promedio)}</Text>
                 </View>
-                <Text style={styles.montoDia}>{money.formatNumber(fila.promedio)}</Text>
+                <Text style={styles.detalleDia}>
+                  {tanda.dias === 0
+                    ? 'no hubo ninguno en este período'
+                    : `por día · ${money.format(tanda.total)} en ${tanda.dias} días`}
+                </Text>
               </View>
-              <Text style={styles.detalleDia}>
-                {fila.cantidad === 0
-                  ? 'no cayó ninguno en este período'
-                  : `${fila.cantidad} ${fila.cantidad === 1 ? 'vez' : 'veces'}`
-                    + ` · ${money.format(fila.total)} en total`}
-              </Text>
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
+
+        {/* Solo si hay con que: sin gasto, "el 0 % se fue en 0 dias" no es un
+            dato, es una division por cero disfrazada. */}
+        {cuantoPesan.dias.length === 0 ? null : (
+          <View style={styles.concentracion}>
+            <Text style={styles.concentracionCifra}>
+              {Math.round(cuantoPesan.parte * 100)}%
+            </Text>
+            <Text style={styles.concentracionTexto}>
+              del gasto del período se fue en
+              {cuantoPesan.dias.length === 1 ? ' un solo día' : ` ${cuantoPesan.dias.length} días`}
+              {': '}
+              {cuantoPesan.dias.map((dia) => dates.formatDate(dia.fecha).slice(0, 5)).join(', ')}
+            </Text>
+          </View>
+        )}
 
         <Titulo
           texto="Detalle del período"
           theme={theme}
-          ayuda={'La **racha sin gastar** son los días seguidos sin un solo gasto. Se cuenta '
+          ayuda={'El **día normal** es la mediana de los días en que gastaste algo, no el '
+            + 'promedio de todos. Las dos decisiones apuntan a lo mismo: el promedio de un '
+            + 'mes con arriendo está tirado por un solo día, y meter los días en cero lo '
+            + 'tira para el otro lado. Lo que queda es contra lo que uno compara cuando se '
+            + 'pregunta si hoy gastó mucho.\n\n'
+            + 'La **racha sin gastar** son los días seguidos sin un solo gasto. Se cuenta '
             + 'desde que empezaste a anotar y hasta hoy: los días anteriores al primer '
             + 'movimiento están vacíos porque no hay datos, no porque no se haya gastado, y '
             + 'los que todavía no llegan no han pasado.'}
         />
         <Panel theme={theme}>
+          <Dato styles={styles} etiqueta="Día normal" valor={money.format(diaNormal)} />
           <Dato styles={styles} etiqueta="Día más caro"
             valor={masCaro === null ? '—' : `${money.format(masCaro.gasto)}`} />
+          <Dato styles={styles} etiqueta="Días sin gastar"
+            valor={`${sinGastar} de ${a.serie.length}`} />
           <Dato styles={styles} etiqueta="Racha sin gastar"
             valor={racha === 0 ? 'ninguna' : `${racha} ${racha === 1 ? 'día' : 'días'}`} />
-          <Dato styles={styles} etiqueta="Promedio diario" valor={money.format(a.ritmo.promedioDiario)} />
         </Panel>
 
         {/* Al final y solo si el periodo esta vacio: ver `Anteriores`. */}
@@ -212,14 +241,38 @@ function crearEstilos(theme: Theme, letra: Letra) {
 
     // Elevada para que la burbuja de la ayuda tape lo que viene debajo.
 
-    diaSemana: { paddingVertical: 5 },
+    tandas: { gap: spacing.xs },
+    tanda: { paddingVertical: 5 },
     filaSemana: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    nombreDia: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
+    /**
+     * La cifra grande de la concentracion.
+     *
+     * Es el unico numero de la pantalla que no es plata, y por eso puede ser
+     * grande sin competir con los montos: se lee como un titular y la frase de
+     * al lado lo explica.
+     */
+    concentracion: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.md },
+    concentracionCifra: {
+      fontFamily: fonts.mono,
+      fontWeight: pesos.medium,
+      fontSize: letra.xl,
+      color: theme.acentoTexto,
+      letterSpacing: -0.5,
+    },
+    concentracionTexto: {
+      flex: 1,
+      fontFamily: fonts.texto,
+      fontWeight: pesos.regular,
+      fontSize: letra.xs,
+      lineHeight: letra.px(17),
+      color: theme.silencio,
+    },
+    nombreDia: { width: 96, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
     // El dia mas caro se marca: es lo que uno viene a buscar a este grafico.
-    nombreDiaMayor: { width: 72, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
+    nombreDiaMayor: { width: 96, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
     rellenoMayor: { backgroundColor: theme.acento },
     detalleDia: {
-      marginLeft: 72 + spacing.sm,
+      marginLeft: 96 + spacing.sm,
       fontFamily: fonts.texto,
       fontWeight: pesos.regular,
       fontSize: letra.px(10),
