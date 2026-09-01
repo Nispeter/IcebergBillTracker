@@ -5,7 +5,7 @@
  * calendario: que dia de la semana pesa mas y cuanto se aguanta sin gastar.
  */
 
-import { money } from '@iceberg/core';
+import { dates, money } from '@iceberg/core';
 import {
   charts, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
@@ -34,7 +34,19 @@ export default function DiaADia() {
   const letra = useLetra();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
-  const { rango, corte, tipo } = usePeriodo();
+  const { rango, corte } = usePeriodo();
+  /**
+   * Se mide el rango, no el tipo.
+   *
+   * Antes preguntaba `tipo === 'year'`, y eso dejaba pasar todo lo demas que
+   * tambien es largo: un rango libre de seis meses, o el "último año", que dura
+   * lo mismo que un ano pero no se llama asi. Lo que no entra en la grilla es el
+   * largo, no el nombre.
+   *
+   * El tope son unas nueve semanas: dos meses seguidos todavia se leen, y de ahi
+   * en adelante la celda baja de los treinta pixeles y el monto no entra.
+   */
+  const cabeEnLaGrilla = dates.lengthInDays(rango) <= 70;
   const router = useRouter();
   const hoy = useHoy();
   const primerDia = usePrimerDia();
@@ -76,9 +88,9 @@ export default function DiaADia() {
             + 'Tocar un día lleva al listado de sus movimientos.'}
         />
 
-        {tipo === 'year' ? (
+        {!cabeEnLaGrilla ? (
           <Text style={styles.aviso}>
-            El calendario se ve por día, semana o mes. Un año son 365 celdas de tres píxeles.
+            El calendario se ve hasta dos meses. Un año son 365 celdas de tres píxeles.
           </Text>
         ) : (
           /*
