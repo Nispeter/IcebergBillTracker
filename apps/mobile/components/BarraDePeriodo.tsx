@@ -20,6 +20,7 @@ import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useLetra } from '../datos/letra';
 import { TIPOS, nombreDePeriodo, usePeriodo, type TipoDePeriodo } from '../datos/periodo';
 import { ConDesplegable } from './ConDesplegable';
@@ -104,7 +105,19 @@ export function BarraDePeriodo(
       abierto={abierto}
       disparador={barra}
       panel={(
-        <View style={styles.panel}>
+        /*
+          Desplazable, y no por gusto: los tipos pasaron de cinco a ocho al
+          entrar los moviles, y con el rango libre abierto el panel pide unos
+          390 px. `ConDesplegable` le pone un `maxHeight` con lo que quede de
+          pantalla, asi que en un telefono chico el resto quedaba cortado y sin
+          forma de alcanzarlo. Es el mismo agujero que ya habia tapado la lista
+          de categorias, en otro envase.
+
+          El `ScrollView` de gesture-handler, no el de React Native: el panel
+          vive dentro del scroll de la pantalla y el nativo le cede el gesto al
+          de afuera. Ver `SelectorDesplegable`.
+        */
+        <ScrollView style={styles.panel} nestedScrollEnabled>
           {TIPOS.map((t, indice) => {
             const activo = t.valor === periodo.tipo;
             return (
@@ -173,7 +186,7 @@ export function BarraDePeriodo(
               <Text style={styles.opcionTexto}>Volver a hoy</Text>
             </Pressable>
           ) : null}
-        </View>
+        </ScrollView>
       )}
     />
   );

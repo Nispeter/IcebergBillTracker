@@ -14,9 +14,42 @@ import { dates } from '@iceberg/core';
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useHoy } from './hoy';
 
-export type TipoDePeriodo = 'day' | 'week' | 'month' | 'year' | 'custom';
+/**
+ * Los periodos son de dos familias, y la diferencia importa mas de lo que
+ * parece.
+ *
+ * Los **de calendario** --dia, semana, mes, ano-- son los cajones en que viene
+ * partido el tiempo. Los **moviles** --`lastWeek`, `lastMonth`, `lastYear`--
+ * terminan siempre en el dia que se este mirando y duran una unidad hacia atras.
+ *
+ * El mes calendario tiene un problema que el movil no: el dia 2 de cada mes
+ * muestra el gasto de dos dias. La cifra es correcta y no sirve para nada --no
+ * hay con que compararla-- y encima la pantalla parece vacia justo cuando uno
+ * abre la app a ver como viene el mes. Por eso el que arranca puesto es
+ * `lastMonth`: contesta "cuanto llevo gastado" todos los dias del ano igual.
+ */
+export type TipoDePeriodo =
+  | 'lastWeek' | 'lastMonth' | 'lastYear'
+  | 'day' | 'week' | 'month' | 'year'
+  | 'custom';
 
+/** Los moviles: terminan en la fecha mirada en vez de en el borde del cajon. */
+const RODANTES: Partial<Record<TipoDePeriodo, dates.TrailingUnit>> = {
+  lastWeek: 'week',
+  lastMonth: 'month',
+  lastYear: 'year',
+};
+
+function unidadRodante(tipo: TipoDePeriodo): dates.TrailingUnit | undefined {
+  return RODANTES[tipo];
+}
+
+// Los moviles primero: uno de ellos es el que viene puesto, y ademas es lo que
+// se elige mas seguido. Dentro de cada familia, de corto a largo.
 export const TIPOS: readonly { valor: TipoDePeriodo; etiqueta: string }[] = [
+  { valor: 'lastWeek', etiqueta: 'Última semana' },
+  { valor: 'lastMonth', etiqueta: 'Último mes' },
+  { valor: 'lastYear', etiqueta: 'Último año' },
   { valor: 'day', etiqueta: 'Día' },
   { valor: 'week', etiqueta: 'Semana' },
   { valor: 'month', etiqueta: 'Mes' },
@@ -60,13 +93,22 @@ export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate
    * proyecciones, que si tienen que saber hasta donde hay datos.
    */
   const hoy = useHoy();
-  const [tipo, setTipo] = useState<TipoDePeriodo>('month');
+  const [tipo, setTipo] = useState<TipoDePeriodo>('lastMonth');
   const [referencia, setReferencia] = useState<dates.PlainDate | null>(null);
   const [libre, setLibre] = useState<dates.DateRange | null>(null);
 
-  // Mientras nadie navegue, la referencia sigue a hoy: la app abre en el
-  // periodo actual y cruza sola la medianoche --y el fin de mes-- porque
-  // `useHoy` redibuja cuando el dia cambia.
+  /**
+   * La fecha en la que el periodo se apoya.
+   *
+   * Mientras nadie navegue sigue a hoy: la app abre en el periodo actual y cruza
+   * sola la medianoche --y el fin de mes-- porque `useHoy` redibuja cuando el
+   * dia cambia.
+   *
+   * Ojo con **donde** se apoya cada familia: un periodo de calendario se ancla
+   * en su comienzo --el mes que contiene esta fecha-- y uno movil en su final
+   * --el mes que termina en esta fecha--. Es la razon de que navegar tenga que
+   * distinguirlas.
+   */
   const actual = referencia ?? hoy;
 
   const rango = useMemo(() => {
@@ -77,13 +119,40 @@ export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate
         dates.startOfMonth(actual), dates.endOfMonth(actual), 'custom',
       );
     }
+    const rodante = unidadRodante(tipo);
+    if (rodante !== undefined) return dates.trailingRange(rodante, actual);
+
     switch (tipo) {
       case 'day': return dates.dayRange(actual);
       case 'week': return dates.weekRange(actual);
       case 'month': return dates.currentMonth(actual);
       case 'year': return dates.yearRange(dates.year(actual));
+      default: return dates.currentMonth(actual);
     }
   }, [tipo, actual, libre]);
+
+  /**
+   * Un paso hacia atras o hacia adelante.
+   *
+   * Los periodos de calendario se mueven de cajon en cajon, que es lo que hace
+   * `previousPeriod`. Los moviles corren **su ancla** una unidad: la ventana
+   * sigue durando un mes y ahora termina un mes antes. Pasarlos por
+   * `previousPeriod` los correria su propio largo en dias, que da casi lo mismo
+   * pero se desalinea al cabo de unos meses --los meses no miden todos igual--
+   * y dejaria "hace tres meses" cayendo en un dia que no es el mismo.
+   */
+  function correr(pasos: number) {
+    const rodante = unidadRodante(tipo);
+    if (rodante !== undefined) {
+      setReferencia(rodante === 'week' ? dates.addDays(actual, 7 * pasos)
+        : rodante === 'month' ? dates.addMonths(actual, pasos)
+          : dates.addYears(actual, pasos));
+      return;
+    }
+    const destino = pasos < 0 ? dates.previousPeriod(rango) : dates.nextPeriod(rango);
+    if (tipo === 'custom') setLibre(destino);
+    setReferencia(destino.start);
+  }
 
   const valor = useMemo<ValorDelPeriodo>(() => ({
     tipo,
@@ -108,18 +177,23 @@ export function ProveedorDePeriodo({ corte, children }: { corte: dates.PlainDate
       setLibre(dates.dateRange(desde, hasta, 'custom'));
       setReferencia(desde);
     },
-    anterior: () => {
-      const previo = dates.previousPeriod(rango);
-      if (tipo === 'custom') setLibre(previo);
-      setReferencia(previo.start);
-    },
-    siguiente: () => {
-      const proximo = dates.nextPeriod(rango);
-      if (tipo === 'custom') setLibre(proximo);
-      setReferencia(proximo.start);
-    },
+    anterior: () => correr(-1),
+    siguiente: () => correr(1),
     alDia: () => { setReferencia(null); setLibre(null); },
-    irAlDia: (fecha) => { setReferencia(fecha); setLibre(null); },
+    /**
+     * Se para en el periodo que contiene la fecha, sea de la familia que sea.
+     *
+     * Recibe una fecha y no un rango porque quien llama --la lista de periodos
+     * anteriores-- tiene la fecha de un movimiento, y traducirla al ancla
+     * correcta es justo lo que aca se sabe hacer y afuera no: para un mes de
+     * calendario el ancla es el comienzo y para uno movil es el final.
+     */
+    irAlDia: (fecha) => {
+      const destino = dates.periodContaining(rango, fecha);
+      if (tipo === 'custom') { setLibre(destino); setReferencia(destino.start); return; }
+      setLibre(null);
+      setReferencia(unidadRodante(tipo) === undefined ? destino.start : destino.end);
+    },
   }), [tipo, rango, corte, actual, hoy]);
 
   return <ContextoDePeriodo.Provider value={valor}>{children}</ContextoDePeriodo.Provider>;
@@ -148,6 +222,21 @@ export function nombreDePeriodo(tipo: TipoDePeriodo, rango: dates.DateRange): st
   const dia = (fecha: dates.PlainDate) => `${dates.day(fecha)} ${CORTOS[dates.month(fecha) - 1]}`;
 
   const crudo = (() => {
+    /*
+      Los moviles se escriben con sus dos fechas, igual que el rango libre.
+
+      Podrian decir "Último mes" y ser mas cortos, pero eso solo es cierto
+      mientras la ventana termine hoy: en cuanto se toca la flecha hacia atras
+      la etiqueta mentiria. Las fechas son ciertas en los dos casos y ademas
+      contestan sin abrir nada la pregunta de que abarca. Cual esta elegido lo
+      dice el visto en la lista de tipos.
+    */
+    if (tipo === 'lastWeek' || tipo === 'lastMonth' || tipo === 'lastYear') {
+      return dates.year(rango.start) === dates.year(rango.end)
+        ? `${dia(rango.start)} — ${dia(rango.end)}`
+        : `${dates.formatDate(rango.start)} — ${dates.formatDate(rango.end)}`;
+    }
+
     switch (tipo) {
       case 'day':
         return dates.formatDateLong(rango.start);
@@ -159,7 +248,7 @@ export function nombreDePeriodo(tipo: TipoDePeriodo, rango: dates.DateRange): st
         return `${MESES[dates.month(rango.start) - 1]} ${dates.year(rango.start)}`;
       case 'year':
         return String(dates.year(rango.start));
-      case 'custom':
+      default:
         return dates.year(rango.start) === dates.year(rango.end)
           ? `${dia(rango.start)} — ${dia(rango.end)}`
           : `${dates.formatDate(rango.start)} — ${dates.formatDate(rango.end)}`;
