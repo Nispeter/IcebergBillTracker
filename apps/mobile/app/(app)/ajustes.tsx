@@ -33,7 +33,7 @@ import { useAireInferior } from '../../datos/desplazamiento';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
-  PINGUINOS_MAXIMO, PINGUINOS_MINIMO, useCuentas, useExplicacionDeUna, useLotes, useMiembros,
+  PINGUINOS_MAXIMO, PINGUINOS_MINIMO, useCuentas, useExplicacionDeAPoco, useLotes, useMiembros,
   useMovimientos, usePinguinos, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
 import { useCategorias } from '../../datos/catalogo';
@@ -47,10 +47,10 @@ import { useFraseDeCifrado } from '../../datos/cifrado';
 import { useCambiarEscala, useLetra } from '../../datos/letra';
 import { sincronizarCarpeta } from '../../datos/sincronizar';
 import { cargarSemilla } from '../../datos/semilla';
-import { useTema } from '../../datos/tema';
+import { useCambiarTema, useTema } from '../../datos/tema';
 
 export default function Ajustes() {
-  const { nombre: tema, theme, alternar } = useTema();
+  const { nombre: tema, theme } = useTema();
   const aireInferior = useAireInferior();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const comprometidas = useComprometidas();
@@ -96,7 +96,8 @@ export default function Ajustes() {
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const pinguinos = usePinguinos();
   const cambiarEscala = useCambiarEscala();
-  const explicaciones = useExplicacionDeUna();
+  const explicaciones = useExplicacionDeAPoco();
+  const cambiarTema = useCambiarTema();
 
   const vacia = movimientos.length === 0;
 
@@ -256,20 +257,20 @@ export default function Ajustes() {
           ayuda={'Los pingüinos acompañan al iceberg del Resumen: saltan sobre el hielo '
             + 'cuando la mayor parte del gasto es variable y nadan en el mar cuando es '
             + 'poca. De uno a seis, y no hacen nada más que estar ahí.\n\n'
-            + 'Deshielo es el tema claro y Noche polar el oscuro. Por ahora la elección '
-            + 'dura hasta que cierres la app: al volver a abrirla arranca en Noche polar.'
+            + 'Deshielo es el tema claro y Noche polar el oscuro. Mientras no elijas '
+            + 'ninguno, la app sigue al teléfono.'
             + '\n\n'
-            + 'El **tamaño de letra** sí se queda guardado, y vale para toda la app: '
-            + 'cuatro pasos, de Chica a Enorme.'
+            + 'El **tamaño de letra** vale para toda la app: cuatro pasos, de Chica a '
+            + 'Enorme.'
             + '\n\n'
-            + 'Las **explicaciones** son las que abre la i: el pingüino las cuenta de a '
-            + 'un párrafo, y tocando la hoja aparecen todas de golpe. Si prefieres que '
-            + 'salgan enteras siempre, cámbialo aquí.'}
+            + 'Las **explicaciones** son las que abre la i. Salen enteras; si las pones '
+            + 'de a poco, el pingüino te las cuenta de a un párrafo y tocando la hoja '
+            + 'aparecen todas de golpe.'}
         />
         <View style={styles.fila}>
           <Text style={styles.etiqueta}>Tema</Text>
           <Pressable
-            onPress={alternar}
+            onPress={() => cambiarTema(tema === 'dark' ? 'light' : 'dark')}
             style={styles.boton}
             accessibilityRole="button"
             accessibilityLabel={`Cambiar a tema ${tema === 'dark' ? 'claro' : 'oscuro'}`}
@@ -359,15 +360,15 @@ export default function Ajustes() {
         <View style={styles.fila}>
           <Text style={styles.etiqueta}>Explicaciones</Text>
           <Pressable
-            onPress={() => explicaciones.cambiar(!explicaciones.deUna)}
+            onPress={() => explicaciones.cambiar(!explicaciones.deAPoco)}
             style={styles.boton}
             accessibilityRole="button"
-            accessibilityLabel={explicaciones.deUna
-              ? 'Las explicaciones salen enteras. Tocar para que el pingüino las cuente de a poco'
-              : 'El pingüino cuenta las explicaciones de a poco. Tocar para verlas enteras'}
+            accessibilityLabel={explicaciones.deAPoco
+              ? 'El pingüino cuenta las explicaciones de a poco. Tocar para verlas enteras'
+              : 'Las explicaciones salen enteras. Tocar para que el pingüino las cuente de a poco'}
           >
             <Text style={styles.botonTexto}>
-              {explicaciones.deUna ? 'Todas de una' : 'De a poco'}
+              {explicaciones.deAPoco ? 'De a poco' : 'Todas de una'}
             </Text>
           </Pressable>
         </View>
@@ -593,8 +594,6 @@ export default function Ajustes() {
             + '4. Esa persona lo pega en "Unirme a otro hogar".\n\n'
             + 'De ahí en adelante Syncthing mueve la carpeta sola, y a ustedes solo les '
             + 'queda tocar Sincronizar para ponerse al día.\n\n'
-            + '**Google Drive no sirve**: deja elegir sus carpetas, pero no que otras '
-            + 'apps escriban en ellas.\n\n'
             + 'Sincronizar nunca borra nada. Si el mismo movimiento se editó en los dos '
             + 'teléfonos, gana la edición más nueva.\n\n'
             + 'Las cuentas marcadas como no compartidas no viajan, así que tampoco '
