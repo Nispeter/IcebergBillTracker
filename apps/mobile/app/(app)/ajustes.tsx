@@ -253,6 +253,7 @@ export default function Ajustes() {
         <Seccion
           styles={styles}
           theme={theme}
+          primera
           titulo="Apariencia"
           ayuda={'Los pingüinos acompañan al iceberg del Resumen: saltan sobre el hielo '
             + 'cuando la mayor parte del gasto es variable y nadan en el mar cuando es '
@@ -874,29 +875,33 @@ export default function Ajustes() {
           titulo="Datos"
           ayuda={'Cuánto hay guardado en este teléfono. El saldo sale del saldo inicial de '
             + 'las cuentas más todo lo que entró menos todo lo que salió, y por eso no '
-            + 'cuadra con el banco si no pusiste el saldo inicial.'}
+            + 'cuadra con el banco si no pusiste el saldo inicial.\n\n'
+            + 'La base arranca vacía, con una cuenta y nada más. Los datos de prueba se '
+            + 'cargan desde "Empezar de cero" cuando quieras verlos, y se borran igual de '
+            + 'fácil.'}
         />
         <Panel theme={theme}>
           <Dato styles={styles} etiqueta="Movimientos" valor={String(movimientos.length)} />
           <Dato styles={styles} etiqueta="Cuentas" valor={String(cuentas.length)} />
           <Dato styles={styles} etiqueta="Saldo" valor={money.format(saldo)} />
         </Panel>
-        <Text style={styles.nota}>
-          La base arranca vacía, con una cuenta y nada más. Los datos de prueba se cargan
-          desde aquí cuando quieras verlos, y se borran igual de fácil.
-        </Text>
 
         <Seccion
           styles={styles}
           theme={theme}
           titulo="Este dispositivo"
           ayuda={'Se crean una sola vez y no cambian. Cada movimiento guarda desde qué '
-            + 'dispositivo se escribió, que es lo que hace posible el modo hogar.'}
+            + 'dispositivo se escribió, que es lo que permite ver de quién viene cada '
+            + 'versión al sincronizar.\n\n'
+            + 'Se muestran solo las últimas letras, que es lo único que los distingue: los '
+            + 'tres se crearon en el mismo instante y llevan la hora adentro, así que '
+            + 'empiezan igual. El código de hogar completo —el que se comparte— está en '
+            + 'Sincronizar.'}
         />
         <Panel theme={theme}>
-          <Dato styles={styles} etiqueta="Dispositivo" valor={identidad.dispositivo ?? '—'} mono />
-          <Dato styles={styles} etiqueta="Hogar" valor={identidad.hogar ?? '—'} mono />
-          <Dato styles={styles} etiqueta="Miembro" valor={identidad.miembro ?? '—'} mono />
+          <Dato styles={styles} etiqueta="Dispositivo" valor={cola(identidad.dispositivo)} mono />
+          <Dato styles={styles} etiqueta="Hogar" valor={cola(identidad.hogar)} mono />
+          <Dato styles={styles} etiqueta="Miembro" valor={cola(identidad.miembro)} mono />
         </Panel>
 
         <Seccion
@@ -962,6 +967,22 @@ export default function Ajustes() {
   );
 }
 
+/**
+ * Las ultimas letras de un identificador.
+ *
+ * Son ULID: los primeros diez caracteres son la hora en que se creo, y los tres
+ * de este telefono se crearon en el mismo instante, asi que **empiezan igual**.
+ * Mostrarlos enteros llenaba el panel con veintiseis caracteres por fila de los
+ * cuales los primeros nueve eran identicos entre las tres, y al recortarlos por
+ * la derecha en una pantalla angosta se perdia justamente la parte que cambia.
+ *
+ * El de hogar completo sigue estando donde se usa: en Sincronizar, con su boton
+ * de compartir.
+ */
+function cola(id: string | null): string {
+  return id === null || id === '' ? '—' : '…' + id.slice(-6);
+}
+
 /** Como se lee cada tipo de cuenta en pantalla. */
 const TIPOS_DE_CUENTA_LEGIBLES: Record<string, string> = {
   corriente: 'Corriente',
@@ -982,12 +1003,29 @@ type Estilos = ReturnType<typeof crearEstilos>;
  * siguen estando y no ocupan.
  */
 function Seccion(
-  { styles, theme, titulo, ayuda }:
-  { styles: Estilos; theme: Theme; titulo: string; ayuda?: string },
+  { styles, theme, titulo, ayuda, primera }:
+  { styles: Estilos; theme: Theme; titulo: string; ayuda?: string; primera?: boolean },
 ) {
-  // La regla horizontal se fue: once secciones eran once lineas que solo decian
-  // donde empieza cada una, nunca donde termina. Ver `components/Titulo.tsx`.
-  return <Titulo texto={titulo} ayuda={ayuda} theme={theme} estilo={styles.seccion} />;
+  /*
+    Con linea, al reves que el resto de la app.
+
+    Ajustes son diez secciones seguidas y todas se ven igual --etiquetas a la
+    izquierda, controles a la derecha-- asi que el aire solo no alcanza para
+    decir donde termina una y empieza la otra: al desplazar, la pantalla es una
+    lista larga sin junturas. Donde el contenido ya forma bloques por su cuenta
+    --el Resumen, el Dia a dia-- la linea sobra. Ver `components/Titulo.tsx`.
+
+    La primera no lleva: no hay nada arriba que cerrar.
+  */
+  return (
+    <Titulo
+      texto={titulo}
+      ayuda={ayuda}
+      theme={theme}
+      estilo={styles.seccion}
+      separado={primera !== true}
+    />
+  );
 }
 
 function Dato(
