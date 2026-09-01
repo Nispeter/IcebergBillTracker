@@ -33,6 +33,18 @@
  * Es la misma falla que tenia el desplegable de categorias, en otro envase:
  * contenido que se pasa de la pantalla sin ningun camino para llegar a el. Ver
  * `ConDesplegable`.
+ *
+ * ## Y el scroll necesita un techo
+ *
+ * `BottomSheetScrollView` solo desplaza si la hoja tiene un alto que respetar.
+ * Con dimensionado dinamico y sin tope, la hoja **crece con su contenido hasta
+ * pasarse de la pantalla**: la ayuda de Sincronizar son ocho parrafos y el
+ * titulo terminaba dibujado debajo del reloj, con el ultimo parrafo fuera por
+ * abajo y nada que desplazar, porque para la hoja no sobraba nada.
+ *
+ * `maxDynamicContentSize` es ese techo. Se calcula con la ventana en vez de
+ * fijarlo: un plegable y un telefono chico no tienen el mismo alto, y la franja
+ * de estado tampoco mide igual en todos.
  */
 
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -41,7 +53,7 @@ import {
 } from '@iceberg/ui';
 import { X } from 'phosphor-react-native/src/icons/X';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLetra } from '../datos/letra';
 
@@ -59,7 +71,16 @@ export function Hoja(
   // empiezan los botones o la barra de gestos de Android, que los tapan. Cuanto
   // miden lo sabe el sistema, no nosotros.
   const insets = useSafeAreaInsets();
+  const ventana = useWindowDimensions();
   const letra = useLetra();
+  /**
+   * Hasta donde puede crecer la hoja.
+   *
+   * Se le descuenta la franja de estado y un respiro. El respiro no es
+   * decorativo: deja ver un poco de la pantalla de atras, que es lo que dice
+   * que esto es una hoja encima de algo y no una pantalla nueva.
+   */
+  const techo = ventana.height - insets.top - spacing.xxxl;
   const styles = crearEstilos(theme, insets.bottom, letra);
   const hoja = useRef<BottomSheet>(null);
   const [montada, setMontada] = useState(false);
@@ -97,6 +118,7 @@ export function Hoja(
       // El boton flotante lleva `zIndex` propio y la hoja no llevaba ninguno,
       // asi que el `+` le quedaba encima: un elemento con capa explicita le gana
       // a cualquier hermano sin ella, por mas tarde que venga en el arbol.
+      maxDynamicContentSize={techo}
       containerStyle={styles.capa}
       backgroundStyle={styles.fondo}
       handleIndicatorStyle={styles.tirador}
