@@ -118,6 +118,23 @@ const PICO_ABIERTO = 'translate(32,32) scale(0.9,1.7) translate(-32,-32)';
 const SILABA_MINIMA = 90;
 const SILABA_MAXIMA = 210;
 
+/**
+ * El pestaneo.
+ *
+ * Es el gesto mas barato que existe para que un dibujo deje de parecer un icono:
+ * no cambia de pose, no se mueve de lugar, y sin embargo un pinguino que
+ * pestanea se lee como alguien que esta ahi. Dura lo que dura uno de verdad
+ * --poco mas de un decimo de segundo-- porque uno lento se lee como sueno.
+ *
+ * El rato entre pestaneos es al azar y largo, por lo mismo que las silabas: a
+ * intervalo fijo se convierte en un tic. Y **cada pinguino tiene el suyo**, que
+ * es lo que importa en el Resumen: seis parados sobre el hielo pestaneando a la
+ * vez darian miedo; desfasados, el hielo parece habitado.
+ */
+const PESTANEO = 130;
+const ENTRE_PESTANEOS_MINIMO = 2600;
+const ENTRE_PESTANEOS_MAXIMO = 7000;
+
 export function Pinguino(
   { theme, tamano = 20, estado = 'normal', hablando = false }:
   {
@@ -130,6 +147,41 @@ export function Pinguino(
 ) {
   const alto = (tamano / ANCHO) * ALTO;
   const [picoAbierto, setPicoAbierto] = useState(false);
+  const [pestaneando, setPestaneando] = useState(false);
+
+  /**
+   * Solo pestanea el que tiene los ojos abiertos.
+   *
+   * `dormido` los tiene cerrados y `contento` son dos arcos que se leen como
+   * sonrisa: en los dos casos un pestaneo no tendria nada que cerrar. `alerta`
+   * si pestanea --son las mismas pupilas con cejas encima-- y de hecho ahi
+   * ayuda: lo que pide atencion conviene que se vea vivo.
+   */
+  const puedePestanear = estado === 'normal' || estado === 'alerta';
+
+  useEffect(() => {
+    if (!puedePestanear) { setPestaneando(false); return undefined; }
+
+    let siguiente: ReturnType<typeof setTimeout>;
+    let abrir: ReturnType<typeof setTimeout>;
+    let vivo = true;
+    const esperar = () => {
+      const rato = ENTRE_PESTANEOS_MINIMO
+        + Math.random() * (ENTRE_PESTANEOS_MAXIMO - ENTRE_PESTANEOS_MINIMO);
+      siguiente = setTimeout(() => {
+        if (!vivo) return;
+        setPestaneando(true);
+        abrir = setTimeout(() => {
+          if (!vivo) return;
+          setPestaneando(false);
+          esperar();
+        }, PESTANEO);
+      }, rato);
+    };
+    esperar();
+
+    return () => { vivo = false; clearTimeout(siguiente); clearTimeout(abrir); setPestaneando(false); };
+  }, [puedePestanear]);
 
   useEffect(() => {
     if (!hablando) { setPicoAbierto(false); return undefined; }
@@ -164,7 +216,9 @@ export function Pinguino(
       <Path d={CUERPO} fill={theme.pinguinoCuerpo} />
       <Path d={PANZA} fill={theme.pinguinoPanza} />
 
-      {estado === 'dormido' ? (
+      {estado === 'dormido' || pestaneando ? (
+        // El pestaneo reusa los ojos de `dormido`: cerrar los ojos es cerrar
+        // los ojos, y no hacia falta un tercer par de trazos para decirlo.
         <>
           <Path d={OJO_DORMIDO_IZQUIERDO} {...linea} />
           <Path d={OJO_DORMIDO_DERECHO} {...linea} />
