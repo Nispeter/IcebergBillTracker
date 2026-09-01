@@ -4,6 +4,7 @@ import type { MovimientoAnalizable } from './movimiento';
 import {
   concentracion, diaDeMayorGasto, diasSinGastar, finDeSemanaContraSemana, gastoDiarioTipico,
   gastoPorDiaDeSemana, rachaMasLargaSinGasto, saldoAcumulado, seriePorDia,
+  type DiaDeLaSerie,
 } from './series';
 import { money } from '../money/index';
 
@@ -215,17 +216,25 @@ describe('saldoAcumulado', () => {
   });
 });
 
+/** Un dia de la serie, para las pruebas. Ver `DiaDeLaSerie`. */
+const dia = (fecha: string, monto: number): DiaDeLaSerie => ({
+  fecha: requirePlainDate(fecha),
+  gasto: money(monto, 'CLP'),
+  ingreso: money(0, 'CLP'),
+  cantidad: monto === 0 ? 0 : 1,
+});
+
 describe('finDeSemanaContraSemana', () => {
   it('parte la serie en sabado-domingo y el resto', () => {
     // Lunes a domingo: 1000 cada dia entre semana, 5000 el sabado y el domingo.
     const serie = [
-      { fecha: requirePlainDate('2026-08-31'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-01'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-02'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-03'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-04'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-05'), gasto: money(5000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-06'), gasto: money(5000, 'CLP'), ingreso: money(0, 'CLP') },
+      dia('2026-08-31', 1000),
+      dia('2026-09-01', 1000),
+      dia('2026-09-02', 1000),
+      dia('2026-09-03', 1000),
+      dia('2026-09-04', 1000),
+      dia('2026-09-05', 5000),
+      dia('2026-09-06', 5000),
     ];
     const r = finDeSemanaContraSemana(serie);
     expect(r.entreSemana.dias).toBe(5);
@@ -244,13 +253,13 @@ describe('finDeSemanaContraSemana', () => {
     // Cinco dias de 1000 entre semana suman mas que dos de 2000, y aun asi el
     // fin de semana es el caro por dia.
     const serie = [
-      { fecha: requirePlainDate('2026-08-31'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-01'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-02'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-03'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-04'), gasto: money(1000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-05'), gasto: money(2000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-09-06'), gasto: money(2000, 'CLP'), ingreso: money(0, 'CLP') },
+      dia('2026-08-31', 1000),
+      dia('2026-09-01', 1000),
+      dia('2026-09-02', 1000),
+      dia('2026-09-03', 1000),
+      dia('2026-09-04', 1000),
+      dia('2026-09-05', 2000),
+      dia('2026-09-06', 2000),
     ];
     const r = finDeSemanaContraSemana(serie);
     expect(r.entreSemana.total.amountMinor).toBeGreaterThan(r.finDeSemana.total.amountMinor);
@@ -260,11 +269,11 @@ describe('finDeSemanaContraSemana', () => {
 
 describe('concentracion', () => {
   const serie = [
-    { fecha: requirePlainDate('2026-08-01'), gasto: money(70_000, 'CLP'), ingreso: money(0, 'CLP') },
-    { fecha: requirePlainDate('2026-08-02'), gasto: money(0, 'CLP'), ingreso: money(0, 'CLP') },
-    { fecha: requirePlainDate('2026-08-03'), gasto: money(20_000, 'CLP'), ingreso: money(0, 'CLP') },
-    { fecha: requirePlainDate('2026-08-04'), gasto: money(5_000, 'CLP'), ingreso: money(0, 'CLP') },
-    { fecha: requirePlainDate('2026-08-05'), gasto: money(5_000, 'CLP'), ingreso: money(0, 'CLP') },
+    dia('2026-08-01', 70_000),
+    dia('2026-08-02', 0),
+    dia('2026-08-03', 20_000),
+    dia('2026-08-04', 5_000),
+    dia('2026-08-05', 5_000),
   ];
 
   it('devuelve los mas caros y que parte del total son', () => {
@@ -281,7 +290,7 @@ describe('concentracion', () => {
 
   it('sin gasto no inventa una fraccion', () => {
     const vacia = [
-      { fecha: requirePlainDate('2026-08-01'), gasto: money(0, 'CLP'), ingreso: money(0, 'CLP') },
+      dia('2026-08-01', 0),
     ];
     expect(concentracion(vacia).parte).toBe(0);
     expect(concentracion(vacia).dias).toHaveLength(0);
@@ -291,11 +300,11 @@ describe('concentracion', () => {
 describe('gastoDiarioTipico', () => {
   it('es la mediana de los dias con gasto, no el promedio de todos', () => {
     const serie = [
-      { fecha: requirePlainDate('2026-08-01'), gasto: money(490_000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-08-02'), gasto: money(0, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-08-03'), gasto: money(10_000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-08-04'), gasto: money(12_000, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-08-05'), gasto: money(14_000, 'CLP'), ingreso: money(0, 'CLP') },
+      dia('2026-08-01', 490_000),
+      dia('2026-08-02', 0),
+      dia('2026-08-03', 10_000),
+      dia('2026-08-04', 12_000),
+      dia('2026-08-05', 14_000),
     ];
     // El promedio de los cinco dias seria 105.200, tironeado por el arriendo.
     // La mediana de los cuatro con gasto --10, 12, 14 y 490 mil-- son 13.000.
@@ -310,9 +319,9 @@ describe('gastoDiarioTipico', () => {
 describe('diasSinGastar', () => {
   it('cuenta los dias en cero', () => {
     const serie = [
-      { fecha: requirePlainDate('2026-08-01'), gasto: money(1, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-08-02'), gasto: money(0, 'CLP'), ingreso: money(0, 'CLP') },
-      { fecha: requirePlainDate('2026-08-03'), gasto: money(0, 'CLP'), ingreso: money(0, 'CLP') },
+      dia('2026-08-01', 1),
+      dia('2026-08-02', 0),
+      dia('2026-08-03', 0),
     ];
     expect(diasSinGastar(serie)).toBe(2);
   });
