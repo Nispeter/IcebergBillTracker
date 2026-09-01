@@ -34,7 +34,8 @@
  */
 
 import type { Theme } from '@iceberg/ui';
-import Svg, { Circle, Path } from 'react-native-svg';
+import { useEffect, useState } from 'react';
+import Svg, { Circle, G, Path } from 'react-native-svg';
 
 /**
  * En qué anda el pingüino.
@@ -92,11 +93,63 @@ const TRAZO = 2.5;
 /** Pico: redondeado y chico, entre los ojos y un poco más abajo. */
 const PICO = 'M32,32 C36,32 40,35 40,38 C40,42 36,45 32,45 C28,45 24,42 24,38 C24,35 28,32 32,32 Z';
 
+/**
+ * El pico abierto es el mismo pico, estirado hacia abajo.
+ *
+ * No hay un segundo dibujo: se escala el que ya esta, anclado en su borde de
+ * arriba --el punto (32, 32), donde nace-- asi que crece hacia la panza como
+ * una boca que se abre y no como un pico que se infla. De paso se angosta un
+ * poco, que es lo que hace un pico de verdad al abrirse.
+ *
+ * En SVG plano y no con `Animated`: el driver nativo no mueve props de SVG, asi
+ * que la alternativa era animar por JS igual. Dos fotogramas alternados leen
+ * como habla desde que existen los dibujos animados, y cuestan un `setTimeout`.
+ */
+const PICO_ABIERTO = 'translate(32,32) scale(0.9,1.7) translate(-32,-32)';
+
+/**
+ * Cuanto dura cada fotograma del habla, en milisegundos.
+ *
+ * Al azar dentro del rango a proposito. Con un intervalo fijo el pico late como
+ * un metronomo y se lee como una maquina; el habla de verdad es irregular, y
+ * bastan unas decimas de diferencia entre silaba y silaba para que el ojo lo
+ * compre.
+ */
+const SILABA_MINIMA = 90;
+const SILABA_MAXIMA = 210;
+
 export function Pinguino(
-  { theme, tamano = 20, estado = 'normal' }:
-  { theme: Theme; tamano?: number; estado?: EstadoDelPinguino },
+  { theme, tamano = 20, estado = 'normal', hablando = false }:
+  {
+    theme: Theme;
+    tamano?: number;
+    estado?: EstadoDelPinguino;
+    /** Mueve el pico mientras sea verdadero. Ver `PICO_ABIERTO`. */
+    hablando?: boolean;
+  },
 ) {
   const alto = (tamano / ANCHO) * ALTO;
+  const [picoAbierto, setPicoAbierto] = useState(false);
+
+  useEffect(() => {
+    if (!hablando) { setPicoAbierto(false); return undefined; }
+
+    let siguiente: ReturnType<typeof setTimeout>;
+    let vivo = true;
+    const silaba = () => {
+      if (!vivo) return;
+      setPicoAbierto((abierto) => !abierto);
+      siguiente = setTimeout(
+        silaba,
+        SILABA_MINIMA + Math.random() * (SILABA_MAXIMA - SILABA_MINIMA),
+      );
+    };
+    silaba();
+
+    // Cerrar el pico al desmontar importa: si no, el ultimo fotograma queda
+    // congelado con la boca abierta y el pinguino parece atragantado.
+    return () => { vivo = false; clearTimeout(siguiente); setPicoAbierto(false); };
+  }, [hablando]);
   const linea = {
     stroke: theme.pinguinoCuerpo,
     strokeWidth: TRAZO,
@@ -135,7 +188,13 @@ export function Pinguino(
         </>
       ) : null}
 
-      <Path d={PICO} fill={theme.pinguinoPico} />
+      {picoAbierto ? (
+        <G transform={PICO_ABIERTO}>
+          <Path d={PICO} fill={theme.pinguinoPico} />
+        </G>
+      ) : (
+        <Path d={PICO} fill={theme.pinguinoPico} />
+      )}
     </Svg>
   );
 }

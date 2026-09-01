@@ -44,26 +44,14 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLetra } from '../datos/letra';
-import { Pinguino } from './Pinguino';
 
 export function Hoja(
-  { abierta, titulo, theme, onCerrar, conPinguino, children }:
+  { abierta, titulo, theme, onCerrar, children }:
   {
     abierta: boolean;
     titulo: string;
     theme: Theme;
     onCerrar: () => void;
-    /**
-     * Pone al pinguino al lado del titulo, como quien esta hablando.
-     *
-     * Es opcional y no automatico porque esta hoja hace dos trabajos distintos.
-     * Cuando **explica** --las que abre la `i`-- hay alguien contandote algo, y
-     * ponerle cara a ese alguien es lo que cambia el tono: deja de ser un cartel
-     * del sistema y pasa a ser el pinguino de la app respondiendo lo que
-     * preguntaste. Cuando **muestra datos** --el detalle de una cifra-- no hay
-     * nadie hablando: los numeros son tuyos y el pinguino ahi seria un adorno.
-     */
-    conPinguino?: boolean;
     children: ReactNode;
   },
 ) {
@@ -127,10 +115,6 @@ export function Hoja(
           de catorce puntos no tiene.
         */}
         <View style={styles.encabezado}>
-          {/* Antes del titulo: se lee "el pinguino dice: <titulo>", que es el
-              orden en que se cuenta. Va en `normal` --los estados cambian solo
-              los ojos-- porque explicar no es una noticia buena ni mala. */}
-          {conPinguino !== true ? null : <Pinguino theme={theme} tamano={26} />}
           <Text style={styles.titulo}>{titulo}</Text>
           <Pressable
             onPress={() => hoja.current?.close()}
@@ -172,9 +156,7 @@ function crearEstilos(theme: Theme, aireDelSistema: number, letra: Letra) {
     },
     // El titulo se lleva el ancho que sobra para que la X quede contra el
     // borde aunque el titulo sea corto.
-    // `sm` y no `md`: el pinguino tiene que quedar pegado al titulo, como parte
-    // de la misma frase. Con el aire de la X se leerian como tres piezas sueltas.
-    encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
     titulo: {
       flex: 1,
       fontFamily: fonts.texto,
