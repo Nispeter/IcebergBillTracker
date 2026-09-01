@@ -14,14 +14,28 @@
  * cuando dijo que prefiere como muestra la informacion la `i` del saldo.
  */
 
-import { fonts, pesos, trozosConEnfasis, type Letra, type Theme } from '@iceberg/ui';
+import { fonts, pesos, radii, spacing, trozosConEnfasis, type Letra, type Theme } from '@iceberg/ui';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { Hoja } from '../components/Hoja';
 import { useLetra } from './letra';
 
+/**
+ * Lo que se puede hacer desde la explicacion, si hay algo que hacer.
+ *
+ * Casi ninguna lo lleva: una definicion se lee y se cierra. Lo lleva la que
+ * avisa que estas parado en otro periodo, porque ahi la explicacion y el arreglo
+ * son la misma frase --"no estas en septiembre" / "volver a septiembre"-- y
+ * obligar a cerrar la hoja para despues buscar el boton seria pedir dos pasos
+ * para una sola decision.
+ */
+export interface AccionDeExplicacion {
+  readonly etiqueta: string;
+  alTocar(): void;
+}
+
 /** Muestra una explicacion. El titulo es el de la seccion que la pidio. */
-type Explicar = (titulo: string, texto: string) => void;
+type Explicar = (titulo: string, texto: string, accion?: AccionDeExplicacion) => void;
 
 const Contexto = createContext<Explicar>(() => {});
 
@@ -30,11 +44,16 @@ export function useExplicar(): Explicar {
 }
 
 export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; children: ReactNode }) {
-  const [abierta, setAbierta] = useState<{ titulo: string; texto: string } | null>(null);
+  const [abierta, setAbierta] = useState<
+    { titulo: string; texto: string; accion?: AccionDeExplicacion } | null
+  >(null);
   const letra = useLetra();
   const styles = crearEstilos(theme, letra);
 
-  const explicar = useCallback<Explicar>((titulo, texto) => setAbierta({ titulo, texto }), []);
+  const explicar = useCallback<Explicar>(
+    (titulo, texto, accion) => setAbierta({ titulo, texto, accion }),
+    [],
+  );
 
   return (
     <Contexto.Provider value={explicar}>
@@ -63,6 +82,19 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
             </Text>
           ))}
         </Text>
+
+        {/* Cierra sola: lo que la hoja explicaba deja de ser cierto en cuanto se
+            toca el boton, asi que dejarla abierta mostraria una frase vieja. */}
+        {abierta?.accion === undefined ? null : (
+          <Pressable
+            onPress={() => { abierta.accion?.alTocar(); setAbierta(null); }}
+            style={styles.accion}
+            accessibilityRole="button"
+            accessibilityLabel={abierta.accion.etiqueta}
+          >
+            <Text style={styles.accionTexto}>{abierta.accion.etiqueta}</Text>
+          </Pressable>
+        )}
       </Hoja>
     </Contexto.Provider>
   );
@@ -80,5 +112,18 @@ function crearEstilos(theme: Theme, letra: Letra) {
     // Solo el peso: cambiar ademas el color haria que el enfasis pareciera un
     // enlace, y en una hoja de ayuda no hay a donde ir.
     fuerte: { fontWeight: pesos.semibold },
+    accion: {
+      marginTop: spacing.lg,
+      paddingVertical: spacing.md,
+      alignItems: 'center',
+      borderRadius: radii.sm,
+      backgroundColor: theme.acento,
+    },
+    accionTexto: {
+      fontFamily: fonts.texto,
+      fontWeight: pesos.semibold,
+      fontSize: letra.sm,
+      color: theme.sobreAcento,
+    },
   });
 }

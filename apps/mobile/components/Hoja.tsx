@@ -39,8 +39,9 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom
 import {
   ALTO_DE_LA_BARRA, capas, elevation, fonts, pesos, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
+import { X } from 'phosphor-react-native/src/icons/X';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLetra } from '../datos/letra';
 
@@ -101,7 +102,29 @@ export function Hoja(
       handleIndicatorStyle={styles.tirador}
     >
       <BottomSheetScrollView contentContainerStyle={styles.contenido}>
-        <Text style={styles.titulo}>{titulo}</Text>
+        {/*
+          La X, al otro extremo del titulo.
+
+          Cerrar ya se podia de tres maneras --deslizar hacia abajo, tocar el
+          velo, el boton de atras de Android-- y ninguna esta escrita en la
+          pantalla: hay que saberlas. La X es la que se ve, y en una hoja que a
+          veces cubre media pantalla el gesto no siempre es evidente.
+
+          Pegada al borde derecho y no separada del titulo: el pulgar la busca
+          en la esquina, no en el medio. El `hitSlop` le da el area que el icono
+          de catorce puntos no tiene.
+        */}
+        <View style={styles.encabezado}>
+          <Text style={styles.titulo}>{titulo}</Text>
+          <Pressable
+            onPress={() => hoja.current?.close()}
+            hitSlop={14}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+          >
+            <X size={16} weight="bold" color={theme.silencio} />
+          </Pressable>
+        </View>
         <View style={styles.linea} />
         {children}
       </BottomSheetScrollView>
@@ -131,7 +154,16 @@ function crearEstilos(theme: Theme, aireDelSistema: number, letra: Letra) {
       width: '100%',
       alignSelf: 'center',
     },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.tinta },
+    // El titulo se lleva el ancho que sobra para que la X quede contra el
+    // borde aunque el titulo sea corto.
+    encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    titulo: {
+      flex: 1,
+      fontFamily: fonts.texto,
+      fontWeight: pesos.semibold,
+      fontSize: letra.md,
+      color: theme.tinta,
+    },
     linea: { height: elevation.hairlineWidth, backgroundColor: theme.hairline, marginBottom: spacing.xs },
   });
 }
