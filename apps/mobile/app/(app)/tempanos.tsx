@@ -10,7 +10,7 @@
  * informacion de la pantalla sobre la que hay que hacer algo hoy.
  */
 
-import { money, recurrence } from '@iceberg/core';
+import { dates, money, recurrence } from '@iceberg/core';
 import {
   crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
 } from '@iceberg/db';
@@ -40,6 +40,9 @@ import { useCategorias } from '../../datos/catalogo';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
+/** Cuanto se asoma la seccion de proximos mas alla del periodo. */
+const DIAS_ADELANTE = 90;
+
 export default function Tempanos() {
   const { theme } = useTema();
   const letra = useLetra();
@@ -51,6 +54,25 @@ export default function Tempanos() {
   const avisar = useAvisar();
 
   const tempanos = useTempanos(rango, corte);
+  /**
+   * Lo que viene **despues** del periodo que se esta mirando.
+   *
+   * Tempanos es la unica vista que mira hacia adelante, pero solo veia hasta el
+   * borde del mes: el 28 de agosto la pantalla decia "todo al dia" y el arriendo
+   * del 5 estaba a ocho dias. Que la cuenta exista y no se vea es justo lo que
+   * esta pantalla vino a evitar.
+   *
+   * Noventa dias y no "todo lo que venga": las reglas se repiten para siempre,
+   * asi que sin tope la lista es infinita. Tres meses es lo que alcanza a
+   * cambiar una decision de hoy.
+   */
+  const proximos = useTempanos(
+    useMemo(
+      () => dates.dateRange(dates.addDays(rango.end, 1), dates.addDays(rango.end, DIAS_ADELANTE)),
+      [rango.end],
+    ),
+    corte,
+  ).filter((t) => t.estado === 'pendiente');
   // Encontradas en el historial: es lo que evita tener que cargar a mano el
   // arriendo, la luz y el agua antes de que la pantalla sirva para algo.
   const candidatas = useCandidatasARegla(corte);
@@ -79,40 +101,46 @@ export default function Tempanos() {
       >
         <View style={styles.cabecera}>
           <View style={styles.total}>
-            <Text style={styles.totalEtiqueta}>por pagar</Text>
+            {/* La `i` va pegada a "por pagar", que es lo que explica. Estaba al
+                otro extremo de la fila, y ahi competia con el + por el mismo
+                rincon: dos iconos juntos, uno ambar y uno gris, obligaban a leer
+                cual era cual. */}
+            <View style={styles.etiquetaConAyuda}>
+              <Text style={styles.totalEtiqueta}>por pagar</Text>
+              <Ayuda
+                titulo="Por pagar"
+                theme={theme}
+                texto={'Cada fila es una fecha concreta, no la cuenta entera. Marcar pagada crea '
+                  + 'el movimiento; omitir no crea nada. Las dos se pueden deshacer.\n\n'
+                  + 'El + de arriba agrega una cuenta que se repite: arriendo, luz, una '
+                  + 'suscripción.'}
+              />
+            </View>
             <Text style={styles.totalCifra}>{money.format(porPagar)}</Text>
           </View>
-          {/*
-            El mas, arriba y a la vista.
 
-            Estaba al final de la lista, en un renglon de diez puntos alineado a
-            la derecha: para agregar una cuenta habia que **scrollear hasta el
-            fondo** y despues encontrar el texto mas chico de la pantalla. Aca
-            arriba se ve al entrar y no se mueve con el largo de la lista.
+          {/*
+            El unico + de la pantalla, y arriba.
+
+            Habia dos --este y un boton al final de la lista-- que hacian lo
+            mismo. Dos caminos al mismo formulario no es el doble de descubrible:
+            es una pregunta de mas ("¿son distintos?") cada vez que se mira la
+            pantalla. Queda el de arriba, que se ve al entrar y no se mueve con
+            el largo de la lista.
 
             No compite con el mas de la barra de abajo --que es el de anotar un
             movimiento-- porque este vive dentro de la vista y al lado de su
             propia cifra: lo que se agrega desde aca es una cuenta que se repite.
           */}
-          <View style={styles.accionesDeCabecera}>
-            <Link href="/regla/nueva" asChild>
-              <Pressable
-                style={styles.mas}
-                accessibilityRole="button"
-                accessibilityLabel="Nueva cuenta periódica"
-              >
-                <Plus size={20} weight="bold" color={theme.sobreAcento} />
-              </Pressable>
-            </Link>
-            <Ayuda
-              titulo="Por pagar"
-              theme={theme}
-              texto={'Cada fila es una fecha concreta, no la cuenta entera. Marcar pagada crea '
-                + 'el movimiento; omitir no crea nada. Las dos se pueden deshacer.\n\n'
-                + 'El + de arriba agrega una cuenta que se repite: arriendo, luz, una '
-                + 'suscripción.'}
-            />
-          </View>
+          <Link href="/regla/nueva" asChild>
+            <Pressable
+              style={styles.mas}
+              accessibilityRole="button"
+              accessibilityLabel="Nueva cuenta periódica"
+            >
+              <Plus size={20} weight="bold" color={theme.sobreAcento} />
+            </Pressable>
+          </Link>
         </View>
 
         {/*
@@ -158,6 +186,31 @@ export default function Tempanos() {
           ))
         )}
 
+        {proximos.length > 0 ? (
+          <>
+            <Titulo
+              texto="Próximos"
+              theme={theme}
+              ayuda={'Lo que vence **después** de este período, hasta tres meses adelante.\n\n'
+                + 'Está acá porque el borde del mes no es el borde de tus cuentas: el 28 de '
+                + 'agosto, el arriendo del 5 ya es asunto tuyo.\n\n'
+                + 'Se pueden marcar igual que las de arriba, por si pagas una antes de tiempo.'}
+            />
+
+            {proximos.map((tempano) => (
+              <Fila
+                key={`${tempano.regla.id}|${tempano.ocurreEn}`}
+                tempano={tempano}
+                styles={styles}
+                theme={theme}
+                onPagar={() => marcarPagada(db, contexto, tempano.regla.id, tempano.ocurreEn)}
+                onOmitir={() => marcarOmitida(db, contexto, tempano.regla.id, tempano.ocurreEn)}
+                onDeshacer={() => desmarcar(db, contexto, tempano.regla.id, tempano.ocurreEn)}
+              />
+            ))}
+          </>
+        ) : null}
+
         {candidatas.length > 0 ? (
           <>
             <Titulo
@@ -192,15 +245,6 @@ export default function Tempanos() {
             ))}
           </>
         ) : null}
-
-        {/* El mismo destino que el + de arriba, dicho con todas sus letras: al
-            terminar de leer la lista, es donde cae la mano. */}
-        <Link href="/regla/nueva" asChild>
-          <Pressable style={styles.agregar} accessibilityRole="button">
-            <Plus size={16} weight="bold" color={theme.acentoTexto} />
-            <Text style={styles.agregarTexto}>Nueva cuenta periódica</Text>
-          </Pressable>
-        </Link>
       </ScrollView>
     </Pantalla>
   );
@@ -366,7 +410,7 @@ function crearEstilos(theme: Theme, letra: Letra) {
       zIndex: 20,
     },
     total: { gap: 1 },
-    accionesDeCabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    etiquetaConAyuda: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
     /**
      * Redondo y relleno con el acento: es la unica accion de la pantalla que
      * crea algo, y el resto de los botones de aca son de 26 px y con contorno.
@@ -426,19 +470,5 @@ function crearEstilos(theme: Theme, letra: Letra) {
       backgroundColor: theme.acento,
     },
     crearChicoTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
-    // Un boton de verdad y no un renglon suelto: era el texto mas chico de la
-    // pantalla, en diez puntos y contra el borde derecho.
-    agregar: {
-      marginTop: spacing.lg,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.md,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    agregarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.acentoTexto },
   });
 }
