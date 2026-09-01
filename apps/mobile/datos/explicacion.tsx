@@ -65,6 +65,7 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
         titulo={abierta?.titulo ?? ''}
         theme={theme}
         onCerrar={() => setAbierta(null)}
+        conPinguino
       >
         {/*
           Un solo `Text` con los trozos adentro, no uno por trozo: anidados
