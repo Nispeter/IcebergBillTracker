@@ -8,7 +8,7 @@ const fijo = (...bytes: number[]) => () => Uint8Array.from(bytes);
 describe('generarFrase', () => {
   it('arma cuatro palabras y un numero de tres cifras', () => {
     const frase = generarFrase(fijo(0, 1, 2, 3, 0, 0));
-    expect(frase).toBe('agua-aire-ala-alba-100');
+    expect(frase).toBe('gato-gata-minino-michi-100');
   });
 
   it('el mismo azar da la misma frase', () => {
@@ -21,6 +21,14 @@ describe('generarFrase', () => {
     const numero = Number(frase.split('-').at(-1));
     expect(numero).toBeGreaterThanOrEqual(100);
     expect(numero).toBeLessThanOrEqual(999);
+  });
+
+  it('la lista es de gatos y de videojuegos, que es lo que se dicta mejor', () => {
+    const palabras = new Set(
+      Array.from({ length: 200 }, () => generarFrase()).flatMap((f) => f.split('-').slice(0, 4)),
+    );
+    expect(palabras.has('michi') || palabras.has('ronroneo') || palabras.has('bigote')).toBe(true);
+    expect(palabras.has('kirby') || palabras.has('tetris') || palabras.has('zelda')).toBe(true);
   });
 
   it('se escribe sin tildes ni mayusculas: la copia el otro telefono a mano', () => {

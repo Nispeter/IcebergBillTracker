@@ -34,27 +34,34 @@
 import { randomBytes } from '@noble/ciphers/utils.js';
 
 /**
- * Ciento veintiocho palabras cortas, sin tildes y sin parejas que se confundan
- * al dictarlas. Son 2^7 exactas: 128 divide a 256, asi que elegir una por byte
- * no le da mas probabilidad a las primeras.
+ * Ciento veintiocho palabras cortas: sesenta y cuatro de gatos y sesenta y
+ * cuatro de videojuegos.
+ *
+ * El tema no es decorativo. La frase hay que **dictarla**, y una palabra que a
+ * uno le hace gracia se retiene el rato que dura pasarsela a la otra persona;
+ * `fiordo-galeon-quilla-282` no. Que sean dos mundos distintos ayuda ademas a
+ * que la frase se recuerde por lo que dice y no por como suena.
+ *
+ * Sin tildes y sin ñ, que es la regla de arriba. Son 2^7 exactas: 128 divide a
+ * 256, asi que elegir una por byte no le da mas probabilidad a las primeras.
  */
 const PALABRAS = [
-  'agua', 'aire', 'ala', 'alba', 'alga', 'ancla', 'anillo', 'arbol',
-  'arena', 'aroma', 'arpa', 'astro', 'atlas', 'aula', 'ave', 'azul',
-  'bahia', 'balsa', 'banco', 'barco', 'brisa', 'bruma', 'buque', 'buzo',
-  'cabo', 'calma', 'campo', 'cardo', 'cauce', 'cedro', 'cielo', 'cima',
-  'circo', 'clavo', 'cobre', 'coral', 'coro', 'corte', 'costa', 'cresta',
-  'cueva', 'dado', 'delta', 'dique', 'disco', 'duna', 'eco', 'faro',
-  'fiordo', 'flor', 'foca', 'fresa', 'fuego', 'fuente', 'galeon', 'ganso',
-  'gaviota', 'gema', 'glaciar', 'globo', 'grieta', 'gruta', 'hebra', 'helecho',
-  'hielo', 'hoja', 'horno', 'huerto', 'humo', 'isla', 'jarra', 'joya',
-  'kayak', 'lago', 'lampara', 'lanza', 'lava', 'leon', 'lienzo', 'lima',
-  'llave', 'lluvia', 'luna', 'malva', 'mapa', 'marea', 'mirlo', 'monte',
-  'morsa', 'musgo', 'nave', 'niebla', 'nieve', 'nido', 'norte', 'nube',
-  'oasis', 'olmo', 'onda', 'orca', 'orilla', 'oso', 'pampa', 'panal',
-  'perla', 'pico', 'pino', 'pluma', 'polvo', 'puerto', 'quilla', 'rama',
-  'remo', 'rio', 'roble', 'roca', 'sal', 'sauce', 'selva', 'sombra',
-  'sur', 'trigo', 'tunel', 'valle', 'vela', 'viento', 'zarza', 'zorro',
+  'gato', 'gata', 'minino', 'michi', 'felino', 'bigote', 'garra', 'zarpa',
+  'cola', 'pelaje', 'maullido', 'ronroneo', 'lengua', 'hocico', 'colmillo', 'pupila',
+  'siames', 'persa', 'bengala', 'angora', 'atigrado', 'calico', 'montes', 'lince',
+  'tigre', 'puma', 'jaguar', 'ocelote', 'gatera', 'rascador', 'arenero', 'croqueta',
+  'pescado', 'leche', 'lana', 'ovillo', 'cascabel', 'collar', 'canasto', 'caja',
+  'ventana', 'tejado', 'siesta', 'bostezo', 'acecho', 'cazador', 'nocturno', 'huella',
+  'pata', 'patita', 'oreja', 'lomo', 'panza', 'mimo', 'trepar', 'amasar',
+  'lamer', 'roedor', 'ceja', 'manta', 'caricia', 'sofa', 'regazo', 'ladrillo',
+  'mario', 'luigi', 'peach', 'bowser', 'yoshi', 'zelda', 'link', 'hyrule',
+  'ganon', 'samus', 'metroid', 'kirby', 'pikachu', 'pokemon', 'eevee', 'sonic',
+  'tails', 'tetris', 'pacman', 'donkey', 'arcade', 'joystick', 'gamepad', 'consola',
+  'cartucho', 'pixel', 'sprite', 'nivel', 'jefe', 'combo', 'respawn', 'speedrun',
+  'glitch', 'avatar', 'mando', 'palanca', 'pantalla', 'puntaje', 'partida', 'ronda',
+  'torneo', 'jugador', 'vida', 'moneda', 'estrella', 'hongo', 'tubo', 'castillo',
+  'mazmorra', 'espada', 'escudo', 'elixir', 'cofre', 'portal', 'misil', 'rayo',
+  'nave', 'mapa', 'llave', 'sigilo', 'dado', 'ficha', 'tablero', 'comodin',
 ] as const;
 
 /** Cuantas palabras lleva una frase. */
@@ -64,7 +71,7 @@ const CUANTAS = 4;
 export const SEPARADOR_DE_FRASE = '-';
 
 /**
- * Inventa una frase: `nieve-glaciar-orca-puerto-482`.
+ * Inventa una frase: `bigote-kirby-siesta-tetris-482`.
  *
  * `azar` se puede pasar para probarla; en la app viene de `@noble`, que en el
  * telefono se apoya en el `getRandomValues` que instala `datos/aleatorio`.
