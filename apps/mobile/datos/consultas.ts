@@ -22,7 +22,7 @@ import {
   consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
   consultaDeResumen, consultaDelPrimerDia, resumenDesde,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
-  CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_EXPLICACION_DE_UNA, CLAVE_PINGUINOS,
+  CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_EXPLICACION_DE_A_POCO, CLAVE_PINGUINOS,
   consultaDeAjuste, escribirAjuste,
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
@@ -253,21 +253,21 @@ export function usePinguinos(): number {
 }
 
 /**
- * Si las explicaciones se muestran enteras en vez de de a un parrafo.
+ * Si el pinguino cuenta las explicaciones de a un parrafo.
  *
  * Devuelve tambien como cambiarlo: es un interruptor de dos estados y quien lo
  * lee en la hoja de explicaciones y quien lo mueve en Ajustes son dos pantallas
  * distintas, asi que el par viaja junto para que no haya dos formas de
  * escribirlo.
  */
-export function useExplicacionDeUna(): { deUna: boolean; cambiar: (valor: boolean) => void } {
+export function useExplicacionDeAPoco(): { deAPoco: boolean; cambiar: (valor: boolean) => void } {
   const { db } = useDatos();
-  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_EXPLICACION_DE_UNA), [db]);
+  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_EXPLICACION_DE_A_POCO), [db]);
   const { data } = useLiveQuery(consulta);
 
   return {
-    deUna: (data?.[0]?.valor ?? '') === '1',
-    cambiar: (valor) => escribirAjuste(db, CLAVE_EXPLICACION_DE_UNA, valor ? '1' : ''),
+    deAPoco: (data?.[0]?.valor ?? '') === '1',
+    cambiar: (valor) => escribirAjuste(db, CLAVE_EXPLICACION_DE_A_POCO, valor ? '1' : ''),
   };
 }
 

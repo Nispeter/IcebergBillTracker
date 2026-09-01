@@ -82,14 +82,24 @@ export const CLAVE_PINGUINOS = 'pinguinos';
 export const CLAVE_ESCALA_DE_LETRA = 'escalaDeLetra';
 
 /**
- * Si las explicaciones aparecen enteras de una vez.
+ * El tema elegido: `dark`, `light`, o ausente para seguir al sistema.
  *
- * Vacio o ausente significa que no: el pinguino las cuenta de a un parrafo, que
- * es lo que las hace sentir una conversacion en vez de un cartel. Quien ya se
- * las sabe --o quien simplemente prefiere leer a su ritmo-- lo apaga aca y
- * siempre las ve completas, sin tener que tocar la pantalla cada vez.
+ * Ausente y no "el que venga por omision" a proposito: mientras nadie elija,
+ * la app sigue al telefono --de noche oscura, de dia clara-- que es lo que
+ * espera quien nunca abrio Ajustes. La eleccion explicita gana desde que
+ * existe, y no vuelve a ceder.
  */
-export const CLAVE_EXPLICACION_DE_UNA = 'explicacionDeUna';
+export const CLAVE_TEMA = 'tema';
+
+/**
+ * Si el pinguino cuenta las explicaciones de a un parrafo.
+ *
+ * Vacio o ausente significa que no: salen enteras. La conversacion es lo
+ * entretenido, pero lo que uno va a buscar cuando abre una explicacion es la
+ * respuesta, y hacerla esperar por omision es cobrarle el show a todo el mundo
+ * todas las veces. Queda para quien lo elija.
+ */
+export const CLAVE_EXPLICACION_DE_A_POCO = 'explicacionDeAPoco';
 
 /**
  * La frase con la que se cifra el archivo de la carpeta compartida.

@@ -25,7 +25,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { Aparecer } from '../components/Aparecer';
 import { Hoja } from '../components/Hoja';
 import { Pinguino } from '../components/Pinguino';
-import { useExplicacionDeUna } from './consultas';
+import { useExplicacionDeAPoco } from './consultas';
 import { useLetra } from './letra';
 
 /**
@@ -168,7 +168,7 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
     [],
   );
 
-  const { deUna } = useExplicacionDeUna();
+  const { deAPoco } = useExplicacionDeAPoco();
   const texto = abierta?.texto;
   const parrafos = useMemo(() => enParrafos(texto ?? ''), [texto]);
   /** Cuantas burbujas ya se dijeron. */
@@ -185,8 +185,8 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
    */
   useEffect(() => {
     if (texto === undefined) { setDichas(0); return; }
-    setDichas(deUna ? enParrafos(texto).length : 1);
-  }, [texto, deUna]);
+    setDichas(deAPoco ? 1 : enParrafos(texto).length);
+  }, [texto, deAPoco]);
 
   /**
    * La linea de tiempo, en un solo lugar.
