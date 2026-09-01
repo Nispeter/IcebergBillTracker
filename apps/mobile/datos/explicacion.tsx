@@ -18,9 +18,10 @@ import {
   elevation, fonts, pesos, radii, spacing, trozosConEnfasis, type Letra, type Theme,
 } from '@iceberg/ui';
 import {
-  createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  type ReactNode,
 } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Aparecer } from '../components/Aparecer';
 import { Hoja } from '../components/Hoja';
 import { Pinguino } from '../components/Pinguino';
@@ -85,6 +86,74 @@ const Contexto = createContext<Explicar>(() => {});
 
 export function useExplicar(): Explicar {
   return useContext(Contexto);
+}
+
+/** Cuanto tarda un punto en subir y volver a bajar. */
+const SALTO = 200;
+/** Cuanto se atrasa cada punto respecto del anterior: es lo que hace la ola. */
+const RETRASO = 140;
+/** El respiro al final de la ola, para que no parezca un tren de puntos. */
+const RESPIRO = 240;
+
+/**
+ * Los tres puntitos de "estoy escribiendo".
+ *
+ * Dicen algo que la burbuja sola no puede decir: que **viene mas**. Sin ellos,
+ * una explicacion de dos parrafos y una de ocho se ven igual mientras sale la
+ * primera, y quien no sabe que faltan seis cierra la hoja creyendo que eso era
+ * todo.
+ *
+ * Los puntos saltan de a uno, desfasados, en vez de parpadear todos juntos: la
+ * ola es lo que se lee como actividad. Va con `Animated` y no alternando estados
+ * como el pico porque aca **si** se puede usar el driver nativo --son
+ * `translateY` y `opacity` sobre vistas normales, no props de SVG-- asi que sale
+ * suave y sin costo por fotograma.
+ */
+function Escribiendo({ styles }: { styles: ReturnType<typeof crearEstilos> }) {
+  const primero = useRef(new Animated.Value(0)).current;
+  const segundo = useRef(new Animated.Value(0)).current;
+  const tercero = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Todos duran lo mismo aunque arranquen a destiempo: si no, `parallel`
+    // termina cuando acaba el mas largo y el desfase se pierde en la vuelta
+    // siguiente.
+    const largo = (RETRASO * 2) + (SALTO * 2) + RESPIRO;
+    const salto = (valor: Animated.Value, retraso: number) => Animated.sequence([
+      Animated.delay(retraso),
+      Animated.timing(valor, {
+        toValue: 1, duration: SALTO, easing: Easing.out(Easing.quad), useNativeDriver: true,
+      }),
+      Animated.timing(valor, {
+        toValue: 0, duration: SALTO, easing: Easing.in(Easing.quad), useNativeDriver: true,
+      }),
+      Animated.delay(largo - retraso - (SALTO * 2)),
+    ]);
+
+    const ola = Animated.loop(Animated.parallel([
+      salto(primero, 0),
+      salto(segundo, RETRASO),
+      salto(tercero, RETRASO * 2),
+    ]));
+    ola.start();
+    return () => ola.stop();
+  }, [primero, segundo, tercero]);
+
+  return (
+    <View style={styles.escribiendo} accessibilityLabel="El pingüino sigue contando">
+      {[primero, segundo, tercero].map((valor, indice) => (
+        <Animated.View
+          key={indice}
+          style={[styles.punto, {
+            opacity: valor.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
+            transform: [{
+              translateY: valor.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }),
+            }],
+          }]}
+        />
+      ))}
+    </View>
+  );
 }
 
 export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; children: ReactNode }) {
@@ -208,9 +277,15 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
               </Aparecer>
             ))}
 
-            {/* Sin esto, que se puede tocar para adelantar no lo sabe nadie. Se
-                va con la ultima burbuja, que es cuando deja de ser cierto. */}
-            {!faltan ? null : <Text style={styles.pista}>toca para verlo todo</Text>}
+            {/* Los puntitos ocupan el lugar de la burbuja que viene, y el
+                renglon de abajo dice que se puede no esperarla. Los dos se van
+                con la ultima burbuja, que es cuando dejan de ser ciertos. */}
+            {!faltan ? null : (
+              <>
+                <Escribiendo styles={styles} />
+                <Text style={styles.pista}>toca para verlo todo</Text>
+              </>
+            )}
           </View>
         </Pressable>
 
@@ -276,6 +351,31 @@ function crearEstilos(theme: Theme, letra: Letra) {
       borderLeftWidth: elevation.hairlineWidth,
       borderBottomWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
+    },
+    /**
+     * La burbuja de los puntitos.
+     *
+     * Angosta --`alignSelf: 'flex-start'`-- para que no se estire al ancho de
+     * la columna: una burbuja vacia del porte de un parrafo se leeria como un
+     * mensaje que no cargo, que es lo contrario de lo que dice.
+     */
+    escribiendo: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.md,
+      borderRadius: radii.md,
+      backgroundColor: theme.superficieHonda,
+      borderWidth: elevation.hairlineWidth,
+      borderColor: theme.hairline,
+    },
+    punto: {
+      width: 5,
+      height: 5,
+      borderRadius: radii.full,
+      backgroundColor: theme.silencio,
     },
     pista: {
       fontFamily: fonts.texto,
