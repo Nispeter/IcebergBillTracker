@@ -10,7 +10,7 @@
 import { compareDates, eachDate, weekday, type DateRange, type PlainDate } from '../dates/index';
 import { money, type Money } from '../money/index';
 import { esGasto, esIngreso, type MovimientoAnalizable } from './movimiento';
-import { enRango } from './resumen';
+import { enRango, mediana } from './resumen';
 
 export interface DiaDeLaSerie {
   readonly fecha: PlainDate;
@@ -181,4 +181,101 @@ export function rachaMasLargaSinGasto(
     }
   }
   return mejor;
+}
+
+export interface GastoDeTanda {
+  readonly total: Money;
+  /** Cuantos dias de esa clase hubo en el periodo. */
+  readonly dias: number;
+  /** Total dividido por dias. Es lo unico comparable entre las dos tandas. */
+  readonly promedio: Money;
+}
+
+export interface FinDeSemanaContraSemana {
+  readonly finDeSemana: GastoDeTanda;
+  readonly entreSemana: GastoDeTanda;
+}
+
+/**
+ * El gasto partido en dos: sabado y domingo contra el resto.
+ *
+ * Reemplaza a la tabla de siete dias, que decia lo mismo repartido en siete
+ * filas y por eso no decia nada: para leerla habia que promediar de cabeza
+ * mientras se miraba. La pregunta que la gente tiene de verdad es "¿el fin de
+ * semana me sale caro?", y esa se contesta con dos numeros.
+ *
+ * Se compara por **promedio diario** y no por total: un periodo cualquiera
+ * tiene cinco veces mas dias entre semana que de fin de semana, asi que el
+ * total le da ventaja a la semana por existir mas veces.
+ */
+export function finDeSemanaContraSemana(
+  serie: readonly DiaDeLaSerie[],
+): FinDeSemanaContraSemana {
+  const tanda = (dias: readonly DiaDeLaSerie[]): GastoDeTanda => {
+    const total = dias.reduce((suma, dia) => suma + dia.gasto.amountMinor, 0);
+    return {
+      total: money(total, 'CLP'),
+      dias: dias.length,
+      promedio: money(dias.length === 0 ? 0 : Math.round(total / dias.length), 'CLP'),
+    };
+  };
+
+  return {
+    finDeSemana: tanda(serie.filter((dia) => weekday(dia.fecha) >= 6)),
+    entreSemana: tanda(serie.filter((dia) => weekday(dia.fecha) < 6)),
+  };
+}
+
+export interface Concentracion {
+  /** Los dias mas caros, del mas caro al menos. */
+  readonly dias: readonly DiaDeLaSerie[];
+  /** Que parte del gasto del periodo se fue en ellos, de 0 a 1. */
+  readonly parte: number;
+}
+
+/**
+ * Cuanto del periodo se fue en los pocos dias mas caros.
+ *
+ * Es la cifra que distingue dos meses que gastaron lo mismo y no se parecen en
+ * nada: uno donde el 70 % se fue en tres dias --el arriendo, el seguro, una
+ * compra grande-- y otro donde se fue en goteo. El primero se arregla mirando
+ * tres decisiones; el segundo, cambiando un habito.
+ *
+ * Los dias sin gasto no entran: un periodo con veinte dias en cero no tiene
+ * "tres dias mas caros" entre ellos.
+ */
+export function concentracion(serie: readonly DiaDeLaSerie[], cuantos = 3): Concentracion {
+  const total = serie.reduce((suma, dia) => suma + dia.gasto.amountMinor, 0);
+  const conGasto = serie
+    .filter((dia) => dia.gasto.amountMinor > 0)
+    .sort((uno, otro) => otro.gasto.amountMinor - uno.gasto.amountMinor);
+
+  const dias = conGasto.slice(0, Math.max(0, cuantos));
+  const suman = dias.reduce((suma, dia) => suma + dia.gasto.amountMinor, 0);
+
+  return { dias, parte: total === 0 ? 0 : suman / total };
+}
+
+/**
+ * Lo que se gasta en un dia **de los que se gasta**.
+ *
+ * La mediana y no el promedio, y solo sobre los dias con gasto. Las dos
+ * decisiones apuntan a lo mismo: el promedio diario de un mes con arriendo esta
+ * tironeado por un solo dia, y meter los dias en cero lo tira para el otro lado.
+ * Lo que queda es el dia normal, que es contra lo que uno compara cuando se
+ * pregunta si hoy gasto mucho.
+ *
+ * Cero si no hubo ningun dia con gasto: no hay dia normal que describir.
+ */
+export function gastoDiarioTipico(serie: readonly DiaDeLaSerie[]): Money {
+  const conGasto = serie
+    .filter((dia) => dia.gasto.amountMinor > 0)
+    .map((dia) => dia.gasto.amountMinor);
+  if (conGasto.length === 0) return money(0, 'CLP');
+  return money(Math.round(mediana(conGasto)), 'CLP');
+}
+
+/** Cuantos dias del periodo pasaron sin gastar un peso. */
+export function diasSinGastar(serie: readonly DiaDeLaSerie[]): number {
+  return serie.filter((dia) => dia.gasto.amountMinor === 0).length;
 }
