@@ -33,8 +33,8 @@ import { useAireInferior } from '../../datos/desplazamiento';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import {
-  PINGUINOS_MAXIMO, PINGUINOS_MINIMO, useCuentas, useLotes, useMiembros, useMovimientos,
-  usePinguinos, useSaldo, useSaldoInicial,
+  PINGUINOS_MAXIMO, PINGUINOS_MINIMO, useCuentas, useExplicacionDeUna, useLotes, useMiembros,
+  useMovimientos, usePinguinos, useSaldo, useSaldoInicial,
 } from '../../datos/consultas';
 import { useCategorias } from '../../datos/catalogo';
 import { useCuentaActiva } from '../../datos/cuenta';
@@ -96,6 +96,7 @@ export default function Ajustes() {
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const pinguinos = usePinguinos();
   const cambiarEscala = useCambiarEscala();
+  const explicaciones = useExplicacionDeUna();
 
   const vacia = movimientos.length === 0;
 
@@ -259,7 +260,11 @@ export default function Ajustes() {
             + 'dura hasta que cierres la app: al volver a abrirla arranca en Noche polar.'
             + '\n\n'
             + 'El **tamaño de letra** sí se queda guardado, y vale para toda la app: '
-            + 'cuatro pasos, de Chica a Enorme.'}
+            + 'cuatro pasos, de Chica a Enorme.'
+            + '\n\n'
+            + 'Las **explicaciones** son las que abre la i: el pingüino las cuenta de a '
+            + 'un párrafo, y tocando la hoja aparecen todas de golpe. Si prefieres que '
+            + 'salgan enteras siempre, cámbialo aquí.'}
         />
         <View style={styles.fila}>
           <Text style={styles.etiqueta}>Tema</Text>
@@ -341,6 +346,30 @@ export default function Ajustes() {
               <Plus size={14} weight="bold" color={theme.acentoTexto} />
             </Pressable>
           </View>
+        </View>
+
+        {/*
+          Como cuenta el pinguino las explicaciones.
+
+          De a poco es lo entretenido y lo que viene puesto; de una es para quien
+          ya se las sabe o simplemente prefiere leer a su ritmo. Se puede
+          adelantar tocando la hoja sin cambiar nada aca: esto es para no tener
+          que hacerlo cada vez.
+        */}
+        <View style={styles.fila}>
+          <Text style={styles.etiqueta}>Explicaciones</Text>
+          <Pressable
+            onPress={() => explicaciones.cambiar(!explicaciones.deUna)}
+            style={styles.boton}
+            accessibilityRole="button"
+            accessibilityLabel={explicaciones.deUna
+              ? 'Las explicaciones salen enteras. Tocar para que el pingüino las cuente de a poco'
+              : 'El pingüino cuenta las explicaciones de a poco. Tocar para verlas enteras'}
+          >
+            <Text style={styles.botonTexto}>
+              {explicaciones.deUna ? 'Todas de una' : 'De a poco'}
+            </Text>
+          </Pressable>
         </View>
 
         <Seccion
