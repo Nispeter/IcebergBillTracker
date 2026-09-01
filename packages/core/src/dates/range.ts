@@ -219,3 +219,48 @@ export function sameRangeLastYear(range: DateRange): DateRange {
       return dateRange(addYears(range.start, -1), addYears(range.end, -1), range.kind);
   }
 }
+
+/**
+ * El periodo **del mismo tipo** que contiene la fecha.
+ *
+ * Es lo que hace falta para "llevame al periodo donde si hay datos": la app
+ * conoce la fecha del ultimo movimiento anterior y necesita el mes --o la
+ * semana, o el ano-- que lo envuelve, sin cambiar de tipo por el camino.
+ *
+ * Los rangos de calendario se calculan directo. Los que **no** tienen anclaje en
+ * el calendario --un rango libre, "los ultimos 30 dias"-- no se pueden calcular:
+ * su rejilla depende de donde arranco el que se esta mirando. Para esos se
+ * retrocede o se avanza de periodo en periodo hasta dar con el que la contiene,
+ * que es exactamente lo que haria alguien tocando la flecha.
+ *
+ * El tope de pasos existe para que una fecha absurda --un movimiento con ano
+ * 1900 por un dedazo al importar-- no cuelgue la app. Al toparse devuelve el
+ * ultimo periodo al que llego, que es lo mas cerca que pudo.
+ */
+export function periodContaining(range: DateRange, date: PlainDate): DateRange {
+  switch (range.kind) {
+    case 'day':
+      return dayRange(date);
+    case 'week':
+      return weekRange(date);
+    case 'month':
+      return currentMonth(date);
+    case 'quarter':
+      return quarterRange(year(date), Math.floor((month(date) - 1) / 3) + 1);
+    case 'year':
+      return yearRange(year(date));
+    case 'ytd':
+    case 'days':
+    case 'custom': {
+      const TOPE = 4000;
+      let cursor = range;
+      for (let paso = 0; paso < TOPE && compareDates(date, cursor.start) < 0; paso += 1) {
+        cursor = previousPeriod(cursor);
+      }
+      for (let paso = 0; paso < TOPE && compareDates(date, cursor.end) > 0; paso += 1) {
+        cursor = nextPeriod(cursor);
+      }
+      return cursor;
+    }
+  }
+}

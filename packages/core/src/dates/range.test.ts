@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DateError, requirePlainDate } from './plainDate';
 import {
   containsDate, currentMonth, dateRange, dayRange, eachDate, lastNDays, lengthInDays, monthRange,
-  nextPeriod, overlaps, previousPeriod, quarterRange, sameRangeLastYear, weekRange, yearRange,
-  yearToDate,
+  nextPeriod, overlaps, periodContaining, previousPeriod, quarterRange, sameRangeLastYear,
+  weekRange, yearRange, yearToDate,
 } from './range';
 
 const d = requirePlainDate;
@@ -218,5 +218,50 @@ describe('nextPeriod', () => {
   it('conserva el tipo', () => {
     expect(nextPeriod(weekRange(d('2026-08-19'))).kind).toBe('week');
     expect(nextPeriod(monthRange(2026, 3)).kind).toBe('month');
+  });
+});
+
+describe('periodContaining', () => {
+  it('devuelve el mes que envuelve la fecha, sin cambiar de tipo', () => {
+    const agosto = monthRange(2026, 8);
+    expect(periodContaining(agosto, d('2026-05-17')))
+      .toEqual(monthRange(2026, 5));
+  });
+
+  it('sirve para los otros rangos de calendario', () => {
+    expect(periodContaining(dayRange(d('2026-09-01')), d('2026-04-03')))
+      .toEqual(dayRange(d('2026-04-03')));
+    // 2026-04-03 es viernes: la semana va del lunes 30 de marzo al domingo 5.
+    expect(periodContaining(weekRange(d('2026-09-01')), d('2026-04-03')))
+      .toEqual(weekRange(d('2026-04-03')));
+    expect(periodContaining(yearRange(2026), d('2019-07-07')))
+      .toEqual(yearRange(2019));
+  });
+
+  it('la fecha que ya esta dentro devuelve el mismo periodo', () => {
+    const agosto = monthRange(2026, 8);
+    expect(periodContaining(agosto, d('2026-08-31'))).toEqual(agosto);
+  });
+
+  it('un rango libre retrocede de a un largo hasta alcanzar la fecha', () => {
+    // Diez dias: del 21 al 30 de agosto. Cuarenta dias antes, dos ventanas atras.
+    const libre = dateRange(d('2026-08-21'), d('2026-08-30'), 'custom');
+    const encontrado = periodContaining(libre, d('2026-08-15'));
+    expect(encontrado.start).toBe('2026-08-11');
+    expect(encontrado.end).toBe('2026-08-20');
+    expect(encontrado.kind).toBe('custom');
+  });
+
+  it('un rango libre tambien avanza si la fecha quedo adelante', () => {
+    const libre = dateRange(d('2026-08-01'), d('2026-08-10'), 'custom');
+    const encontrado = periodContaining(libre, d('2026-08-25'));
+    expect(encontrado.start).toBe('2026-08-21');
+    expect(encontrado.end).toBe('2026-08-30');
+  });
+
+  it('con una fecha absurda se topa en vez de colgarse', () => {
+    const libre = dateRange(d('2026-08-01'), d('2026-08-10'), 'custom');
+    // Un dedazo al importar: no tiene que devolver nada bueno, tiene que volver.
+    expect(() => periodContaining(libre, d('1900-01-01'))).not.toThrow();
   });
 });
