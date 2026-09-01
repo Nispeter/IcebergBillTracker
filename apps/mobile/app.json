@@ -2,14 +2,14 @@
   "expo": {
     "name": "Iceberg",
     "slug": "iceberg",
-    "version": "0.9.0",
+    "version": "0.10.0",
     "orientation": "portrait",
     "scheme": "iceberg",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
       "package": "com.nispeter.iceberg",
-      "versionCode": 15,
+      "versionCode": 16,
       "backgroundColor": "#0E192A",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
