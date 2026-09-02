@@ -81,11 +81,23 @@ jobs:
         # es un limite, es una moneda al aire en cada compilacion.
         #
         # Va aca y no en el repositorio porque `android/` no se versiona: lo
-        # genera el paso anterior. Se **agrega** al final del archivo a
-        # proposito: en un `.properties` la ultima aparicion de una clave gana,
-        # asi que esto pisa lo que haya puesto la plantilla sin tener que
-        # buscarlo ni suponer como viene escrito.
-        run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+        # genera el paso anterior.
+        #
+        # **Se reemplaza la linea, no se agrega otra.** El primer intento la
+        # agrego con `>>` y rompio la compilacion de una forma que no se parecia
+        # en nada a la causa: el `gradle.properties` de Expo **no termina en
+        # salto de linea**, asi que el texto quedo pegado a la ultima propiedad
+        # --`expo.inlineModules.watchedDirectories=[]`-- que un script de node
+        # parsea como JSON al configurar el proyecto. El sintoma fue
+        # "command 'node' finished with non-zero exit value 1" tres minutos
+        # despues de empezar.
+        #
+        # El `grep` no es decoracion: si algun dia la plantilla deja de traer la
+        # clave, el `sed` no encuentra nada, no falla, y volveriamos al
+        # OutOfMemory sin ninguna pista. Asi el paso se cae aca y se ve.
+        run: |
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
+          grep -q '^org\.gradle\.jvmargs=-Xmx4g' android/gradle.properties
         working-directory: apps/mobile
 
       - name: Compilar la APK
