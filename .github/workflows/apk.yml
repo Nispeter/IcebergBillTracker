@@ -72,6 +72,22 @@ jobs:
         run: npx expo prebuild --platform android --no-install
         working-directory: apps/mobile
 
+      - name: Darle memoria al dexer
+        # D8 --el que junta las clases en el .dex-- corre dentro de la JVM de
+        # Gradle, y la plantilla de Expo la deja en 2 GB. Esta app venia justo
+        # en el borde: v0.10.0 compilo y v0.11.0 murio con
+        # `OutOfMemoryError: Java heap space` sin que hubiera cambiado una sola
+        # linea de Android entre las dos. Un limite al que se llega por azar no
+        # es un limite, es una moneda al aire en cada compilacion.
+        #
+        # Va aca y no en el repositorio porque `android/` no se versiona: lo
+        # genera el paso anterior. Se **agrega** al final del archivo a
+        # proposito: en un `.properties` la ultima aparicion de una clave gana,
+        # asi que esto pisa lo que haya puesto la plantilla sin tener que
+        # buscarlo ni suponer como viene escrito.
+        run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+        working-directory: apps/mobile
+
       - name: Compilar la APK
         run: |
           chmod +x gradlew
