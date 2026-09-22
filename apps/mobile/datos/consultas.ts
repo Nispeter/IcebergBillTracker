@@ -27,7 +27,7 @@ import {
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDatos } from './BaseDeDatos';
 import { useCuentaActiva } from './cuenta';
 import { useHoy } from './hoy';
@@ -375,6 +375,49 @@ export function useCuentas(): Cuenta[] {
   const consulta = useMemo(() => consultaDeCuentas(db, contexto), [db, contexto]);
   const { data } = useLiveQuery(consulta);
   return (data ?? []) as Cuenta[];
+}
+
+/**
+ * Si la cuenta que se esta mirando ya no existe, volver a "todas".
+ *
+ * Pasa al borrar la cuenta que uno tenia abierta: el alcance se queda con un id
+ * muerto y **todas las consultas devuelven vacio**, sin nada en pantalla que
+ * explique por que.
+ *
+ * ## Por que es un invariante y no un efecto del selector
+ *
+ * Esto vivia dentro del componente que dibuja la lista de cuentas, y ahi no
+ * corria casi nunca: ese componente solo existia mientras el menu estaba
+ * abierto. Peor, el menu solo se puede abrir con dos cuentas o mas, asi que el
+ * caso que importa era justo el que no se arreglaba: con dos cuentas, borrar la
+ * que estabas mirando deja una sola, la app deja de dibujar el boton del menu, y
+ * ya no hay forma de que el arreglo corra. La app quedaba en blanco.
+ *
+ * Aca no depende de que haya algo dibujado: lo llama el layout, que esta montado
+ * desde que la app abre.
+ *
+ * ## Tambien limpia la estrella
+ *
+ * `borrarCuenta` no toca el ajuste de la cuenta por defecto --es una preferencia
+ * de este telefono y la funcion de la base no la conoce--, asi que borrar la
+ * cuenta marcada dejaba un id muerto guardado y la app abria vacia **en cada
+ * arranque**, no solo esa vez.
+ */
+export function useVolverATodasSiSeBorroLaCuenta(): void {
+  const cuentas = useCuentas();
+  const { cuentaId, elegir, porDefecto, marcarPorDefecto } = useCuentaActiva();
+
+  useEffect(() => {
+    // La lista vacia significa **que todavia no carga**, no que no haya cuentas:
+    // `useLiveQuery` devuelve `[]` en el primer render. Sin esta guarda, el
+    // efecto corria antes de tiempo y borraba la cuenta por defecto en cada
+    // arranque, asi que la app abria siempre en "todas" por mas que hubiera una
+    // marcada con estrella.
+    if (cuentas.length === 0) return;
+    const existe = (id: string | null) => id === null || cuentas.some((c) => c.id === id);
+    if (!existe(cuentaId)) elegir(null);
+    if (!existe(porDefecto)) marcarPorDefecto(null);
+  }, [cuentas, cuentaId, elegir, porDefecto, marcarPorDefecto]);
 }
 
 /**

@@ -19,10 +19,16 @@ import { Stack } from 'expo-router';
 import { View } from 'react-native';
 import { BarraInferior } from '../../components/BarraInferior';
 import { ProveedorDeBandeja } from '../../components/Bandeja';
+import { useVolverATodasSiSeBorroLaCuenta } from '../../datos/consultas';
 import { useTema } from '../../datos/tema';
 
 export default function AppLayout() {
   const { theme } = useTema();
+
+  // Un invariante del alcance, no una pantalla: si la cuenta que se esta
+  // mirando se borro, hay que volver a "todas" o la app se ve vacia. Va aca
+  // porque el layout esta montado desde que la app abre y no se desmonta.
+  useVolverATodasSiSeBorroLaCuenta();
 
   // `contentStyle` con el fondo del tema: sin el, el contenedor de cada pantalla
   // arranca en blanco y al cambiar de vista se ve un destello. En web no pasaba
