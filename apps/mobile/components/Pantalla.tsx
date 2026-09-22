@@ -15,8 +15,9 @@
  * de una vista, y **no se desplaza**: lo hondo es la parte baja de la pantalla,
  * no la parte baja del contenido.
  *
- * El **menu de la hamburguesa quedo solo para cambiar de cuenta**, y por eso no
- * se dibuja si hay una sola: los destinos se mudaron a la barra de abajo.
+ * Las **tres rayitas abren la lista de cuentas**, y por eso no se dibujan si hay
+ * una sola: los destinos se mudaron a la barra de abajo. La lista sale como una
+ * burbuja colgada del boton, sin pantallas intermedias; ver `MenuDeCuenta`.
  *
  * ## El nombre de la vista, bajo el encabezado
  *
@@ -40,7 +41,7 @@
 import { capas, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { List } from 'phosphor-react-native/src/icons/List';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -48,7 +49,7 @@ import { Ayuda } from './Ayuda';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { FueraDelPeriodo } from './FueraDelPeriodo';
 import { Pinguino } from './Pinguino';
-import { useAbrirBandeja } from './Bandeja';
+import { useAbrirMenuDeCuenta } from './MenuDeCuenta';
 import { useCuentas } from '../datos/consultas';
 import { useLetra } from '../datos/letra';
 import { useTema } from '../datos/tema';
@@ -77,10 +78,12 @@ export function Pantalla(
   // barra de gestos: la app va a pantalla completa por `edgeToEdgeEnabled`.
   const margenes = useSafeAreaInsets();
   const styles = crearEstilos(theme, margenes, letra);
-  const abrirBandeja = useAbrirBandeja();
+  const abrirMenuDeCuenta = useAbrirMenuDeCuenta();
   // Con una sola cuenta el menu no tendria nada adentro: es lo unico que quedo
   // ahi desde que los destinos se mudaron a la barra de abajo.
   const hayQueElegirCuenta = useCuentas().length > 1;
+  // La burbuja se cuelga de donde quedo el boton, y eso solo se sabe midiendolo.
+  const rayitas = useRef<View>(null);
 
   // Corre una sola vez por montaje, y cada destino monta su propia `Pantalla`:
   // eso es lo que hace que la animacion coincida con el cambio de vista.
@@ -117,7 +120,16 @@ export function Pantalla(
               tocable la sostiene el `hitSlop`, no el dibujo. */}
           {hayQueElegirCuenta ? (
             <Pressable
-              onPress={abrirBandeja}
+              ref={rayitas}
+              // Sin esto Android puede colapsar la vista en el arbol nativo
+              // --pasa con cualquiera que no dibuje nada propio-- y entonces no
+              // hay nada que medir: la burbuja saldria en la esquina.
+              collapsable={false}
+              // Se mide al tocar y no en un efecto: en ese instante el boton ya
+              // esta dibujado y el encabezado no se mueve mas.
+              onPress={() => rayitas.current?.measureInWindow(
+                (x, y, _ancho, alto) => abrirMenuDeCuenta({ x, y, alto }),
+              )}
               style={styles.lateral}
               accessibilityRole="button"
               accessibilityLabel="Cambiar de cuenta"

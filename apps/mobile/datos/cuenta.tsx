@@ -25,9 +25,11 @@
  *
  * No consulta las cuentas. Si lo hiciera habria un ciclo: `consultas.ts`
  * necesita saber cual esta activa para filtrar, y este proveedor necesitaria a
- * `consultas.ts` para listarlas. Quien las lista es el selector, que si puede
- * depender de las dos cosas. El ajuste se lee con `leerAjuste`, que es una
- * funcion suelta sobre la base, no un hook de consulta.
+ * `consultas.ts` para listarlas. Quien las lista es `consultas.ts` mismo --que
+ * si puede depender de las dos cosas, como ya hacen `useSaldoInicial` y
+ * `useVolverATodasSiSeBorroLaCuenta`-- y el menu que las dibuja. El ajuste se
+ * lee con `leerAjuste`, que es una funcion suelta sobre la base, no un hook de
+ * consulta.
  *
  * ## Por que el filtro se inyecta y no se pasa a mano
  *

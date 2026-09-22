@@ -18,7 +18,7 @@
 import { Stack } from 'expo-router';
 import { View } from 'react-native';
 import { BarraInferior } from '../../components/BarraInferior';
-import { ProveedorDeBandeja } from '../../components/Bandeja';
+import { ProveedorDeMenuDeCuenta } from '../../components/MenuDeCuenta';
 import { useVolverATodasSiSeBorroLaCuenta } from '../../datos/consultas';
 import { useTema } from '../../datos/tema';
 
@@ -34,7 +34,7 @@ export default function AppLayout() {
   // arranca en blanco y al cambiar de vista se ve un destello. En web no pasaba
   // porque ahi no hay contenedor nativo por pantalla.
   return (
-    <ProveedorDeBandeja theme={theme}>
+    <ProveedorDeMenuDeCuenta theme={theme}>
     <View style={{ flex: 1 }}>
       <Stack
         screenOptions={{
@@ -63,6 +63,6 @@ export default function AppLayout() {
 
       <BarraInferior theme={theme} />
     </View>
-    </ProveedorDeBandeja>
+    </ProveedorDeMenuDeCuenta>
   );
 }
