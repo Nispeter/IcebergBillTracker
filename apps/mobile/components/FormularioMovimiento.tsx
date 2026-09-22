@@ -7,7 +7,7 @@
  */
 
 import { dates, money } from '@iceberg/core';
-import type { TipoDeMovimiento } from '@iceberg/db';
+import { listarCuentas, type TipoDeMovimiento } from '@iceberg/db';
 import {
   capas,
   elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
@@ -22,7 +22,9 @@ import { Interruptor } from './Interruptor';
 import { esComprometido, useComprometidas } from '../datos/consultas';
 import { ChipDisparador, ListaDeOpciones } from './SelectorDesplegable';
 import { iconoDeCategoria } from './iconos';
+import { useDatos } from '../datos/BaseDeDatos';
 import { useCategorias } from '../datos/catalogo';
+import { useCuentaActiva } from '../datos/cuenta';
 import { useLetra } from '../datos/letra';
 
 export interface ValoresDelFormulario {
@@ -43,6 +45,14 @@ export interface ValoresDelFormulario {
    * Ver la columna en el esquema: la categoria es mal indicio por si sola.
    */
   readonly comprometido: boolean | null;
+  /**
+   * A que cuenta va.
+   *
+   * Nunca sale nulo del formulario: siempre hay al menos una cuenta --la app
+   * crea una al abrir y no deja borrar la ultima-- y el campo resuelve cual
+   * aunque no se dibuje.
+   */
+  readonly cuentaId: string | null;
 }
 
 export interface FormularioMovimientoProps {
@@ -86,7 +96,50 @@ export function FormularioMovimiento({
   const comprometidas = useComprometidas();
   const esCompromisoAhora = comprometido ?? esComprometido(categoriaId, comprometidas);
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
-  const [eligiendoCategoria, setEligiendoCategoria] = useState(false);
+  /**
+   * Cual de los dos desplegables esta abierto, o ninguno.
+   *
+   * Uno solo y no un booleano por campo: con dos, los dos pueden estar abiertos
+   * a la vez y sus paneles se superponen. Ademas es el estado el que decide a
+   * cual de los dos campos se le sube el `zIndex`, que es lo que hace que el
+   * panel abierto se dibuje encima del otro campo.
+   */
+  const [desplegable, setDesplegable] = useState<'categoria' | 'cuenta' | null>(null);
+  const alternar = (cual: 'categoria' | 'cuenta') =>
+    setDesplegable((previo) => (previo === cual ? null : cual));
+
+  const { db, contexto } = useDatos();
+  /**
+   * Las cuentas se leen **de una vez**, no con `useLiveQuery`.
+   *
+   * El formulario es un borrador local, no una vista de la base --lo mismo que
+   * ya hace la pantalla de edicion con el movimiento--. Y hay un motivo
+   * concreto: `useLiveQuery` devuelve `[]` en el primer render, asi que la fila
+   * de la cuenta aparecia un fotograma despues y el boton Guardar nacia apagado
+   * y se encendia solo. El formulario se re-acomodaba a la vista cada vez que
+   * se abria.
+   */
+  const cuentas = useMemo(() => listarCuentas(db, contexto), [db, contexto]);
+  const { cuentaId: alcance, porDefecto } = useCuentaActiva();
+  // `null` significa **que nadie lo toco**, igual que `comprometido`. Al editar
+  // arranca con la cuenta del movimiento, asi que la cadena de abajo no corre.
+  const [cuentaElegida, setCuentaElegida] = useState<string | null>(inicial?.cuentaId ?? null);
+  /**
+   * A que cuenta va si nadie tocó el campo.
+   *
+   * La que se esta mirando, que es lo que pidio el usuario. Cuando el alcance es
+   * "todas" no hay una, y ahi vale la marcada con estrella antes que la primera:
+   * la primera es la primera **alfabeticamente**, o sea arbitraria.
+   *
+   * Las dos adivinanzas se comprueban contra la lista antes de usarse. Un
+   * alcance puede quedar apuntando a una cuenta borrada, y sin esta guarda el
+   * movimiento se guardaria contra una cuenta que no existe, en silencio. Lo
+   * que **no** se valida es `cuentaElegida`: al editar puede traer la cuenta
+   * borrada del movimiento, y reasignarla sola seria decidir por el usuario.
+   */
+  const adivinada = alcance ?? porDefecto;
+  const cuentaId = cuentaElegida
+    ?? (cuentas.some((c) => c.id === adivinada) ? adivinada : cuentas[0]?.id ?? null);
 
   const montoParseado = money.parseMoney(monto);
   const fechaParseada = dates.parsePlainDate(fecha);
@@ -96,7 +149,8 @@ export function FormularioMovimiento({
     montoParseado !== null
     && montoParseado.amountMinor > 0
     && nombre.trim().length > 0
-    && fechaParseada !== null;
+    && fechaParseada !== null
+    && cuentaId !== null;
 
   const opcionesDeCategoria = useMemo(() => [
     { valor: null, etiqueta: 'Sin categoría' },
@@ -106,6 +160,16 @@ export function FormularioMovimiento({
       icono: iconoDeCategoria(categoria.id),
     })),
   ], [categorias]);
+
+  // El valor se declara anulable aunque ninguna opcion lo sea, para que case con
+  // `cuentaId`, que si puede ser nulo mientras no haya cuentas.
+  const opcionesDeCuenta = useMemo<{ valor: string | null; etiqueta: string }[]>(
+    () => cuentas.map((cuenta) => ({ valor: cuenta.id, etiqueta: cuenta.nombre })),
+    [cuentas],
+  );
+  // El `??` cubre editar un movimiento cuya cuenta se borro: la fila ya no esta
+  // en la lista, pero el id sigue escrito en el movimiento.
+  const nombreDeLaCuenta = cuentas.find((c) => c.id === cuentaId)?.nombre ?? 'Elegir cuenta';
 
   return (
     <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
@@ -183,18 +247,22 @@ export function FormularioMovimiento({
       </Campo>
 
       {pideCategoria ? (
-        <Campo styles={styles} etiqueta="Categoría" estilo={styles.campoDeCategoria}>
+        <Campo
+          styles={styles}
+          etiqueta="Categoría"
+          estilo={desplegable === 'categoria' ? styles.campoElevado : undefined}
+        >
           <ConDesplegable
-            abierto={eligiendoCategoria}
+            abierto={desplegable === 'categoria'}
             disparador={(
               <View style={styles.filaChip}>
                 <ChipDisparador
                   theme={theme}
                   etiqueta={categorias.nombreCorto(categoriaId)}
                   icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
-                  abierto={eligiendoCategoria}
+                  abierto={desplegable === 'categoria'}
                   activo={categoriaId !== null}
-                  onPress={() => setEligiendoCategoria(!eligiendoCategoria)}
+                  onPress={() => alternar('categoria')}
                   accesible={
                     categoriaId === null
                       ? 'Elegir categoría'
@@ -229,7 +297,58 @@ export function FormularioMovimiento({
                 seleccionado={categoriaId}
                 onElegir={(valor: string | null) => {
                   setCategoriaId(valor);
-                  setEligiendoCategoria(false);
+                  setDesplegable(null);
+                }}
+              />
+            )}
+          />
+        </Campo>
+      ) : null}
+
+      {/*
+        La cuenta va ultima, y es a proposito.
+
+        El formulario sigue el orden en que uno decide: cuanto, de que, cuando,
+        de que rubro, y recien al final de que bolsillo sale. Es ademas el unico
+        campo que **ya viene contestado**, asi que es el que menos molesta abajo;
+        arriba solo retrasaria al monto, que es el unico que siempre hay que
+        escribir.
+
+        Con una sola cuenta no se dibuja: un selector de una opcion no es una
+        eleccion, es una fila que ocupa. Lo que se esconde es el control, no el
+        dato: `cuentaId` se resuelve igual y viaja igual al guardar.
+      */}
+      {cuentas.length > 1 ? (
+        <Campo
+          styles={styles}
+          etiqueta="Cuenta"
+          estilo={desplegable === 'cuenta' ? styles.campoElevado : undefined}
+        >
+          <ConDesplegable
+            abierto={desplegable === 'cuenta'}
+            disparador={(
+              // En una fila aunque haya un solo chip: suelto dentro del campo
+              // se estira a los 520 px del formulario y queda una caja vacia a
+              // la derecha del nombre.
+              <View style={styles.filaChip}>
+                <ChipDisparador
+                  theme={theme}
+                  etiqueta={nombreDeLaCuenta}
+                  abierto={desplegable === 'cuenta'}
+                  activo={cuentaId !== null}
+                  onPress={() => alternar('cuenta')}
+                  accesible={`Cuenta ${nombreDeLaCuenta}. Tocar para cambiar`}
+                />
+              </View>
+            )}
+            panel={(
+              <ListaDeOpciones
+                theme={theme}
+                opciones={opcionesDeCuenta}
+                seleccionado={cuentaId}
+                onElegir={(valor: string | null) => {
+                  setCuentaElegida(valor);
+                  setDesplegable(null);
                 }}
               />
             )}
@@ -249,6 +368,7 @@ export function FormularioMovimiento({
             nombre,
             categoriaId: pideCategoria ? categoriaId : null,
             comprometido: pideCategoria ? comprometido : null,
+            cuentaId,
           });
         }}
         disabled={!puedeGuardar}
@@ -328,13 +448,24 @@ function crearEstilos(theme: Theme, letra: Letra) {
 
     campo: { gap: spacing.sm },
     /**
-     * Elevado para que la lista de categorias se abra **encima** de lo que
-     * sigue. `ConDesplegable` ya se eleva, pero solo compite dentro de su propio
-     * contexto de apilado: sin esto, el interruptor y el boton de guardar
-     * --que vienen despues en el orden del documento-- se dibujaban sobre la
-     * lista abierta.
+     * Elevado para que su lista se abra **encima** de lo que sigue.
+     *
+     * `ConDesplegable` ya se eleva, pero solo compite dentro de su propio
+     * contexto de apilado: sin esto, el interruptor y el boton de guardar --que
+     * vienen despues en el orden del documento-- se dibujaban sobre la lista
+     * abierta.
+     *
+     * Se lo lleva **el campo abierto**, no los dos. Con el mismo `zIndex` en
+     * ambos gana el ultimo del documento, asi que el panel de Categoria
+     * quedaria tapado por la fila de Cuenta, y al reves no se arregla poniendo
+     * el otro primero: es un empate y siempre lo gana el de abajo.
+     *
+     * Queda un detalle conocido: al cerrar, el campo pierde la elevacion
+     * mientras su panel todavia se esta desvaneciendo --`Aparecer` lo deja
+     * montado 160 ms-- asi que el boton de guardar se dibuja encima de ese
+     * resto. Dura lo que el fundido y no vale el estado extra que costaria.
      */
-    campoDeCategoria: { zIndex: capas.desplegable },
+    campoElevado: { zIndex: capas.desplegable },
     filaChip: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     claseDeGasto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     claseTexto: {

@@ -49,7 +49,14 @@ export default function EditarMovimiento() {
 
   function guardar(valores: ValoresDelFormulario) {
     try {
-      editarMovimiento(db, contexto, movimiento!.id, valores);
+      // `cuentaId` nulo significa que no hay ninguna cuenta, y entonces no hay
+      // nada que mover: se deja la que el movimiento ya tenia. `editarMovimiento`
+      // ignora lo que llega `undefined`.
+      const { cuentaId, ...resto } = valores;
+      editarMovimiento(db, contexto, movimiento!.id, {
+        ...resto,
+        cuentaId: cuentaId ?? undefined,
+      });
       avisar('Cambios guardados');
       volver(router);
     } catch (e) {
@@ -79,6 +86,7 @@ export default function EditarMovimiento() {
           categoriaId: movimiento.categoriaId,
           // La columna guarda 0, 1 o nulo; el formulario habla en booleanos.
           comprometido: movimiento.comprometido === null ? null : movimiento.comprometido === 1,
+          cuentaId: movimiento.cuentaId,
         }}
         onGuardar={guardar}
         onCancelar={() => volver(router)}
