@@ -24,12 +24,20 @@ export interface BarraSegmentadaProps {
   /** Muescas totales de la pista: las que ocupa la fila mas grande. */
   readonly total: number;
   readonly theme: Theme;
+  /**
+   * Apagada: conserva el largo pero pierde el color.
+   *
+   * Para las categorias que el usuario saco del reparto. **El largo se
+   * conserva** a proposito --es lo que dice cuanto era lo que sacaste-- y lo
+   * que se va es el color, que es lo que significa "participa de la torta".
+   */
+  readonly apagada?: boolean;
 }
 
 const ALTO = 14;
 const ALTO_VACIA = 4;
 
-export function BarraSegmentada({ valor, unidad, total, theme }: BarraSegmentadaProps) {
+export function BarraSegmentada({ valor, unidad, total, theme, apagada }: BarraSegmentadaProps) {
   const llenas = notchesFor(valor, unidad);
 
   return (
@@ -39,7 +47,7 @@ export function BarraSegmentada({ valor, unidad, total, theme }: BarraSegmentada
           key={i}
           style={
             i < llenas
-              ? [styles.llena, { backgroundColor: charts[0] }]
+              ? [styles.llena, { backgroundColor: apagada === true ? theme.hairline : charts[0] }]
               : [styles.vacia, { backgroundColor: theme.hairline }]
           }
         />

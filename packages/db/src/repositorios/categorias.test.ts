@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { crearBaseDePrueba, type BaseDePrueba } from '../pruebas';
 import {
   borrarCategoria, consultaDeCategorias, crearCategoria, idDeCategoria, listarCategorias,
+  obtenerCategoria, renombrarCategoria, restaurarCategoria,
 } from './categorias';
 import { crearReglaDeCategoria } from './reglasDeCategoria';
 import { exportarRespaldo } from './respaldo';
@@ -128,6 +129,115 @@ describe('viajan al otro telefono', () => {
 
     expect(listarCategorias(base.db, base.contexto).map((c) => c.id)).toEqual(['mascotas']);
     otro.cerrar();
+  });
+});
+
+describe('renombrar una propia', () => {
+  it('le cambia el nombre y le deja el id', () => {
+    crear('Mascotas');
+    const renombrada = renombrarCategoria(base.db, base.contexto, 'mascotas', 'Perros');
+
+    // El id no se recalcula a partir del nombre nuevo: es lo que llevan escrito
+    // los movimientos, y cambiarlo los dejaria huerfanos.
+    expect(renombrada.id).toBe('mascotas');
+    expect(renombrada.nombre).toBe('Perros');
+  });
+
+  it('valida el nombre igual que al crear', () => {
+    crear('Mascotas');
+    expect(() => renombrarCategoria(base.db, base.contexto, 'mascotas', '   ')).toThrow(/necesita un nombre/);
+    expect(() => renombrarCategoria(base.db, base.contexto, 'mascotas', 'x'.repeat(25)))
+      .toThrow(/no puede pasar de/);
+  });
+
+  it('una borrada se renombra pero NO revive', () => {
+    // Al reparto del gasto siguen llegando las categorias borradas mientras
+    // queden movimientos viejos con su id. Renombrar una de esas no puede
+    // devolverla a todos los selectores sin que nada lo anuncie.
+    crear('Mascotas');
+    borrarCategoria(base.db, base.contexto, 'mascotas');
+
+    renombrarCategoria(base.db, base.contexto, 'mascotas', 'Perros');
+
+    expect(obtenerCategoria(base.db, base.contexto, 'mascotas')!.nombre).toBe('Perros');
+    expect(listarCategorias(base.db, base.contexto)).toHaveLength(0);
+  });
+
+  it('renombrar una que no existe en ninguna parte falla', () => {
+    expect(() => renombrarCategoria(base.db, base.contexto, 'inventada', 'Lo que sea'))
+      .toThrow(/no existe la categoría/);
+  });
+});
+
+describe('renombrar una de las que trae la app', () => {
+  it('escribe una fila con el id de la built-in', () => {
+    const override = renombrarCategoria(base.db, base.contexto, 'comida', 'Supermercado');
+
+    expect(override.id).toBe('comida');
+    expect(override.nombre).toBe('Supermercado');
+    expect(obtenerCategoria(base.db, base.contexto, 'comida')!.nombre).toBe('Supermercado');
+  });
+
+  it('crear esa misma categoria sigue estando prohibido', () => {
+    // Renombrar y crear terminan en la misma tabla pero son otra intencion:
+    // crear una que ya viene con la app es un error del usuario.
+    expect(() => crear('Comida')).toThrow(/ya viene con la app/);
+  });
+
+  it('renombrar dos veces no duplica la fila', () => {
+    renombrarCategoria(base.db, base.contexto, 'comida', 'Supermercado');
+    renombrarCategoria(base.db, base.contexto, 'comida', 'Feria');
+
+    const todas = consultaDeCategorias(base.db, base.contexto).all() as Categoria[];
+    expect(todas).toHaveLength(1);
+    expect(todas[0]!.nombre).toBe('Feria');
+  });
+
+  it('el override viaja al otro telefono', () => {
+    renombrarCategoria(base.db, base.contexto, 'comida', 'Supermercado');
+    expect(exportarRespaldo(base.db, base.contexto).categorias.map((c) => c.nombre))
+      .toEqual(['Supermercado']);
+  });
+});
+
+describe('restaurar el nombre original', () => {
+  it('le pone lapida al override', () => {
+    renombrarCategoria(base.db, base.contexto, 'comida', 'Supermercado');
+    restaurarCategoria(base.db, base.contexto, 'comida');
+
+    expect(obtenerCategoria(base.db, base.contexto, 'comida')!.deletedAt).not.toBeNull();
+  });
+
+  it('lapida y no borrado fisico, para que la restauracion viaje', () => {
+    // Una fila que desaparece vuelve en la siguiente fusion, porque el otro
+    // aparato todavia la tiene y nadie le conto que se fue.
+    renombrarCategoria(base.db, base.contexto, 'comida', 'Supermercado');
+    restaurarCategoria(base.db, base.contexto, 'comida');
+
+    expect(exportarRespaldo(base.db, base.contexto).categorias).toHaveLength(1);
+  });
+
+  it('no falla si nunca se habia renombrado', () => {
+    // No tener override ya es estar en el nombre original.
+    expect(() => restaurarCategoria(base.db, base.contexto, 'comida')).not.toThrow();
+  });
+
+  it('una propia no se puede restaurar: no tiene nombre original', () => {
+    crear('Mascotas');
+    expect(() => restaurarCategoria(base.db, base.contexto, 'mascotas'))
+      .toThrow(/no es una categoría de la app/);
+  });
+
+  it('despues de restaurar se puede volver a renombrar, y el nombre se ve', () => {
+    renombrarCategoria(base.db, base.contexto, 'comida', 'Supermercado');
+    restaurarCategoria(base.db, base.contexto, 'comida');
+    const otra = renombrarCategoria(base.db, base.contexto, 'comida', 'Feria');
+
+    // La fila tiene que quedar **viva**. Si conservara la lapida, el catalogo
+    // la saltaria y la app seguiria diciendo "Comida" con el override escrito.
+    expect(otra.nombre).toBe('Feria');
+    expect(otra.deletedAt).toBeNull();
+    expect(listarCategorias(base.db, base.contexto).map((c) => c.nombre)).toEqual(['Feria']);
   });
 });
 

@@ -46,6 +46,34 @@ export function idDeCategoria(nombre: string): string {
 }
 
 /**
+ * Un nombre listo para guardar, o el error que explica por qué no sirve.
+ *
+ * Suelto y no dentro de `crearCategoria` porque renombrar exige lo mismo: un
+ * nombre vacío o de cuarenta caracteres es igual de inservible venga de donde
+ * venga.
+ */
+function limpiarNombre(nombre: string): string {
+  const limpio = nombre.trim().replace(/\s+/g, ' ');
+  if (limpio === '') throw new RepositorioError('la categoría necesita un nombre');
+  if (limpio.length > LARGO_MAXIMO) {
+    throw new RepositorioError(`el nombre no puede pasar de ${LARGO_MAXIMO} caracteres`);
+  }
+  return limpio;
+}
+
+/** La fila de una categoría propia, con lápida o sin ella. `null` si no hay. */
+export function obtenerCategoria(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  id: string,
+): Categoria | null {
+  const fila = db.select().from(categorias)
+    .where(and(eq(categorias.householdId, contexto.householdId), eq(categorias.id, id))!)
+    .get() as Categoria | undefined;
+  return fila ?? null;
+}
+
+/**
  * Crea una categoría propia, o revive una que estaba borrada.
  *
  * Revivir en vez de fallar: si alguien borró "mascotas" y la vuelve a escribir,
@@ -57,11 +85,7 @@ export function crearCategoria(
   contexto: Contexto,
   nombre: string,
 ): Categoria {
-  const limpio = nombre.trim().replace(/\s+/g, ' ');
-  if (limpio === '') throw new RepositorioError('la categoría necesita un nombre');
-  if (limpio.length > LARGO_MAXIMO) {
-    throw new RepositorioError(`el nombre no puede pasar de ${LARGO_MAXIMO} caracteres`);
-  }
+  const limpio = limpiarNombre(nombre);
 
   const id = idDeCategoria(limpio);
   if (id === '') throw new RepositorioError('ese nombre no deja ninguna letra ni número');
@@ -85,6 +109,90 @@ export function crearCategoria(
   const fila: Categoria = { ...columnasNuevas(contexto), id, nombre: limpio };
   db.insert(categorias).values(fila).run();
   return fila;
+}
+
+/**
+ * Le cambia el nombre a una categoría, sea propia o de las que trae la app.
+ *
+ * ## Renombrar una de la app es guardarle una fila encima
+ *
+ * Las doce viven en `core/categories` y no tienen fila. Para que "Comida" pase
+ * a llamarse "Supermercado" se escribe una fila en esta tabla **con el id de la
+ * built-in**, no con un ULID: el id es lo que llevan escrito los movimientos y
+ * no puede cambiar nunca. Quien resuelve la precedencia es el catálogo de la
+ * app, que prefiere el nombre de la base sobre el de `core`.
+ *
+ * `crearCategoria` sigue rechazando los ids de la app y está bien que lo haga:
+ * crear una que ya existe es un error del usuario, renombrarla es otra
+ * intención. Son dos operaciones distintas aunque terminen en la misma tabla.
+ *
+ * ## Una lápida significa dos cosas distintas
+ *
+ * Y por eso renombrar la trata distinto según de quién sea la fila:
+ *
+ * - **En una propia, la lápida es la categoría borrada.** Renombrarla no la
+ *   revive, que es la diferencia con `crearCategoria`. A la pantalla de edición
+ *   se llega desde el reparto del gasto, que sigue mostrando las borradas
+ *   mientras queden movimientos viejos con ese id; cambiarle el nombre a una de
+ *   esas y que **reapareciera en todos los selectores** sería un efecto que
+ *   nadie pidió y que nada anuncia.
+ * - **En una de la app, la lápida es el override restaurado**, no la categoría:
+ *   una built-in no deja de existir por volver a su nombre original. Renombrarla
+ *   otra vez tiene que revivir la fila, o el override quedaría escrito con la
+ *   lápida puesta y el nombre nuevo no se vería en ninguna parte.
+ */
+export function renombrarCategoria(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  id: string,
+  nombre: string,
+): Categoria {
+  const limpio = limpiarNombre(nombre);
+  const esDeLaApp = categories.categoryById(id) !== null;
+  const existente = obtenerCategoria(db, contexto, id);
+
+  if (existente !== null) {
+    const renombrada: Categoria = {
+      ...existente,
+      ...columnasEditadas(contexto),
+      nombre: limpio,
+      // Ver arriba: en una de la app la lápida era del override.
+      deletedAt: esDeLaApp ? null : existente.deletedAt,
+    };
+    db.update(categorias).set(renombrada).where(eq(categorias.id, id)).run();
+    return renombrada;
+  }
+
+  if (!esDeLaApp) throw new RepositorioError(`no existe la categoría ${id}`);
+
+  const override: Categoria = { ...columnasNuevas(contexto), id, nombre: limpio };
+  db.insert(categorias).values(override).run();
+  return override;
+}
+
+/**
+ * Le devuelve a una de la app su nombre original.
+ *
+ * Lápida sobre el override, no borrado físico: las filas de `categorias` viajan
+ * al sincronizar, y una fila que desaparece vuelve en la siguiente fusión. Con
+ * lápida, la restauración también viaja.
+ *
+ * No falla si no hay override: no tener uno ya **es** estar en el nombre
+ * original, y quien pide volver ahí obtiene lo que pidió.
+ */
+export function restaurarCategoria(db: BaseDeDatos, contexto: Contexto, id: string): void {
+  if (categories.categoryById(id) === null) {
+    throw new RepositorioError(`${id} no es una categoría de la app: no tiene nombre original`);
+  }
+
+  db.update(categorias)
+    .set({ ...columnasEditadas(contexto), deletedAt: contexto.ahora() })
+    .where(and(
+      eq(categorias.householdId, contexto.householdId),
+      eq(categorias.id, id),
+      isNull(categorias.deletedAt),
+    )!)
+    .run();
 }
 
 /**

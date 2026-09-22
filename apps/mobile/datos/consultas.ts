@@ -23,7 +23,7 @@ import {
   consultaDeResumen, consultaDelPrimerDia, resumenDesde,
   type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
   CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_EXPLICACION_DE_A_POCO, CLAVE_PINGUINOS,
-  consultaDeAjuste, escribirAjuste,
+  consultaDeAjuste, escribirAjuste, leerAjuste, type BaseDeDatos,
   type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
@@ -201,6 +201,25 @@ export const COMPROMETIDAS_POR_OMISION: readonly string[] = [
 ];
 
 /**
+ * El ajuste crudo convertido en conjunto.
+ *
+ * Suelto porque hay dos formas de llegar al mismo valor --suscrito y de una
+ * sola lectura-- y la nocion de "ausente significa la lista de siempre" tiene
+ * que ser la misma en las dos.
+ */
+function interpretarComprometidas(crudo: string | undefined | null): ReadonlySet<string> {
+  if (crudo === undefined || crudo === null) return new Set(COMPROMETIDAS_POR_OMISION);
+  try {
+    const lista = JSON.parse(crudo) as unknown;
+    // Una lista vacia es una eleccion valida --"ninguna categoria es
+    // compromiso por si sola"--, asi que no se cae de vuelta a la de omision.
+    return Array.isArray(lista) ? new Set(lista.map(String)) : new Set(COMPROMETIDAS_POR_OMISION);
+  } catch {
+    return new Set(COMPROMETIDAS_POR_OMISION);
+  }
+}
+
+/**
  * Que categorias cuentan como compromiso, segun lo que haya elegido el usuario.
  *
  * Reactiva a proposito: se edita en Ajustes y el Resumen tiene que recalcular
@@ -215,17 +234,45 @@ export function useComprometidas(): ReadonlySet<string> {
   const { data } = useLiveQuery(consulta);
   const crudo = data?.[0]?.valor;
 
-  return useMemo(() => {
-    if (crudo === undefined) return new Set(COMPROMETIDAS_POR_OMISION);
-    try {
-      const lista = JSON.parse(crudo) as unknown;
-      // Una lista vacia es una eleccion valida --"ninguna categoria es
-      // compromiso por si sola"--, asi que no se cae de vuelta a la de omision.
-      return Array.isArray(lista) ? new Set(lista.map(String)) : new Set(COMPROMETIDAS_POR_OMISION);
-    } catch {
-      return new Set(COMPROMETIDAS_POR_OMISION);
-    }
-  }, [crudo]);
+  return useMemo(() => interpretarComprometidas(crudo), [crudo]);
+}
+
+/**
+ * Lo mismo, leido una sola vez y sin suscribirse.
+ *
+ * Para los formularios, que son borradores locales. Sembrar un interruptor con
+ * `useComprometidas` seria un bug fino: `useLiveQuery` devuelve vacio en el
+ * primer render, asi que el interruptor nace con la lista de omision, y el
+ * `useState` no se entera cuando llega la de verdad. Quien apago "vivienda" en
+ * Ajustes la veria encendida y al guardar se la volveria a marcar.
+ */
+export function leerComprometidas(db: BaseDeDatos): ReadonlySet<string> {
+  return interpretarComprometidas(leerAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS));
+}
+
+/**
+ * Marca una categoria como compromiso fijo, o le saca la marca.
+ *
+ * Va pegado a `useComprometidas` y no suelto en la pantalla porque **guarda la
+ * lista entera**, no la categoria tocada, y eso es facil de hacer mal desde
+ * afuera: la nocion de "ausente significa la lista de siempre" vive en la
+ * lectura, asi que quien escribiera solo la tocada borraria de un saque las
+ * cinco de omision sin que nadie lo pida.
+ *
+ * Lo llaman dos pantallas --Ajustes, que las muestra todas juntas, y la edicion
+ * de una categoria-- y las dos se ven al dia solas porque leen del mismo ajuste
+ * con `useLiveQuery`.
+ */
+export function useMarcarComprometida(): (categoriaId: string, valor: boolean) => void {
+  const { db } = useDatos();
+  const comprometidas = useComprometidas();
+
+  return (categoriaId, valor) => {
+    const siguiente = new Set(comprometidas);
+    if (valor) siguiente.add(categoriaId);
+    else siguiente.delete(categoriaId);
+    escribirAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS, JSON.stringify([...siguiente]));
+  };
 }
 
 /** Cuantos pinguinos pueden acompanar al iceberg. */

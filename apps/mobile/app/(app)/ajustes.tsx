@@ -8,7 +8,7 @@
 
 import { crypto, dates, money } from '@iceberg/core';
 import {
-  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_PINGUINOS,
+  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_PINGUINOS,
   CLAVE_DISPOSITIVO, CLAVE_HOGAR,
   CLAVE_MIEMBRO, borrarCategoria, escribirAjuste, borrarTodo, crearCategoria, crearCuenta,
   deshacerLote, editarCuenta, leerAjuste, renombrarMiembro, unirseAHogar,
@@ -38,7 +38,7 @@ import {
 } from '../../datos/consultas';
 import { useCategorias } from '../../datos/catalogo';
 import { useCuentaActiva } from '../../datos/cuenta';
-import { useComprometidas } from '../../datos/consultas';
+import { useComprometidas, useMarcarComprometida } from '../../datos/consultas';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
 import {
   CarpetaPerdidaError, HAY_CARPETA, elegirCarpeta, nombreDeCarpeta,
@@ -54,6 +54,7 @@ export default function Ajustes() {
   const aireInferior = useAireInferior();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const comprometidas = useComprometidas();
+  const marcarComprometida = useMarcarComprometida();
   const categorias = useCategorias();
   const letra = useLetra();
   const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
@@ -475,10 +476,7 @@ export default function Ajustes() {
                       encendido={esCompromiso}
                       accesible={`${categoria.nombre}: ${esCompromiso ? 'comprometido' : 'variable'}`}
                       onCambiar={(valor) => {
-                        const siguiente = new Set(comprometidas);
-                        if (valor) siguiente.add(categoria.id);
-                        else siguiente.delete(categoria.id);
-                        escribirAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS, JSON.stringify([...siguiente]));
+                        marcarComprometida(categoria.id, valor);
                         avisar('Guardado');
                       }}
                     />

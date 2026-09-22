@@ -21,7 +21,7 @@
  * pixeles de alto y los dos dejan de estorbarse.
  */
 
-import { money } from '@iceberg/core';
+import { analytics, money } from '@iceberg/core';
 import {
   charts, donutArcPath, fonts, pesos, sectoresDeTorta, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
@@ -64,9 +64,20 @@ interface Sector {
   readonly esOtras: boolean;
 }
 
+/**
+ * Como se llama un sector.
+ *
+ * `SIN_CATEGORIA` es una clave interna de `analytics`, no un id de categoria,
+ * asi que el catalogo la devolveria pelada: la leyenda decia `__sin__`. Se
+ * resuelve como la ausencia que es, igual que en la lista de la pantalla.
+ */
+function etiquetaDe(categoriaId: string, nombreCorto: (id: string | null) => string): string {
+  return nombreCorto(categoriaId === analytics.SIN_CATEGORIA ? null : categoriaId);
+}
+
 function armarSectores(
   porciones: readonly PorcionDeTorta[],
-  nombreCorto: (id: string) => string,
+  nombreCorto: (id: string | null) => string,
 ): Sector[] {
   const total = money.sum(porciones.map((p) => p.total));
   if (total.amountMinor === 0) return [];
@@ -76,7 +87,7 @@ function armarSectores(
 
   const sectores: Sector[] = principales.map((porcion, indice) => ({
     id: porcion.categoriaId,
-    etiqueta: nombreCorto(porcion.categoriaId),
+    etiqueta: etiquetaDe(porcion.categoriaId, nombreCorto),
     total: porcion.total,
     parte: porcion.total.amountMinor / total.amountMinor,
     color: charts[indice % charts.length]!,
@@ -105,7 +116,7 @@ export function TortaDeCategorias(
   {
     porciones: readonly PorcionDeTorta[];
     theme: Theme;
-    /** Si viene, cada fila de la leyenda filtra por esa categoria. */
+    /** Si viene, cada fila de la leyenda abre esa categoria. */
     onElegir?: (categoriaId: string) => void;
     /** Si viene, el pinguino del hueco brinca al tocarlo y lo avisa. */
     onTocarPinguino?: () => void;
@@ -205,7 +216,7 @@ export function TortaDeCategorias(
               onPress={() => onElegir(sector.id)}
               style={styles.fila}
               accessibilityRole="button"
-              accessibilityLabel={`Ver movimientos de ${sector.etiqueta}`}
+              accessibilityLabel={`${sector.etiqueta}, ${money.format(sector.total)}. Qué hacer con esta categoría`}
             >
               {contenido}
               <CaretRight size={ANCHO_CARET} weight="bold" color={theme.silencio} />

@@ -129,6 +129,7 @@ function Contenido() {
               <Stack.Screen name="regla/[id]" options={COMO_HOJA} />
               <Stack.Screen name="importar" options={COMO_HOJA} />
               <Stack.Screen name="cuenta/[id]" options={COMO_HOJA} />
+              <Stack.Screen name="categoria/[id]" options={COMO_HOJA} />
               <Stack.Screen name="reglas-categoria" options={COMO_HOJA} />
             </Stack>
           </ProveedorDeExplicacion>
