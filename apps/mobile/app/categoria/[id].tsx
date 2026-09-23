@@ -31,11 +31,15 @@
  */
 
 import { categories } from '@iceberg/core';
-import { obtenerCategoria, renombrarCategoria, restaurarCategoria } from '@iceberg/db';
+import {
+  aplicarCategorias, borrarReglaDeCategoria, crearReglaDeCategoria, obtenerCategoria,
+  renombrarCategoria, restaurarCategoria, type ReglaCategoria,
+} from '@iceberg/db';
 import {
   elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Trash } from 'phosphor-react-native/src/icons/Trash';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Interruptor } from '../../components/Interruptor';
@@ -43,7 +47,9 @@ import { PantallaModal } from '../../components/PantallaModal';
 import { iconoDeCategoria } from '../../components/iconos';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
-import { leerComprometidas, useMarcarComprometida } from '../../datos/consultas';
+import {
+  leerComprometidas, useMarcarComprometida, useReglasDeCategoria,
+} from '../../datos/consultas';
 import { useLetra } from '../../datos/letra';
 import { volver } from '../../datos/navegacion';
 import { useTema } from '../../datos/tema';
@@ -76,6 +82,21 @@ export default function EditarCategoria() {
   );
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Las reglas que apuntan a esta categoria.
+   *
+   * Viven aca y no solo en su pantalla aparte porque **son de la categoria**:
+   * "si dice VETERINARIA, es mascotas" es una propiedad de mascotas tanto como
+   * su nombre. Tenerlas en otra pantalla obligaba a saber que existian.
+   *
+   * La pantalla aparte se queda igual, y hace algo que esta no puede: ofrece los
+   * nombres sin reconocer de **todo** el historial, que no pertenecen a ninguna
+   * categoria hasta que uno decide a cual van.
+   */
+  const reglas = useReglasDeCategoria();
+  const mias = reglas.filter((r: ReglaCategoria) => r.categoriaId === id);
+  const [patron, setPatron] = useState('');
+
   const Icono = iconoDeCategoria(id);
   const limpio = nombre.trim();
   const puedeGuardar = limpio !== '';
@@ -91,6 +112,31 @@ export default function EditarCategoria() {
       if (comprometido !== leerComprometidas(db).has(id)) marcarComprometida(id, comprometido);
       avisar('Cambios guardados');
       volver(router);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  function agregarRegla() {
+    if (patron.trim() === '') return;
+    try {
+      crearReglaDeCategoria(db, contexto, { patron, categoriaId: id });
+      setPatron('');
+      // Se aplica al toque sobre lo que ya estaba sin categoria: escribir la
+      // regla y que no pasara nada visible hacia dudar de si habia servido.
+      const cuantos = aplicarCategorias(db, contexto);
+      avisar(cuantos === 0
+        ? 'Regla guardada'
+        : `Regla guardada. Se categorizaron ${cuantos}`);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  function quitarRegla(reglaId: string, comoDice: string) {
+    try {
+      borrarReglaDeCategoria(db, contexto, reglaId);
+      avisar(`Se quitó "${comoDice}"`);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -160,6 +206,59 @@ export default function EditarCategoria() {
             Comprometido es lo que llega igual: arriendo, cuentas, cuotas. Variable es lo
             que decides tú.
           </Text>
+        </View>
+
+        {/*
+          Las reglas de categorizacion, que antes vivian solo en otra pantalla.
+
+          Se guardan en cuanto se escriben y no esperan a Guardar: son filas
+          propias de la base, no campos de este formulario, y mezclarlas con el
+          borrador haria que Cancelar significara dos cosas distintas.
+        */}
+        <View style={styles.campo}>
+          <Text style={styles.etiqueta}>Cuando el movimiento diga…</Text>
+          {mias.length === 0 ? (
+            <Text style={styles.ayuda}>
+              Todavía no hay ninguna. Escribe un trozo del nombre que aparece en la
+              cartola y todo lo que lo contenga se va a clasificar acá solo.
+            </Text>
+          ) : mias.map((regla: ReglaCategoria) => (
+            <View key={regla.id} style={styles.filaDeRegla}>
+              <Text style={styles.patron} numberOfLines={1}>{regla.patron}</Text>
+              <Pressable
+                onPress={() => quitarRegla(regla.id, regla.patron)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Quitar la regla ${regla.patron}`}
+              >
+                <Trash size={14} weight="regular" color={theme.silencio} />
+              </Pressable>
+            </View>
+          ))}
+
+          <View style={styles.filaDeAgregar}>
+            <TextInput
+              value={patron}
+              onChangeText={setPatron}
+              placeholder="jumbo, uber, veterinaria…"
+              placeholderTextColor={theme.silencio}
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={agregarRegla}
+              returnKeyType="done"
+              style={[styles.entrada, styles.entradaDeRegla]}
+              accessibilityLabel="Texto que reconoce esta categoría"
+            />
+            <Pressable
+              onPress={agregarRegla}
+              disabled={patron.trim() === ''}
+              style={[styles.secundario, patron.trim() === '' && styles.apagado]}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar la regla"
+            >
+              <Text style={styles.secundarioTexto}>Agregar</Text>
+            </Pressable>
+          </View>
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -262,5 +361,20 @@ function crearEstilos(theme: Theme, letra: Letra) {
     secundarioTexto: {
       fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.acentoTexto,
     },
+
+    filaDeRegla: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.sm,
+    },
+    // En monoespaciada: es un trozo de texto que se compara literalmente, no
+    // una frase. Se guarda normalizado, y asi se ve que lo esta.
+    patron: {
+      flex: 1,
+      fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta,
+    },
+    filaDeAgregar: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    entradaDeRegla: { flex: 1 },
   });
 }

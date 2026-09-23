@@ -21,11 +21,12 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
+import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Minus } from 'phosphor-react-native/src/icons/Minus';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { Star } from 'phosphor-react-native/src/icons/Star';
 import { Trash } from 'phosphor-react-native/src/icons/Trash';
-import { Interruptor } from '../../components/Interruptor';
+import { iconoDeCategoria } from '../../components/iconos';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
@@ -458,7 +459,9 @@ export default function Ajustes() {
           styles={styles}
           theme={theme}
           titulo="Categorías"
-          ayuda={'Cada categoría trae un tipo por omisión, y es solo eso: una suposición '
+          ayuda={'Toca una para cambiarle el nombre, si cuenta como compromiso fijo, y '
+            + 'las reglas que la reconocen al importar una cartola.\n\n'
+            + 'Cada categoría trae un tipo por omisión, y es solo eso: una suposición '
             + 'para no tener que clasificar a mano cada gasto.\n\n'
             + 'Comprometido es lo que llega igual: arriendo, cuentas, cuotas. Variable es '
             + 'lo que decides tú.\n\n'
@@ -479,39 +482,57 @@ export default function Ajustes() {
             asi que sin esto cada categoria nueva empuja hacia abajo el resto de
             Ajustes y la pantalla se vuelve interminable.
           */}
+          {/*
+            Cada fila abre la categoria en vez de traer sus controles puestos.
+
+            Antes cada fila llevaba el interruptor de comprometido al lado, y era
+            la unica de las tres cosas que se le pueden cambiar a una categoria
+            que estaba a la vista: el nombre no se podia cambiar en ninguna
+            parte, y sus reglas vivian en otra pantalla. Doce filas con un
+            interruptor cada una tampoco dejaban sitio para mas.
+
+            Ahora la fila es un destino y lo que se puede hacer con la categoria
+            esta todo junto adentro. El basurero se queda fuera del tocable, como
+            la estrella en la lista de cuentas: es una accion sobre la fila, no
+            un lugar al que ir.
+          */}
           <ScrollView style={styles.listaDeCategorias} nestedScrollEnabled>
             {categorias.todas.map((categoria) => {
               const esCompromiso = comprometidas.has(categoria.id);
+              const Icono = iconoDeCategoria(categoria.id);
               return (
                 <View key={categoria.id} style={styles.fila}>
-                  <Text style={styles.etiqueta} numberOfLines={1}>{categoria.nombre}</Text>
-                  <View style={styles.claseDeCategoria}>
-                    <Text style={styles.etiqueta}>
-                      {esCompromiso ? 'Comprometido' : 'Variable'}
-                    </Text>
-                    <Interruptor
-                      theme={theme}
-                      encendido={esCompromiso}
-                      accesible={`${categoria.nombre}: ${esCompromiso ? 'comprometido' : 'variable'}`}
-                      onCambiar={(valor) => {
-                        marcarComprometida(categoria.id, valor);
-                        avisar('Guardado');
-                      }}
-                    />
-                    {/* El hueco cuando no es propia mantiene alineada la columna
-                        del interruptor: sin el, las doce de la app quedarian
-                        corridas respecto de las que si se pueden borrar. */}
-                    {categoria.propia ? (
-                      <Pressable
-                        onPress={() => quitarCategoria(categoria.id, categoria.nombre)}
-                        hitSlop={8}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Quitar la categoría ${categoria.nombre}`}
-                      >
-                        <Trash size={14} weight="regular" color={theme.silencio} />
-                      </Pressable>
-                    ) : <View style={styles.huecoDeBasurero} />}
-                  </View>
+                  <Link
+                    href={{ pathname: '/categoria/[id]', params: { id: categoria.id } }}
+                    asChild
+                  >
+                    <Pressable
+                      style={styles.categoriaTocable}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Configurar ${categoria.nombre}. `
+                        + `Hoy cuenta como ${esCompromiso ? 'comprometido' : 'variable'}`}
+                    >
+                      <Icono size={15} weight="regular" color={theme.silencio} />
+                      <Text style={styles.etiqueta} numberOfLines={1}>{categoria.nombre}</Text>
+                      <Text style={styles.claseChica}>
+                        {esCompromiso ? 'Comprometido' : 'Variable'}
+                      </Text>
+                      <CaretRight size={12} weight="bold" color={theme.silencio} />
+                    </Pressable>
+                  </Link>
+                  {/* El hueco cuando no es propia mantiene alineada la columna:
+                      sin el, las doce de la app quedarian corridas respecto de
+                      las que si se pueden borrar. */}
+                  {categoria.propia ? (
+                    <Pressable
+                      onPress={() => quitarCategoria(categoria.id, categoria.nombre)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Quitar la categoría ${categoria.nombre}`}
+                    >
+                      <Trash size={14} weight="regular" color={theme.silencio} />
+                    </Pressable>
+                  ) : <View style={styles.huecoDeBasurero} />}
                 </View>
               );
             })}
@@ -1108,7 +1129,21 @@ function crearEstilos(theme: Theme, letra: Letra) {
       fontSize: letra.xs, lineHeight: letra.px(18), color: theme.tinta,
     },
 
-    claseDeCategoria: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    /**
+     * La fila de una categoria: todo menos el basurero.
+     *
+     * `flex: 1` para que el area tocable llegue hasta el `>`, y no sea solo el
+     * ancho del nombre.
+     */
+    categoriaTocable: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    },
+    // Chica y apagada: dice como esta clasificada hoy, no es el titulo de la
+    // fila. Quien la quiera cambiar entra, que es de lo que habla el `>`.
+    claseChica: {
+      fontFamily: fonts.texto, fontWeight: pesos.regular,
+      fontSize: letra.px(10), color: theme.silencioHondo,
+    },
 
     // Lo irreversible no puede verse igual que lo reversible: "Borrar todos los
     // datos" tenia el mismo borde y el mismo color que "Exportar".
