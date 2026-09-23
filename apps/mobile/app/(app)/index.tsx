@@ -116,10 +116,23 @@ export default function Resumen() {
   const scroll = useRef<ScrollView>(null);
   const desplazamiento = useRef(0);
   useDesplazadorDelTutorial(useCallback((dy: number) => {
-    // Sin animar: el tutorial vuelve a medir justo despues, y con un
-    // desplazamiento suave la medicion cae a mitad de camino y el recuadro
-    // queda corrido. El salto casi no se ve, porque pasa detras del velo.
-    scroll.current?.scrollTo({ y: Math.max(0, desplazamiento.current + dy), animated: false });
+    const destino = Math.max(0, desplazamiento.current + dy);
+    /**
+     * Se anota el destino **antes** de pedirlo, sin esperar a `onScroll`.
+     *
+     * Era el bug del paso de la `i`: `onScroll` llega tarde --y con
+     * `scrollEventThrottle` puede no llegar nunca para un salto instantaneo--
+     * asi que el paso siguiente calculaba su desplazamiento sobre la posicion
+     * **anterior** y saltaba al lugar equivocado. El recuadro quedaba sobre una
+     * franja vacia arriba de la pantalla.
+     *
+     * Durante el tutorial nadie mas puede desplazar --el velo se come los
+     * toques-- asi que esta cuenta es la unica que manda y no se desincroniza.
+     */
+    desplazamiento.current = destino;
+    // Sin animar: el tutorial vuelve a medir en el fotograma siguiente, y con un
+    // desplazamiento suave la medicion cae a mitad de camino.
+    scroll.current?.scrollTo({ y: destino, animated: false });
   }, []));
 
 

@@ -93,18 +93,31 @@ interface Paso {
 }
 
 /**
- * Los doce pasos, en el orden en que se recorre la pantalla.
+ * Los doce pasos.
  *
- * Primero lo que se ve de arriba abajo en el Resumen, despues como pedir mas, y
- * al final a donde se puede ir. El orden importa: nadie entiende "Categorias"
- * antes de saber que la app habla de un periodo.
+ * **Cuanta plata tienes y como anotar la que gastas**, en ese orden, antes que
+ * nada. Son las dos unicas cosas que alguien necesita para empezar a usar la
+ * app hoy mismo; lo demas explica lo que va a ver despues. El primer intento
+ * recorria la pantalla de arriba abajo y dejaba el boton de agregar --lo unico
+ * que hay que tocar todos los dias-- para el paso doce, que es donde llega quien
+ * no salto el tutorial.
+ *
+ * De ahi en adelante si va en el orden de la pantalla: primero lo que se lee de
+ * arriba abajo en el Resumen, despues como pedir mas, y al final a donde se
+ * puede ir. Nadie entiende "Categorias" antes de saber que la app habla de un
+ * periodo.
  */
 const PASOS: readonly Paso[] = [
   {
     ancla: 'saldo',
     desplaza: true,
-    texto: 'Este es tu **saldo disponible**. Sale de todo tu historial, no del período: '
+    texto: 'Esta es tu **plata disponible**. Sale de todo tu historial, no del período: '
       + 'el saldo inicial de tus cuentas, más todo lo que entró, menos todo lo que salió.',
+  },
+  {
+    ancla: 'mas',
+    texto: 'Y este es el botón que vas a usar siempre: **agregar un gasto o un ingreso**.\n\n'
+      + 'Con eso ya puedes empezar. Lo que viene es para entender lo que vas a ver.',
   },
   {
     ancla: 'periodo',
@@ -150,11 +163,7 @@ const PASOS: readonly Paso[] = [
   {
     ancla: '/ajustes',
     texto: '**Ajustes**: tus cuentas, las categorías, importar la cartola del banco, el '
-      + 'respaldo y la sincronización.\n\nDesde acá también puedes volver a ver esto.',
-  },
-  {
-    ancla: 'mas',
-    texto: 'Y este es el botón que vas a usar siempre: **agregar un gasto o un ingreso**.\n\n'
+      + 'respaldo y la sincronización.\n\nDesde acá también puedes volver a ver esto.\n\n'
       + 'Eso es todo. Que te sirva.',
   },
 ];
@@ -443,7 +452,14 @@ function Velo(
       });
     };
 
-    setHueco(null);
+    /**
+     * El hueco viejo **se queda** mientras se mide el nuevo.
+     *
+     * Borrarlo primero dejaba un fotograma con el velo entero y sin recuadro, y
+     * en el telefono eso se ve como un parpadeo al cambiar de paso. Que el
+     * recuadro se quede un instante donde estaba es mucho menos visible que
+     * verlo desaparecer y volver.
+     */
     medir();
     return () => { vivo = false; };
   }, [
