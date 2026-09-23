@@ -26,6 +26,8 @@ import {
   charts, donutArcPath, fonts, pesos, sectoresDeTorta, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
+import { CheckSquare } from 'phosphor-react-native/src/icons/CheckSquare';
+import { Square } from 'phosphor-react-native/src/icons/Square';
 import { useCallback, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -112,10 +114,20 @@ function armarSectores(
 }
 
 export function TortaDeCategorias(
-  { porciones, theme, onElegir, onTocarPinguino }:
+  { porciones, theme, apagadas, onAlternar, onElegir, onTocarPinguino }:
   {
+    /**
+     * **Todas** las categorias del periodo, apagadas incluidas.
+     *
+     * El dibujo se arma solo con las encendidas, pero la leyenda tiene que
+     * seguir listando las apagadas: si desaparecieran, no habria desde donde
+     * volver a prenderlas y la casilla seria un camino de ida.
+     */
     porciones: readonly PorcionDeTorta[];
     theme: Theme;
+    /** Las que el usuario saco del reparto, por id. */
+    apagadas: ReadonlySet<string>;
+    onAlternar: (categoriaId: string) => void;
     /** Si viene, cada fila de la leyenda abre esa categoria. */
     onElegir?: (categoriaId: string) => void;
     /** Si viene, el pinguino del hueco brinca al tocarlo y lo avisa. */
@@ -141,9 +153,18 @@ export function TortaDeCategorias(
   }, [onTocarPinguino, rebote]);
 
   const categorias = useCategorias();
-  const sectores = armarSectores(porciones, categorias.nombreCorto);
+  const encendidas = porciones.filter((p) => !apagadas.has(p.categoriaId));
+  const sectores = armarSectores(encendidas, categorias.nombreCorto);
 
-  if (sectores.length === 0) {
+  /**
+   * Las apagadas que la leyenda tiene que seguir mostrando.
+   *
+   * Van al final, despues de "Otras", y no participan del dibujo. Son la unica
+   * forma de volver a prender algo sin bajar a la lista completa.
+   */
+  const fueraDelReparto = porciones.filter((p) => apagadas.has(p.categoriaId));
+
+  if (sectores.length === 0 && fueraDelReparto.length === 0) {
     return (
       <View style={styles.sinGastos}>
         <Pinguino theme={theme} tamano={40} estado="dormido" />
@@ -197,40 +218,126 @@ export function TortaDeCategorias(
         </Animated.View>
       </View>
 
-      <View style={styles.leyenda}>
-        {sectores.map((sector) => {
-          const Icono = sector.esOtras ? null : iconoDeCategoria(sector.id);
-          const contenido = (
-            <>
-              <View style={[styles.punto, { backgroundColor: sector.color }]} />
-              {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
-              <Text style={styles.nombre} numberOfLines={1}>{sector.etiqueta}</Text>
-              <Text style={styles.monto}>{money.formatNumber(sector.total)}</Text>
-              <Text style={styles.porcentaje}>{Math.round(sector.parte * 100)}%</Text>
-            </>
-          );
+      {/*
+        La leyenda, y de paso el control de que entra en el reparto.
 
-          return onElegir && !sector.esOtras ? (
-            <Pressable
-              key={sector.id}
-              onPress={() => onElegir(sector.id)}
-              style={styles.fila}
-              accessibilityRole="button"
-              accessibilityLabel={`${sector.etiqueta}, ${money.format(sector.total)}. Qué hacer con esta categoría`}
-            >
-              {contenido}
-              <CaretRight size={ANCHO_CARET} weight="bold" color={theme.silencio} />
-            </Pressable>
-          ) : (
-            <View key={sector.id} style={styles.fila}>
-              {contenido}
-              {/* "Otras" no lleva a ningun lado, pero reserva el hueco del `>`
-                  para que la columna de porcentajes no se desalinee. */}
-              <View style={styles.sinCaret} />
-            </View>
-          );
-        })}
+        La casilla va **aca** y no solo en la lista de abajo porque es aca donde
+        se ve el efecto: apagar una categoria rehace la torta que esta encima, y
+        un control a media pantalla del grafico que modifica no se encuentra. El
+        primer intento uso el icono de la categoria como interruptor y quedo
+        invisible: un icono que ademas es el icono de la categoria no se lee
+        como algo que se pueda tocar.
+      */}
+      <View style={styles.leyenda}>
+        {sectores.map((sector) => (
+          <FilaDeLeyenda
+            key={sector.id}
+            theme={theme}
+            styles={styles}
+            id={sector.id}
+            // La que armo `armarSectores`: ya resuelve "sin categoria" y el
+            // "Otras N". Recalcularla aca traia de vuelta el `__sin__` pelado.
+            etiqueta={sector.etiqueta}
+            total={sector.total}
+            color={sector.color}
+            porcentaje={`${Math.round(sector.parte * 100)}%`}
+            esOtras={sector.esOtras}
+            apagada={false}
+            onAlternar={onAlternar}
+            onElegir={onElegir}
+          />
+        ))}
+
+        {fueraDelReparto.map((porcion) => (
+          <FilaDeLeyenda
+            key={porcion.categoriaId}
+            theme={theme}
+            styles={styles}
+            id={porcion.categoriaId}
+            etiqueta={etiquetaDe(porcion.categoriaId, categorias.nombreCorto)}
+            total={porcion.total}
+            color={theme.hairline}
+            porcentaje="—"
+            esOtras={false}
+            apagada
+            onAlternar={onAlternar}
+            onElegir={onElegir}
+          />
+        ))}
       </View>
+    </View>
+  );
+}
+
+/**
+ * Una fila de la leyenda: casilla, punto de color, nombre, monto y parte.
+ *
+ * La casilla y el resto son **hermanos**, no uno dentro del otro: un tocable
+ * adentro de otro se pelea el gesto segun la plataforma, y aca son dos acciones
+ * distintas --sacarla del reparto, o ir a sus movimientos--.
+ */
+function FilaDeLeyenda(
+  { theme, styles, id, etiqueta, total, color, porcentaje, esOtras, apagada, onAlternar, onElegir }: {
+    theme: Theme;
+    styles: ReturnType<typeof crearEstilos>;
+    id: string;
+    etiqueta: string;
+    total: money.Money;
+    color: string;
+    porcentaje: string;
+    esOtras: boolean;
+    apagada: boolean;
+    onAlternar: (categoriaId: string) => void;
+    onElegir?: (categoriaId: string) => void;
+  },
+) {
+  const Icono = esOtras ? null : iconoDeCategoria(id);
+  const Casilla = apagada ? Square : CheckSquare;
+
+  return (
+    <View style={styles.fila}>
+      {esOtras ? (
+        // Reserva el ancho para que la columna no se desalinee.
+        <View style={styles.huecoCasilla} />
+      ) : (
+        <Pressable
+          onPress={() => onAlternar(id)}
+          hitSlop={10}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: !apagada }}
+          accessibilityLabel={apagada
+            ? `${etiqueta} está fuera del reparto. Tocar para volver a incluirla`
+            : `${etiqueta} entra en el reparto. Tocar para sacarla`}
+        >
+          <Casilla
+            size={16}
+            weight={apagada ? 'regular' : 'fill'}
+            color={apagada ? theme.silencio : theme.acentoTexto}
+          />
+        </Pressable>
+      )}
+
+      <View style={[styles.punto, { backgroundColor: color }]} />
+      {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
+      <Text
+        style={[styles.nombre, apagada && styles.apagado]}
+        numberOfLines={1}
+      >
+        {etiqueta}
+      </Text>
+      <Text style={[styles.monto, apagada && styles.apagado]}>{money.formatNumber(total)}</Text>
+      <Text style={styles.porcentaje}>{porcentaje}</Text>
+
+      {onElegir && !esOtras ? (
+        <Pressable
+          onPress={() => onElegir(id)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver movimientos de ${etiqueta}`}
+        >
+          <CaretRight size={ANCHO_CARET} weight="bold" color={theme.silencio} />
+        </Pressable>
+      ) : <View style={styles.sinCaret} />}
     </View>
   );
 }
@@ -239,6 +346,14 @@ function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     bloque: { alignItems: 'center', gap: spacing.md },
     leyenda: { alignSelf: 'stretch', gap: 2 },
+    huecoCasilla: { width: 16 },
+    /**
+     * Apagada, pero legible.
+     *
+     * `silencio` y no una opacidad sobre la fila entera: a la opacidad que hace
+     * falta para que se lea como apagada, el texto se cae del contraste AA.
+     */
+    apagado: { color: theme.silencio },
     /**
      * Sin subrayado.
      *
