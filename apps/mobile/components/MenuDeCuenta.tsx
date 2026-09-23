@@ -48,6 +48,7 @@ import {
   capas, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { Check } from 'phosphor-react-native/src/icons/Check';
+import { Star } from 'phosphor-react-native/src/icons/Star';
 import {
   createContext, useCallback, useContext, useEffect, useState, type ReactNode,
 } from 'react';
@@ -140,7 +141,7 @@ function Burbuja(
     onCerrar: () => void;
   },
 ) {
-  const { cuentaId, elegir } = useCuentaActiva();
+  const { cuentaId, elegir, porDefecto } = useCuentaActiva();
   const letra = useLetra();
   const margenes = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -175,6 +176,7 @@ function Burbuja(
       <ScrollView style={{ maxHeight: Math.max(height - arranca - margenes.bottom - AIRE, 0) }}>
         {opciones.map((opcion) => {
           const elegida = opcion.valor === cuentaId;
+          const esLaDeSiempre = opcion.valor === porDefecto;
           return (
             <Pressable
               key={opcion.valor ?? 'todas'}
@@ -182,7 +184,9 @@ function Burbuja(
               style={({ pressed }) => [estilos.opcion, pressed && estilos.opcionApretada]}
               accessibilityRole="button"
               accessibilityState={{ selected: elegida }}
-              accessibilityLabel={`Ver ${opcion.etiqueta}`}
+              accessibilityLabel={esLaDeSiempre
+                ? `Ver ${opcion.etiqueta}. Es con la que abre la app`
+                : `Ver ${opcion.etiqueta}`}
             >
               <Text
                 style={elegida ? estilos.opcionActiva : estilos.opcionTexto}
@@ -190,6 +194,19 @@ function Burbuja(
               >
                 {opcion.etiqueta}
               </Text>
+              {/*
+                La estrella dice cual abre la app, y **no se toca**: la marca se
+                pone en Ajustes, donde esta el resto de las cosas de cada cuenta.
+                Aca es una etiqueta, no un boton, porque este menu contesta "que
+                estoy mirando" y no "que quiero mirar siempre". Mezclar las dos
+                haria que un toque distraido cambiara con que arranca la app.
+
+                Va antes del visto para que no se muevan de columna: el visto
+                aparece y desaparece segun lo elegido, la estrella no.
+              */}
+              {esLaDeSiempre ? (
+                <Star size={11} weight="fill" color={theme.pinguinoPico} />
+              ) : null}
               {elegida ? <Check size={12} weight="bold" color={theme.acentoTexto} /> : null}
             </Pressable>
           );
