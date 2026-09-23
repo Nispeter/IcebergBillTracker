@@ -19,6 +19,7 @@ import { Stack } from 'expo-router';
 import { View } from 'react-native';
 import { BarraInferior } from '../../components/BarraInferior';
 import { ProveedorDeMenuDeCuenta } from '../../components/MenuDeCuenta';
+import { ProveedorDeTutorial } from '../../datos/tutorial';
 import { useVolverATodasSiSeBorroLaCuenta } from '../../datos/consultas';
 import { useTema } from '../../datos/tema';
 
@@ -34,6 +35,7 @@ export default function AppLayout() {
   // arranca en blanco y al cambiar de vista se ve un destello. En web no pasaba
   // porque ahi no hay contenedor nativo por pantalla.
   return (
+    <ProveedorDeTutorial theme={theme}>
     <ProveedorDeMenuDeCuenta theme={theme}>
     <View style={{ flex: 1 }}>
       <Stack
@@ -64,5 +66,6 @@ export default function AppLayout() {
       <BarraInferior theme={theme} />
     </View>
     </ProveedorDeMenuDeCuenta>
+    </ProveedorDeTutorial>
   );
 }

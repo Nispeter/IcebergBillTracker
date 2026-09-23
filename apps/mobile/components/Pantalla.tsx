@@ -51,6 +51,7 @@ import { FueraDelPeriodo } from './FueraDelPeriodo';
 import { Pinguino } from './Pinguino';
 import { useAbrirMenuDeCuenta } from './MenuDeCuenta';
 import { useCuentas } from '../datos/consultas';
+import { useAncla, useZonaDeContenido } from '../datos/tutorial';
 import { useLetra } from '../datos/letra';
 import { useTema } from '../datos/tema';
 
@@ -84,6 +85,10 @@ export function Pantalla(
   const hayQueElegirCuenta = useCuentas().length > 1;
   // La burbuja se cuelga de donde quedo el boton, y eso solo se sabe midiendolo.
   const rayitas = useRef<View>(null);
+  // El tutorial ilumina la barra de periodo, y necesita saber donde termina el
+  // encabezado para no dibujar su tarjeta encima. Ver `datos/tutorial`.
+  const ancla = useAncla();
+  const zona = useZonaDeContenido();
 
   // Corre una sola vez por montaje, y cada destino monta su propia `Pantalla`:
   // eso es lo que hace que la animacion coincida con el cambio de vista.
@@ -146,7 +151,9 @@ export function Pantalla(
             </View>
           ) : (
             <>
-              <View style={styles.periodo}><BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} /></View>
+              <View ref={ancla('periodo')} collapsable={false} style={styles.periodo}>
+                <BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} />
+              </View>
               {/* El hueco del ancho del menu, al otro lado. Sin el, el periodo se
                   centra en el espacio que sobra despues del boton y queda corrido
                   media hamburguesa a la derecha.
@@ -173,6 +180,8 @@ export function Pantalla(
       </View>
 
       <Animated.View
+        ref={zona}
+        collapsable={false}
         style={[styles.cuerpo, {
           opacity: entrada,
           transform: [{

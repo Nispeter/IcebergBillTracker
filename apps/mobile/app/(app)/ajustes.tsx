@@ -19,7 +19,7 @@ import {
 } from '@iceberg/ui';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Ayuda } from '../../components/Ayuda';
 import { Minus } from 'phosphor-react-native/src/icons/Minus';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
@@ -39,6 +39,7 @@ import {
 import { useCategorias } from '../../datos/catalogo';
 import { useCuentaActiva } from '../../datos/cuenta';
 import { useComprometidas, useMarcarComprometida } from '../../datos/consultas';
+import { useMostrarTutorial } from '../../datos/tutorial';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
 import {
   CarpetaPerdidaError, HAY_CARPETA, elegirCarpeta, nombreDeCarpeta,
@@ -55,6 +56,8 @@ export default function Ajustes() {
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const comprometidas = useComprometidas();
   const marcarComprometida = useMarcarComprometida();
+  const mostrarTutorial = useMostrarTutorial();
+  const router = useRouter();
   const categorias = useCategorias();
   const letra = useLetra();
   const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
@@ -372,6 +375,21 @@ export default function Ajustes() {
             <Text style={styles.botonTexto}>
               {explicaciones.deAPoco ? 'De a poco' : 'Todas de una'}
             </Text>
+          </Pressable>
+        </View>
+
+        {/* El tutorial se ve sobre el Resumen, así que tocarlo lleva allá: se
+            lanza y se navega en el mismo toque. Con `replace` y no `push`
+            porque Ajustes es un destino de la barra, no un paso atrás. */}
+        <View style={styles.fila}>
+          <Text style={styles.etiqueta}>Tutorial</Text>
+          <Pressable
+            onPress={() => { mostrarTutorial(); router.replace('/'); }}
+            style={styles.boton}
+            accessibilityRole="button"
+            accessibilityLabel="Ver otra vez el tutorial de bienvenida"
+          >
+            <Text style={styles.botonTexto}>Mostrar</Text>
           </Pressable>
         </View>
 

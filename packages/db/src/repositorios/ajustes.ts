@@ -14,6 +14,21 @@ export const CLAVE_DISPOSITIVO = 'deviceId';
 export const CLAVE_HOGAR = 'householdId';
 export const CLAVE_MIEMBRO = 'memberId';
 export const CLAVE_SEMILLA_CARGADA = 'semillaCargada';
+
+/**
+ * Si ya se vio el tutorial de bienvenida.
+ *
+ * Ausente o vacio significa que no, asi que una instalacion nueva lo muestra
+ * sola sin que nadie tenga que escribir nada. Se marca tanto al terminarlo como
+ * al saltarlo: quien lo cerro con la equis ya dijo que no lo queria, y volver a
+ * ofrecerselo en cada arranque seria no escucharlo.
+ *
+ * Vive en `ajustes`, que **no se sincroniza ni se exporta**, por lo mismo que la
+ * cuenta por defecto: haber visto el tutorial es de este telefono. Al segundo
+ * aparato no le sirve que el primero lo haya visto, porque quien lo usa puede
+ * ser otra persona.
+ */
+export const CLAVE_TUTORIAL_VISTO = 'tutorialVisto';
 /**
  * Con que cuenta abre la app.
  *

@@ -15,16 +15,15 @@
  */
 
 import {
-  elevation, fonts, pesos, radii, spacing, trozosConEnfasis, type Letra, type Theme,
+  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type ReactNode,
 } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Aparecer } from '../components/Aparecer';
+import { DialogoDelPinguino } from '../components/DialogoDelPinguino';
 import { Hoja } from '../components/Hoja';
-import { Pinguino } from '../components/Pinguino';
 import { useExplicacionDeAPoco } from './consultas';
 import { useLetra } from './letra';
 
@@ -241,52 +240,28 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
         <Pressable
           onPress={() => setDichas(parrafos.length)}
           disabled={!faltan}
-          style={styles.dialogo}
           accessibilityRole={faltan ? 'button' : undefined}
           accessibilityLabel={faltan ? 'Ver la explicación completa' : undefined}
         >
-          <Pinguino theme={theme} tamano={44} hablando={hablando} />
-
-          <View style={styles.burbujas}>
-            {parrafos.slice(0, dichas).map((parrafo, indice) => (
-              // El indice como clave es correcto aca: la lista solo crece por el
-              // final y se rehace entera cuando cambia el texto.
-              // eslint-disable-next-line react/no-array-index-key
-              <Aparecer key={indice} visible desplazamiento={-6}>
-                <View style={styles.burbuja}>
-                  {/* La colita solo en la primera: las que siguen son el mismo
-                      que sigue hablando, y en un chat solo la primera del turno
-                      apunta a quien habla. */}
-                  {indice > 0 ? null : <View style={styles.colita} />}
-
-                  {/*
-                    Un solo `Text` con los trozos adentro, no uno por trozo:
-                    anidados heredan el estilo y siguen siendo el mismo parrafo,
-                    asi que el salto de linea cae donde tiene que caer. Uno por
-                    trozo los pondria uno debajo del otro.
-                  */}
-                  <Text style={styles.texto}>
-                    {trozosConEnfasis(parrafo).map((trozo, cual) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <Text key={cual} style={trozo.fuerte ? styles.fuerte : undefined}>
-                        {trozo.texto}
-                      </Text>
-                    ))}
-                  </Text>
-                </View>
-              </Aparecer>
-            ))}
-
-            {/* Los puntitos ocupan el lugar de la burbuja que viene, y el
-                renglon de abajo dice que se puede no esperarla. Los dos se van
-                con la ultima burbuja, que es cuando dejan de ser ciertos. */}
-            {!faltan ? null : (
-              <>
-                <Escribiendo styles={styles} />
-                <Text style={styles.pista}>toca para verlo todo</Text>
-              </>
-            )}
-          </View>
+          {/* La forma de hablar sale de `DialogoDelPinguino`, que la comparte
+              con el tutorial de bienvenida: la maquinaria de decirlo de a poco
+              se queda aca, que es lo unico que no es de los dos. */}
+          <DialogoDelPinguino
+            theme={theme}
+            parrafos={parrafos.slice(0, dichas)}
+            hablando={hablando}
+            pie={
+              /* Los puntitos ocupan el lugar de la burbuja que viene, y el
+                 renglon de abajo dice que se puede no esperarla. Los dos se van
+                 con la ultima burbuja, que es cuando dejan de ser ciertos. */
+              !faltan ? null : (
+                <>
+                  <Escribiendo styles={styles} />
+                  <Text style={styles.pista}>toca para verlo todo</Text>
+                </>
+              )
+            }
+          />
         </Pressable>
 
         {/* Cierra sola: lo que la hoja explicaba deja de ser cierto en cuanto se
@@ -306,52 +281,8 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
   );
 }
 
-/** Lado del cuadrado que hace de colita. Girado, asoma su diagonal. */
-const COLITA = 12;
-
 function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
-    // Arriba y no al medio: ver el comentario del dialogo.
-    dialogo: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-    // La columna de la derecha: las burbujas, una debajo de otra.
-    burbujas: { flex: 1, gap: spacing.sm },
-    /**
-     * La burbuja.
-     *
-     * Se hunde en vez de levantarse --`superficieHonda`-- porque la hoja ya es
-     * una superficie elevada: una tarjeta clara encima de otra clara no se
-     * despega de nada. Hundida se lee como un hueco dentro de la hoja, que es
-     * como se ven las burbujas de chat de todo el mundo.
-     */
-    burbuja: {
-      padding: spacing.md,
-      borderRadius: radii.md,
-      backgroundColor: theme.superficieHonda,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    /**
-     * La colita, apuntando al pico.
-     *
-     * Un cuadrado girado 45 grados: dos de sus lados quedan afuera y forman el
-     * triangulo, y los otros dos quedan tapados por la burbuja, que se dibuja
-     * despues. Por eso se corre media diagonal hacia adentro --si asomara
-     * entero, se le verian las cuatro lineas del borde--.
-     *
-     * A la altura del pico y no del centro: sale de donde esta la boca.
-     */
-    colita: {
-      position: 'absolute',
-      left: -(COLITA / 2) - 1,
-      top: 16,
-      width: COLITA,
-      height: COLITA,
-      transform: [{ rotate: '45deg' }],
-      backgroundColor: theme.superficieHonda,
-      borderLeftWidth: elevation.hairlineWidth,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
     /**
      * La burbuja de los puntitos.
      *
@@ -384,16 +315,6 @@ function crearEstilos(theme: Theme, letra: Letra) {
       color: theme.silencio,
       paddingLeft: spacing.xs,
     },
-    texto: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.regular,
-      fontSize: letra.sm,
-      lineHeight: letra.px(22),
-      color: theme.tinta,
-    },
-    // Solo el peso: cambiar ademas el color haria que el enfasis pareciera un
-    // enlace, y en una hoja de ayuda no hay a donde ir.
-    fuerte: { fontWeight: pesos.semibold },
     accion: {
       marginTop: spacing.lg,
       paddingVertical: spacing.md,

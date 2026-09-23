@@ -458,6 +458,15 @@ export const durations = {
  * pantalla entera; la hoja deslizante, que es la unica que se abre **sobre** el
  * menu; y el aviso de guardado, que va sobre todo porque confirma algo que
  * acaba de pasar y no tendria sentido que algo lo tapara.
+ *
+ * **El tutorial va arriba de sus hermanos, que no es lo mismo que arriba de
+ * todo.** Un `zIndex` solo ordena hermanos dentro de su contexto de apilado, y
+ * el velo del tutorial se monta en el layout del grupo: le gana a la burbuja de
+ * cuentas y a la barra de abajo, que comparten padre con el, y **no** al aviso
+ * ni a la hoja de explicaciones, que se dibujan en otra rama. Es correcto asi:
+ * mientras el tutorial corre no se guarda nada, asi que no hay aviso que tapar.
+ * El numero esta por encima del aviso solo para que el orden de la lista se lea
+ * de abajo hacia arriba sin excepciones.
  */
 export const capas = {
   flotante: 10,
@@ -467,4 +476,5 @@ export const capas = {
   lateral: 50,
   hoja: 55,
   aviso: 60,
+  tutorial: 70,
 } as const;

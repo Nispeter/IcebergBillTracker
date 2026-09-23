@@ -45,6 +45,7 @@ import type { IconProps } from 'phosphor-react-native';
 import { useState, type ComponentType } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAncla, type Ancla } from '../datos/tutorial';
 
 interface Destino {
   readonly ruta: string;
@@ -86,6 +87,10 @@ export function BarraInferior({ theme }: { theme: Theme }) {
   // Ver `FilaMovimiento`: dentro de `Link asChild` el estilo del hijo tiene que
   // ser un objeto aplanado, asi que el estado de presion se lleva a mano.
   const [masApretado, setMasApretado] = useState(false);
+  // El tutorial ilumina cada destino por separado. La ruta sirve de nombre de
+  // ancla: la casilla ya la tiene a mano y no hay una segunda lista que
+  // mantener en paralelo. Ver `datos/tutorial`.
+  const ancla = useAncla();
 
   const casilla = (destino: Destino) => {
     const Icono = destino.icono;
@@ -93,6 +98,10 @@ export function BarraInferior({ theme }: { theme: Theme }) {
     return (
       <Pressable
         key={destino.ruta}
+        ref={ancla(destino.ruta as Ancla)}
+        // Sin esto Android colapsa en el arbol nativo cualquier vista que no
+        // dibuje nada propio, y una colapsada no se puede medir.
+        collapsable={false}
         onPress={() => { if (!activo) router.replace(destino.ruta as never); }}
         style={({ pressed }) => [styles.casilla, pressed && styles.casillaApretada]}
         accessibilityRole="button"
@@ -123,6 +132,8 @@ export function BarraInferior({ theme }: { theme: Theme }) {
       <View style={styles.franjaDelMas} pointerEvents="box-none">
         <Link href="/nuevo" asChild>
           <Pressable
+            ref={ancla('mas')}
+            collapsable={false}
             style={StyleSheet.flatten([styles.mas, masApretado && styles.masApretado])}
             onPressIn={() => setMasApretado(true)}
             onPressOut={() => setMasApretado(false)}

@@ -32,7 +32,7 @@ import {
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { Info } from 'phosphor-react-native/src/icons/Info';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Anteriores } from '../../components/Anteriores';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
@@ -54,6 +54,7 @@ import {
 import { useLetra } from '../../datos/letra';
 import { nombreDePeriodo, usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
+import { useAncla, useDesplazadorDelTutorial } from '../../datos/tutorial';
 import { useAvisar } from '../../datos/aviso';
 
 /** El alto del hielo. Es la pieza mas grande de la pantalla, y tiene que serlo. */
@@ -102,6 +103,24 @@ export default function Resumen() {
   const deRegla = useMovimientosDeRegla(rango);
   const [cifra, setCifra] = useState<Cifra | null>(null);
   const cuantosPinguinos = usePinguinos();
+  // Lo que el tutorial ilumina de esta pantalla. Las anclas son solo `ref`s: la
+  // pantalla no sabe si hay un tutorial corriendo. Ver `datos/tutorial`.
+  const ancla = useAncla();
+  /**
+   * Y como correr el contenido, para los pasos que caen bajo el pliegue.
+   *
+   * La posicion actual se lleva en un `ref` y no en estado: cambia en cada
+   * fotograma del desplazamiento, y guardarla en estado redibujaria la pantalla
+   * entera --el iceberg, la torta, las filas-- mientras el dedo se mueve.
+   */
+  const scroll = useRef<ScrollView>(null);
+  const desplazamiento = useRef(0);
+  useDesplazadorDelTutorial(useCallback((dy: number) => {
+    // Sin animar: el tutorial vuelve a medir justo despues, y con un
+    // desplazamiento suave la medicion cae a mitad de camino y el recuadro
+    // queda corrido. El salto casi no se ve, porque pasa detras del velo.
+    scroll.current?.scrollTo({ y: Math.max(0, desplazamiento.current + dy), animated: false });
+  }, []));
 
 
   /**
@@ -161,9 +180,14 @@ export default function Resumen() {
   return (
     <Pantalla titulo="Resumen">
       <ScrollView
+        ref={scroll}
+        onScroll={(evento) => { desplazamiento.current = evento.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={32}
         contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
       >
         <Pressable
+          ref={ancla('saldo')}
+          collapsable={false}
           onPress={() => setCifra('saldo')}
           style={styles.hero}
           accessibilityRole="button"
@@ -191,6 +215,7 @@ export default function Resumen() {
           suelta: una sección sin nombre obliga a deducir qué mira, y el iceberg
           es justo la que más lo necesitaba porque no lleva ni una etiqueta.
         */}
+        <View ref={ancla('ayuda')} collapsable={false}>
         <Titulo
           texto="Comprometido y variable"
           theme={theme}
@@ -200,8 +225,12 @@ export default function Resumen() {
             + 'El hielo sobre la línea de agua es lo comprometido; lo de abajo, lo '
             + 'variable.'}
         />
+        </View>
 
-        <View style={styles.escena}>
+        {/* Los anclados llevan `collapsable={false}`: Android colapsa en el
+            arbol nativo cualquier vista que no dibuje nada propio, y una vista
+            colapsada no se puede medir. Ver `datos/tutorial`. */}
+        <View ref={ancla('iceberg')} collapsable={false} style={styles.escena}>
           <Pressable
             style={styles.hielo}
             onPress={() => {
@@ -329,17 +358,19 @@ export default function Resumen() {
             onPress={() => setCifra('neto')} />
         </View>
 
-        <Titulo texto="Últimos movimientos" ayuda={EXPLICACION_ANOMALIA} theme={theme} />
-        {recientes.length === 0
-          ? (
-            <View style={styles.vacio}>
-              <Pinguino theme={theme} tamano={40} estado="dormido" />
-              <Text style={styles.sinMovimientos}>Sin movimientos en este período.</Text>
-            </View>
-          )
-          : recientes.map((tx) => (
-            <FilaMovimiento key={tx.id} tx={tx} theme={theme} anomala={anomalias.has(tx.id)} />
-          ))}
+        <View ref={ancla('lista')} collapsable={false}>
+          <Titulo texto="Últimos movimientos" ayuda={EXPLICACION_ANOMALIA} theme={theme} />
+          {recientes.length === 0
+            ? (
+              <View style={styles.vacio}>
+                <Pinguino theme={theme} tamano={40} estado="dormido" />
+                <Text style={styles.sinMovimientos}>Sin movimientos en este período.</Text>
+              </View>
+            )
+            : recientes.map((tx) => (
+              <FilaMovimiento key={tx.id} tx={tx} theme={theme} anomala={anomalias.has(tx.id)} />
+            ))}
+        </View>
 
         <Link href="/movimientos" asChild>
           <Pressable style={styles.verTodos} accessibilityRole="button">
