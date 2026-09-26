@@ -23,6 +23,12 @@
  * o sea midiendo lo mismo que la nueva mayor. Lo que la fila apagada tiene que
  * seguir diciendo es justamente cuanto era lo que sacaste.
  *
+ * **La casilla vive solo en la lista completa.** Estuvo tambien en la leyenda
+ * de la torta, y las apagadas se quedaban ahi al final para poder volver a
+ * prenderlas: cada una que se apagaba empujaba el resto de la pantalla hacia
+ * abajo. Ahora la leyenda muestra solo lo que esta en el dibujo, y la lista de
+ * abajo lleva todas las categorias del periodo, apagadas incluidas.
+ *
  * ## Tocar una categoria lleva a sus movimientos
  *
  * Y nada mas. Hubo un intento de abrir una hoja con dos opciones --ver la lista
@@ -135,24 +141,13 @@ export default function Categorias() {
           ayuda={'Las cinco categorías más grandes llevan color propio; el resto se '
             + 'junta en "Otras" porque doce porciones no se distinguen. Los porcentajes '
             + 'son sobre el gasto del período, no sobre el total del año.\n\n'
-            + 'La casilla de cada fila la saca del reparto y la torta se rehace sobre '
-            + 'las que quedan, que es la forma de ver cómo se reparte el resto cuando '
-            + 'una sola se lleva casi todo.\n\n'
-            + 'Se apaga solo para mirar: no borra nada y vuelven todas al salir.'}
-          derecha={hayApagadas ? (
-            <Pressable
-              onPress={() => setApagadas(new Set())}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Volver a prender todas las categorías"
-            >
-              <Text style={styles.prenderTodas}>Prender todas</Text>
-            </Pressable>
-          ) : undefined}
+            + 'Las casillas de "Todas las categorías", más abajo, sacan una del reparto '
+            + 'y la torta se rehace sobre las que quedan, que es la forma de ver cómo se '
+            + 'reparte el resto cuando una sola se lleva casi todo. Las apagadas no '
+            + 'aparecen acá.'}
         />
-        {/* La torta recibe **todas**, apagadas incluidas: el dibujo sale de las
-            encendidas, pero la leyenda tiene que seguir listando las apagadas o
-            no habria desde donde volver a prenderlas. */}
+        {/* La torta recibe **todas**, apagadas incluidas, para distinguir un
+            periodo sin gastos de uno en que se apagaron todas. */}
         <TortaDeCategorias
           onTocarPinguino={() => {
             const van = toquesAlPinguino + 1;
@@ -162,7 +157,6 @@ export default function Categorias() {
           porciones={a.porCategoria}
           theme={theme}
           apagadas={apagadas}
-          onAlternar={alternar}
           onElegir={verMovimientos}
         />
 
@@ -184,10 +178,21 @@ export default function Categorias() {
               ayuda={'Cada barra es una categoría del período, de mayor a menor. Tocar '
                 + 'una lleva al listado filtrado por ella. Las muescas son de un mismo '
                 + 'tamaño, así que dos barras se comparan contándolas.\n\n'
-                + 'La casilla la saca del reparto de la torta, igual que arriba. Apagada '
-                + 'conserva su barra, para que se siga viendo cuánto era lo que sacaste.\n\n'
+                + 'La casilla la saca del reparto de la torta de arriba. Apagada conserva '
+                + 'su barra, para que se siga viendo cuánto era lo que sacaste. Se apaga '
+                + 'solo para mirar: no borra nada y vuelven todas al salir.\n\n'
                 + 'Para cambiarle el nombre o si cuenta como compromiso fijo, entra a '
                 + 'Ajustes y toca la categoría en la lista.'}
+              derecha={hayApagadas ? (
+                <Pressable
+                  onPress={() => setApagadas(new Set())}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Volver a prender todas las categorías"
+                >
+                  <Text style={styles.prenderTodas}>Prender todas</Text>
+                </Pressable>
+              ) : undefined}
             />
 
             {a.porCategoria.map(({ categoriaId, total }) => {
