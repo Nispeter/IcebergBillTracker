@@ -11,16 +11,15 @@ import {
   CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_PINGUINOS,
   CLAVE_DISPOSITIVO, CLAVE_HOGAR,
   CLAVE_MIEMBRO, borrarCategoria, escribirAjuste, borrarTodo, crearCategoria, crearCuenta,
-  deshacerLote, editarCuenta, leerAjuste, renombrarMiembro, unirseAHogar,
+  deshacerLote, leerAjuste, renombrarMiembro, unirseAHogar,
   type ConflictoLegible, type Lote, type Miembro,
 } from '@iceberg/db';
 import {
-  ESCALAS_DE_LETRA, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
+  ESCALAS_DE_LETRA, columna, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import { Ayuda } from '../../components/Ayuda';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Minus } from 'phosphor-react-native/src/icons/Minus';
 import { Plus } from 'phosphor-react-native/src/icons/Plus';
@@ -39,7 +38,7 @@ import {
 } from '../../datos/consultas';
 import { useCategorias } from '../../datos/catalogo';
 import { useCuentaActiva } from '../../datos/cuenta';
-import { useComprometidas, useMarcarComprometida } from '../../datos/consultas';
+import { useComprometidas } from '../../datos/consultas';
 import { useMostrarTutorial } from '../../datos/tutorial';
 import { TIPOS, usePeriodo } from '../../datos/periodo';
 import {
@@ -56,7 +55,6 @@ export default function Ajustes() {
   const aireInferior = useAireInferior();
   const { porDefecto, marcarPorDefecto } = useCuentaActiva();
   const comprometidas = useComprometidas();
-  const marcarComprometida = useMarcarComprometida();
   const mostrarTutorial = useMostrarTutorial();
   const router = useRouter();
   const categorias = useCategorias();
@@ -1079,13 +1077,7 @@ function Dato(
 
 function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
-    },
+    contenido: { ...columna, paddingTop: spacing.md },
     // Ajustes tiene once secciones seguidas: el aire por defecto de `Titulo`
     // --pensado para dos o tres por pantalla-- las separaba demasiado y la
     // pantalla se hacia interminable.

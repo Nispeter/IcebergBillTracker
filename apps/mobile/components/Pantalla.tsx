@@ -38,7 +38,7 @@
  * contenido que llega y no como un destello.
  */
 
-import { capas, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
+import { capas, columna, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { List } from 'phosphor-react-native/src/icons/List';
 import { useEffect, useRef, type ReactNode } from 'react';
@@ -210,12 +210,9 @@ function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }, l
      * periodo manda, porque es el que se acaba de tocar.
      */
     marco: {
-      paddingHorizontal: spacing.lg,
+      ...columna,
       paddingTop: spacing.lg + margenes.top,
       paddingBottom: spacing.sm,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
       zIndex: capas.encabezado,
     },
     // El periodo va en la misma linea que el menu: es marco, no contenido, y no

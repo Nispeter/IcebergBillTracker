@@ -49,7 +49,7 @@
 
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import {
-  ALTO_DE_LA_BARRA, capas, elevation, fonts, pesos, spacing, type Letra, type Theme,
+  ALTO_DE_LA_BARRA, capas, columna, elevation, fonts, pesos, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { X } from 'phosphor-react-native/src/icons/X';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -160,7 +160,7 @@ function crearEstilos(theme: Theme, aireDelSistema: number, letra: Letra) {
     fondo: { backgroundColor: theme.superficie },
     tirador: { backgroundColor: theme.hairline, width: 36 },
     contenido: {
-      paddingHorizontal: spacing.lg,
+      ...columna,
       /**
        * `xxxl` y no `xxl`: con el aire justo, la ultima linea quedaba pegada al
        * borde y en un telefono se leia como si el texto siguiera mas abajo.
@@ -172,9 +172,6 @@ function crearEstilos(theme: Theme, aireDelSistema: number, letra: Letra) {
        */
       paddingBottom: spacing.xxxl + aireDelSistema + ALTO_DE_LA_BARRA,
       gap: spacing.sm,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
     },
     // El titulo se lleva el ancho que sobra para que la X quede contra el
     // borde aunque el titulo sea corto.

@@ -18,7 +18,7 @@
  */
 
 import { analytics, money } from '@iceberg/core';
-import { elevation, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
+import { fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Panel } from './Panel';
 import { Titulo } from './Titulo';

@@ -32,7 +32,7 @@
  * accesibilidad.
  */
 
-import { capas, elevation, radii, spacing, type Theme } from '@iceberg/ui';
+import { ALTO_DE_LA_BARRA, capas, elevation, radii, spacing, type Theme } from '@iceberg/ui';
 import { Link, usePathname, useRouter } from 'expo-router';
 import { CalendarBlank } from 'phosphor-react-native/src/icons/CalendarBlank';
 import { ChartPieSlice } from 'phosphor-react-native/src/icons/ChartPieSlice';
@@ -71,9 +71,6 @@ const DERECHA: readonly Destino[] = [
   { ruta: '/movimientos', etiqueta: 'Movimientos', icono: ListBullets },
   { ruta: '/ajustes', etiqueta: 'Ajustes', icono: Gear },
 ];
-
-/** Alto de la barra, **sin** el margen del sistema, que se suma aparte. */
-export const ALTO_DE_LA_BARRA = 58;
 
 const MAS = 52;
 /** Cuanto asoma el mas por encima del borde de la barra. */

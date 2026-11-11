@@ -7,7 +7,7 @@
 
 import { dates, money } from '@iceberg/core';
 import {
-  charts, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
+  charts, columna, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { analytics } from '@iceberg/core';
 import { useRouter } from 'expo-router';
@@ -15,7 +15,6 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Anteriores } from '../../components/Anteriores';
 import { Calendario } from '../../components/Calendario';
-import { Ayuda } from '../../components/Ayuda';
 import { LineaDeSaldo } from '../../components/LineaDeSaldo';
 import { Panel } from '../../components/Panel';
 import { Pantalla } from '../../components/Pantalla';
@@ -230,16 +229,8 @@ function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
     /** Encabeza lo que viene justo abajo, sin el aire de una seccion suelta. */
     tituloJunto: { marginTop: spacing.lg, marginBottom: spacing.xs },
-    contenido: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
-    },
+    contenido: { ...columna, paddingTop: spacing.lg },
     aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
-
-    // Elevada para que la burbuja de la ayuda tape lo que viene debajo.
 
     tandas: { gap: spacing.xs },
     tanda: { paddingVertical: 5 },
@@ -281,7 +272,6 @@ function crearEstilos(theme: Theme, letra: Letra) {
     pista: { flex: 1, flexDirection: 'row', height: 6 },
     relleno: { backgroundColor: charts[0], borderRadius: radii.sm },
     montoDia: { width: 62, textAlign: 'right', fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    nota: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio, marginTop: spacing.xs },
 
     // Sin subrayado: el panel agrupa, y dos columnas alineadas ya se leen como
     // tabla. La etiqueta va en el gris que se lee sobre el fondo hundido.

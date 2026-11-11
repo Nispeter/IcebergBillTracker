@@ -292,20 +292,11 @@ export const ajustes = sqliteTable('ajustes', {
   valor: text('valor').notNull(),
 });
 
-export type Ajuste = typeof ajustes.$inferSelect;
-
 export type Cuenta = typeof cuentas.$inferSelect;
-export type CuentaInsert = typeof cuentas.$inferInsert;
 export type Movimiento = typeof movimientos.$inferSelect;
-export type MovimientoInsert = typeof movimientos.$inferInsert;
 export type Regla = typeof reglas.$inferSelect;
-export type ReglaInsert = typeof reglas.$inferInsert;
 export type Instancia = typeof instancias.$inferSelect;
-export type InstanciaInsert = typeof instancias.$inferInsert;
 export type Lote = typeof lotes.$inferSelect;
-export type LoteInsert = typeof lotes.$inferInsert;
 export type ReglaCategoria = typeof reglasCategoria.$inferSelect;
-export type ReglaCategoriaInsert = typeof reglasCategoria.$inferInsert;
 export type Miembro = typeof miembros.$inferSelect;
 export type Categoria = typeof categorias.$inferSelect;
-export type MiembroInsert = typeof miembros.$inferInsert;

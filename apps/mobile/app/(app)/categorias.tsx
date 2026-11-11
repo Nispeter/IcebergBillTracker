@@ -44,7 +44,7 @@
 
 import { analytics, dates, money } from '@iceberg/core';
 import {
-  elevation, fonts, niceUnit, notchesFor, pesos, spacing, type Letra, type Theme,
+  columna, fonts, niceUnit, notchesFor, pesos, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
@@ -54,7 +54,6 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Anteriores } from '../../components/Anteriores';
 import { BarraSegmentada } from '../../components/BarraSegmentada';
-import { Ayuda } from '../../components/Ayuda';
 import { Pantalla } from '../../components/Pantalla';
 import { Titulo } from '../../components/Titulo';
 import { useAireInferior } from '../../datos/desplazamiento';
@@ -272,13 +271,7 @@ export default function Categorias() {
 
 function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
-    },
+    contenido: { ...columna, paddingTop: spacing.lg },
     // El primero no necesita el aire de arriba: ya lo da el encabezado.
     primerTitulo: { marginTop: 0 },
 

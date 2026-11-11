@@ -27,7 +27,6 @@
  * `useDatos()`. Las pantallas nunca abren la base por su cuenta.
  */
 
-import type { dates } from '@iceberg/core';
 import {
   CLAVE_DISPOSITIVO, CLAVE_HOGAR, CLAVE_MIEMBRO,
   asegurarMiembro, crearContexto, crearCuenta, leerOCrear, listarCuentas,

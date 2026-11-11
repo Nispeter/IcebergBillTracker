@@ -179,6 +179,28 @@ export function formatDate(date: PlainDate): string {
   return `${pad(day(date), 2)}-${pad(month(date), 2)}-${pad(year(date), 4)}`;
 }
 
+const NOMBRES_DE_MES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+] as const;
+
+/** `agosto`. `month` va de 1 a 12. */
+export function monthName(month: number): string {
+  const nombre = NOMBRES_DE_MES[month - 1];
+  if (nombre === undefined) throw new DateError(`Mes fuera de rango: ${month}`);
+  return nombre;
+}
+
+/** `ago`. */
+export function monthShortName(month: number): string {
+  return monthName(month).slice(0, 3);
+}
+
+/** `18 ago`: la fecha que se lee de un vistazo, sin año. */
+export function formatDateShort(date: PlainDate): string {
+  return `${day(date)} ${monthShortName(month(date))}`;
+}
+
 /** `18 de agosto de 2026`. */
 export function formatDateLong(date: PlainDate): string {
   return new Intl.DateTimeFormat('es-CL', {

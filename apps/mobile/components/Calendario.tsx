@@ -13,7 +13,7 @@
 import { dates, money } from '@iceberg/core';
 import type { analytics } from '@iceberg/core';
 import {
-  charts, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
+  charts, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';

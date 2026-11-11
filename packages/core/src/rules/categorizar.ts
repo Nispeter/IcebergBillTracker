@@ -16,8 +16,6 @@
  * reconocer nombres.
  */
 
-import type { CategoryId } from '../categories/index';
-
 export interface ReglaDeCategoria {
   /** Se busca como subcadena dentro de la descripcion normalizada. */
   readonly patron: string;

@@ -23,8 +23,6 @@ export default function EditarRegla() {
   // Se lee una sola vez: el formulario es su propio estado desde ahi.
   const regla = useMemo(() => obtenerRegla(db, contexto, id), [db, contexto, id]);
 
-  const fondo = { flex: 1, backgroundColor: theme.fondo } as const;
-
   if (regla === null) {
     return (
       <PantallaModal>

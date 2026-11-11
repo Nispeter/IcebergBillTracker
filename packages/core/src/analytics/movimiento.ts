@@ -23,16 +23,9 @@ export interface MovimientoAnalizable {
 }
 
 /**
- * Las transferencias quedan fuera de todo el motor.
- *
- * Mueven plata entre cuentas propias: no entra ni sale del hogar. Contarlas
- * como gasto inflaria cada metrica —el total del mes, el ritmo de quema, la
- * participacion por categoria— con plata que nunca se gasto.
+ * Las transferencias no son ni gasto ni ingreso: mueven plata entre cuentas
+ * propias, y contarlas inflaria cada metrica con plata que nunca se gasto.
  */
-export function esFlujoReal(movimiento: MovimientoAnalizable): boolean {
-  return movimiento.tipo !== 'transferencia';
-}
-
 export function esGasto(movimiento: MovimientoAnalizable): boolean {
   return movimiento.tipo === 'gasto';
 }

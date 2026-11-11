@@ -15,7 +15,7 @@ import {
   crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
 } from '@iceberg/db';
 import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
+  columna, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { ArrowCounterClockwise } from 'phosphor-react-native/src/icons/ArrowCounterClockwise';
@@ -38,8 +38,6 @@ import { usePeriodo } from '../../datos/periodo';
 import { useTema } from '../../datos/tema';
 import { useCategorias } from '../../datos/catalogo';
 
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
 /** Cuanto se asoma la seccion de proximos mas alla del periodo. */
 const DIAS_ADELANTE = 90;
 
@@ -48,7 +46,6 @@ export default function Tempanos() {
   const letra = useLetra();
   const aireInferior = useAireInferior();
   const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
-  const categorias = useCategorias();
   const { rango, corte } = usePeriodo();
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
@@ -276,8 +273,8 @@ function Fila(
   const Icono = regla.categoriaId ? iconoDeCategoria(regla.categoriaId) : null;
   const vencido = estado === 'pendiente' && diasRestantes < 0;
   const resuelto = estado !== 'pendiente';
-  const dia = Number(tempano.ocurreEn.slice(8, 10));
-  const mes = MESES[Number(tempano.ocurreEn.slice(5, 7)) - 1];
+  const dia = dates.day(tempano.ocurreEn);
+  const mes = dates.monthShortName(dates.month(tempano.ocurreEn));
 
   return (
     <View style={[styles.fila, resuelto && styles.filaResuelta]}>
@@ -395,19 +392,13 @@ function crearEstilos(theme: Theme, letra: Letra) {
   } as const;
 
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.lg,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
-    },
+    contenido: columna,
     cabecera: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       paddingTop: spacing.lg,
       paddingBottom: spacing.md,
-      zIndex: 20,
     },
     total: { gap: 1 },
     etiquetaConAyuda: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
@@ -460,9 +451,6 @@ function crearEstilos(theme: Theme, letra: Letra) {
     filaAviso: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
     vacioTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.silencio, paddingVertical: spacing.lg },
 
-    regla: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 20 },
-    reglaTitulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
-    reglaLinea: { flex: 1, height: elevation.hairlineWidth, backgroundColor: theme.hairline },
     crearChico: {
       paddingVertical: 5,
       paddingHorizontal: spacing.md,

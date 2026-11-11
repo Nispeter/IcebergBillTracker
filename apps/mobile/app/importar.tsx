@@ -160,7 +160,7 @@ export default function Importar() {
         ) : null}
 
         {!ajustando && leido !== null ? (
-          <Previa leido={leido} styles={styles} theme={theme} />
+          <Previa leido={leido} styles={styles} />
         ) : null}
 
         {!ajustando && archivo !== null ? (
@@ -202,7 +202,7 @@ export default function Importar() {
 
 type Estilos = ReturnType<typeof crearEstilos>;
 
-function Previa({ leido, styles, theme }: { leido: Leido; styles: Estilos; theme: Theme }) {
+function Previa({ leido, styles }: { leido: Leido; styles: Estilos }) {
   const { cartola, previa } = leido;
   const sinCategoria = previa.nuevos.length - previa.categorizados;
 

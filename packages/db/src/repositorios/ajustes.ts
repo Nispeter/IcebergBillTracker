@@ -13,7 +13,6 @@ import type { BaseDeDatos } from '../tipos';
 export const CLAVE_DISPOSITIVO = 'deviceId';
 export const CLAVE_HOGAR = 'householdId';
 export const CLAVE_MIEMBRO = 'memberId';
-export const CLAVE_SEMILLA_CARGADA = 'semillaCargada';
 
 /**
  * Si ya se vio el tutorial de bienvenida.

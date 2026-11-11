@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  charts, dark, durations, elevation, fontSizes, fonts, light, pesos, radii, spacing, themes,
+  charts, dark, durations, elevation, fontSizes, fonts, fontsNativas, light, pesos, radii, spacing, themes,
   type Theme,
 } from './tokens';
 
@@ -272,18 +272,17 @@ describe('escalas', () => {
     expect([...valores].sort((a, b) => a - b)).toEqual(valores);
   });
 
-  it('la pila de fuentes termina en una monoespaciada generica', () => {
+  it('la pila de cifras termina en una monoespaciada generica', () => {
     // Consolas es de Windows. Si no esta, lo que no puede pasar es caer a una
     // proporcional: las columnas de montos dejarian de cuadrar.
-    for (const pila of [fonts.ui, fonts.mono]) {
-      expect(pila).toContain('Consolas');
-      expect(pila.trim().endsWith('monospace')).toBe(true);
-    }
+    expect(fonts.mono).toContain('Consolas');
+    expect(fonts.mono.trim().endsWith('monospace')).toBe(true);
+    expect(fontsNativas.mono).toBe('monospace');
   });
 
-  it('las cifras y la interfaz comparten familia', () => {
-    // Al ser toda la app monoespaciada, no hay dos familias que coordinar.
-    expect(fonts.mono).toBe(fonts.ui);
+  it('el texto y las cifras usan familias distintas', () => {
+    expect(fonts.texto).not.toBe(fonts.mono);
+    expect(fontsNativas.texto).not.toBe(fontsNativas.mono);
   });
 
   it('los pesos son valores que React Native acepta', () => {

@@ -41,7 +41,7 @@
 
 import { dates, money } from '@iceberg/core';
 import type { analytics } from '@iceberg/core';
-import { charts, elevation, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
+import { charts, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as TextoSvg } from 'react-native-svg';

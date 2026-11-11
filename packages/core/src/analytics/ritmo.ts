@@ -12,8 +12,8 @@
  */
 
 import {
-  addDays, containsDate, daysBetween, day as diaDelMes, daysInMonth, lengthInDays,
-  minDate, month as mesDe, year as anoDe, type DateRange, type PlainDate,
+  containsDate, daysBetween, day as diaDelMes, lengthInDays, minDate,
+  type DateRange, type PlainDate,
 } from '../dates/index';
 import { divide, money, multiply, sum, type Money } from '../money/index';
 import { esGasto, type MovimientoAnalizable } from './movimiento';
@@ -144,11 +144,3 @@ export function seguroGastarHoy(
   if (disponible <= 0) return money(0, 'CLP');
   return divide(money(disponible, 'CLP'), diasRestantes);
 }
-
-/** Ultimo dia del mes que contiene la fecha. Util para armar rangos. */
-export function finDelMesDe(fecha: PlainDate): number {
-  return daysInMonth(anoDe(fecha), mesDe(fecha));
-}
-
-/** El dia siguiente. Se exporta porque las series diarias lo usan mucho. */
-export { addDays };

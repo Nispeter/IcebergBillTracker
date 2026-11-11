@@ -23,8 +23,6 @@ import { useLetra } from '../datos/letra';
 export const EXPLICACION_ANOMALIA = 'El punto ámbar marca un gasto muy por encima de lo que '
   + 'sueles pagar en ese mismo lugar. Se compara contra todo tu historial, no contra este período.';
 
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
 /**
  * Lo que va bajo el nombre. Depende del **tipo**, no de si hay categoria.
  *
@@ -78,7 +76,7 @@ export function FilaMovimiento(
       >
         <View style={styles.marcaFecha}>
           <Text style={styles.dia}>{dates.day(fecha)}</Text>
-          <Text style={styles.mes}>{MESES[dates.month(fecha) - 1]}</Text>
+          <Text style={styles.mes}>{dates.monthShortName(dates.month(fecha))}</Text>
         </View>
         <View style={styles.texto}>
           <Text style={styles.nombre} numberOfLines={1}>{tx.nombre}</Text>

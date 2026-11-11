@@ -349,60 +349,35 @@ export const spacing = {
  */
 export const ALTO_DE_LA_BARRA = 58;
 
-/**
- * Tipografia.
- *
- * **Consolas**, la monoespaciada de Windows, para toda la interfaz. Que las
- * etiquetas y las cifras compartan familia le da a la app un aire de instrumento
- * antes que de folleto, y como es monoespaciada las columnas de montos quedan
- * alineadas digito a digito sin esfuerzo.
- *
- * ## Ojo: la pila solo funciona en web
- *
- * El valor es una pila CSS con comas. **Eso solo lo entiende la web**, donde
- * react-native-web lo pasa tal cual al navegador y el fallback funciona: Windows
- * resuelve Consolas, Mac y Linux caen a la siguiente.
- *
- * En Android y iOS, `fontFamily` espera **una sola familia**: el string completo
- * se busca como si fuera un nombre, no se encuentra, y todo cae a la sans-serif
- * del sistema. Ni siquiera aplica el `monospace` del final, asi que las columnas
- * de montos dejan de cuadrar.
- *
- * Encima, Consolas es **propietaria de Microsoft** y no se puede empaquetar.
- *
- * **Antes de F3 hay que empaquetar una sustituta libre y elegir por plataforma**
- * (`Platform.select`, o dos constantes y que la app arme el valor). Candidatas:
- * **Inconsolata** (Google Fonts, disenada explicitamente a partir de Consolas) o
- * **Cascadia Mono** (la sucesora de Microsoft, con licencia SIL OFL).
- *
- * ## Pesos
- *
- * Al ser una fuente del sistema y no un archivo por peso, aca **si** se usa
- * `fontWeight`. La regla de "una familia por peso" existia para evitar que
- * Android sintetizara la negrita deformando la regular, y eso solo aplica cuando
- * uno empaqueta las variantes.
- */
-const PILA_CONSOLAS = 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace';
+/** Ancho máximo del contenido: en una tableta o en web la columna no se estira. */
+export const ANCHO_MAXIMO = 480;
+
+/** La columna de contenido de cada vista: centrada, con el margen lateral de siempre. */
+export const columna = {
+  paddingHorizontal: spacing.lg,
+  maxWidth: ANCHO_MAXIMO,
+  width: '100%',
+  alignSelf: 'center',
+} as const;
 
 /**
- * La sans del sistema, para el prototipo "Hielo".
+ * Dos familias con roles distintos: `texto` (la sans del sistema) para lo que se
+ * lee como texto, y `mono` solo para cifras y fechas, donde la alineación en
+ * columna importa. Una interfaz entera en mono se lee como terminal.
  *
- * Que `ui` y `mono` sean **la misma familia** deja toda la app en
- * monoespaciada, y una interfaz entera en mono oscuro se lee como terminal:
- * es uno de los rasgos que la hacen parecer generada. Separar el rol de texto
- * del de cifras es el cambio que mas mueve la cara sin tocar el layout.
- *
- * Es la del sistema y no una empaquetada porque esto es un prototipo. Cuando se
- * elija la definitiva --hay que empaquetar una igual, Consolas es propietaria--
- * se cambia aca y listo.
+ * Son pilas CSS, y **solo la web las entiende**: Android espera una sola familia
+ * por nombre. Por eso existe `fontsNativas`, y la app elige con `Platform`.
+ * Las fuentes son del sistema y no se empaquetan, así que `fontWeight` sí sirve.
  */
-const PILA_SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-
 export const fonts = {
-  ui: PILA_CONSOLAS,
-  mono: PILA_CONSOLAS,
-  /** Texto que se lee como texto: etiquetas, frases, titulos. */
-  texto: PILA_SANS,
+  texto: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  mono: 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace',
+} as const;
+
+/** Los nombres genéricos que Android sí resuelve: Roboto y su monoespaciada. */
+export const fontsNativas = {
+  texto: 'sans-serif',
+  mono: 'monospace',
 } as const;
 
 export const pesos = {

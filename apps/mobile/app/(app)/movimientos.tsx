@@ -15,7 +15,7 @@
 import { money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
 import {
-  capas, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
+  capas, columna, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -128,7 +128,7 @@ export default function Movimientos() {
       etiqueta: categoria.nombre,
       icono: iconoDeCategoria(categoria.id),
     })),
-  ], []);
+  ], [categorias]);
 
   const encabezado = (
     // Elevado para que el panel del filtro tape las filas de abajo. El `zIndex`
@@ -265,23 +265,10 @@ export default function Movimientos() {
 
 function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.lg,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
-    },
-
-
+    contenido: columna,
     encabezado: { zIndex: capas.desplegable },
-    fijo: {
-      paddingHorizontal: spacing.lg,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
-      zIndex: capas.desplegable,
-    },
-    cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 },
+    fijo: { ...columna, zIndex: capas.desplegable },
+    cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     resumen: {
       fontFamily: fonts.mono,
       fontWeight: pesos.regular,

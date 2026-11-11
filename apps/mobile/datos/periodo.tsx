@@ -205,13 +205,6 @@ export function usePeriodo(): ValorDelPeriodo {
   return valor;
 }
 
-const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-];
-
-const CORTOS = MESES.map((mes) => mes.slice(0, 3));
-
 /**
  * Como se nombra el periodo en pantalla.
  *
@@ -219,7 +212,8 @@ const CORTOS = MESES.map((mes) => mes.slice(0, 3));
  * en **cada palabra**: "Agosto De 2026".
  */
 export function nombreDePeriodo(tipo: TipoDePeriodo, rango: dates.DateRange): string {
-  const dia = (fecha: dates.PlainDate) => `${dates.day(fecha)} ${CORTOS[dates.month(fecha) - 1]}`;
+  const dia = dates.formatDateShort;
+  const mes = (fecha: dates.PlainDate) => dates.monthName(dates.month(fecha));
 
   const crudo = (() => {
     /*
@@ -242,10 +236,10 @@ export function nombreDePeriodo(tipo: TipoDePeriodo, rango: dates.DateRange): st
         return dates.formatDateLong(rango.start);
       case 'week':
         return dates.month(rango.start) === dates.month(rango.end)
-          ? `${dates.day(rango.start)} al ${dates.day(rango.end)} de ${MESES[dates.month(rango.start) - 1]}`
+          ? `${dates.day(rango.start)} al ${dates.day(rango.end)} de ${mes(rango.start)}`
           : `${dia(rango.start)} — ${dia(rango.end)}`;
       case 'month':
-        return `${MESES[dates.month(rango.start) - 1]} ${dates.year(rango.start)}`;
+        return `${mes(rango.start)} ${dates.year(rango.start)}`;
       case 'year':
         return String(dates.year(rango.start));
       default:

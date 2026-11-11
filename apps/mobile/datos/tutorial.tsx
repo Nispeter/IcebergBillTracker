@@ -52,7 +52,9 @@
  * caber, y ahi se ilumina lo que se ve.
  */
 
-import { ALTO_DE_LA_BARRA, capas, elevation, fonts, pesos, radii, spacing, type Letra, type Theme } from '@iceberg/ui';
+import {
+  ALTO_DE_LA_BARRA, ANCHO_MAXIMO, capas, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
+} from '@iceberg/ui';
 import { CLAVE_TUTORIAL_VISTO, escribirAjuste, leerAjuste } from '@iceberg/db';
 import { X } from 'phosphor-react-native/src/icons/X';
 import {
@@ -652,7 +654,7 @@ function crearEstilos(theme: Theme, letra: Letra) {
       position: 'absolute',
       left: spacing.lg,
       right: spacing.lg,
-      maxWidth: 480 - spacing.lg * 2,
+      maxWidth: ANCHO_MAXIMO - spacing.lg * 2,
       alignSelf: 'center',
       padding: spacing.lg,
       gap: spacing.md,

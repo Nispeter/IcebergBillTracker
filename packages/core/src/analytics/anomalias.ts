@@ -10,7 +10,6 @@
  * valores extremos, asi que el raro sigue destacando.
  */
 
-import { money, type Money } from '../money/index';
 import { mediana } from './resumen';
 
 /**
@@ -80,11 +79,6 @@ export function detectarAnomalias<T>(
     anomalias.push({ item, valor, z, esAlta: z > 0 });
   }
   return anomalias.sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
-}
-
-/** Lo mismo pero devolviendo montos, para no tener que envolver afuera. */
-export function montoDeAnomalia<T>(anomalia: Anomalia<T>): Money {
-  return money(Math.round(anomalia.valor), 'CLP');
 }
 
 /**

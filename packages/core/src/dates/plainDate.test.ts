@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays, addMonths, addYears, compareDates, DateError, day, daysBetween, daysInMonth,
-  endOfMonth, formatDate, formatDateLong, isAfter, isBefore, isPlainDate, maxDate, minDate,
-  month, parsePlainDate, plainDate, requirePlainDate, startOfMonth, today, weekday, year,
+  endOfMonth, formatDate, formatDateLong, formatDateShort, isAfter, isBefore, isPlainDate,
+  maxDate, minDate, month, monthName, monthShortName, parsePlainDate, plainDate,
+  requirePlainDate, startOfMonth, today, weekday, year,
 } from './plainDate';
 
 const d = requirePlainDate;
@@ -144,5 +145,18 @@ describe('formato', () => {
 
   it('formato largo en es-CL', () => {
     expect(formatDateLong(d('2026-08-18'))).toBe('18 de agosto de 2026');
+  });
+
+  it('formato corto sin año, con el mes abreviado y el dia sin cero', () => {
+    expect(formatDateShort(d('2026-08-18'))).toBe('18 ago');
+    expect(formatDateShort(d('2026-09-05'))).toBe('5 sep');
+  });
+
+  it('nombres de mes, enteros y abreviados', () => {
+    expect(monthName(1)).toBe('enero');
+    expect(monthName(12)).toBe('diciembre');
+    expect(monthShortName(9)).toBe('sep');
+    expect(() => monthName(13)).toThrow(DateError);
+    expect(() => monthName(0)).toThrow(DateError);
   });
 });

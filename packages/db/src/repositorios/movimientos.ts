@@ -163,17 +163,6 @@ export function listarMovimientos(
   return consultaDeMovimientos(db, contexto, filtro).all() as Movimiento[];
 }
 
-/** Igual que `listarMovimientos` pero del mas viejo al mas nuevo. */
-export function listarCronologico(
-  db: BaseDeDatos,
-  contexto: Contexto,
-  filtro: FiltroDeMovimientos = {},
-): Movimiento[] {
-  return listarMovimientos(db, contexto, filtro)
-    .sort((a, b) => dates.compareDates(a.ocurridoEn as dates.PlainDate, b.ocurridoEn as dates.PlainDate)
-      || a.id.localeCompare(b.id));
-}
-
 export function editarMovimiento(
   db: BaseDeDatos,
   contexto: Contexto,

@@ -28,7 +28,7 @@
 import { money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
 import {
-  charts, fonts, pesos, radii, spacing, type Letra, type Theme,
+  charts, columna, fonts, pesos, radii, spacing, type Letra, type Theme,
 } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { Info } from 'phosphor-react-native/src/icons/Info';
@@ -586,12 +586,7 @@ function Leyenda(
 
 function crearEstilos(theme: Theme, letra: Letra) {
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.lg,
-      maxWidth: 480,
-      width: '100%',
-      alignSelf: 'center',
-    },
+    contenido: columna,
 
     /**
      * El saldo, grande y liviano.
