@@ -1,50 +1,29 @@
 /**
- * El marco de las pantallas que se abren **encima** de la app.
+ * El marco de lo que se abre encima de la app: formularios, importador, reglas.
+ * Descuenta los márgenes del sistema en un solo lugar (arriba el reloj, abajo
+ * la barra de gestos) y entra subiendo desde abajo, que es donde nace el más.
  *
- * Formularios, importador, reglas: todo lo que entra como modal. Existe por lo
- * mismo que `Pantalla` --que es el marco de las vistas principales--: nueve
- * lugares repetian el mismo `View` con el fondo del tema y su `StatusBar`, y
- * cuando hubo que descontar el margen del sistema **ninguno lo tenia**. El
- * titulo y el "Cancelar" quedaban pegados al reloj, imposibles de tocar.
- *
- * Esa es la leccion: un arreglo que hay que aplicar en nueve archivos se olvida
- * en alguno. Ahora el marco es uno solo y el margen se descuenta en un lugar.
- *
- * Abajo tambien: en Android la barra de gestos se come el borde inferior, y
- * varios de estos formularios terminan en un boton.
- *
- * ## Entra subiendo
- *
- * `presentation: 'modal'` ya desliza en Android, pero **en web no anima nada**:
- * el formulario aparecia de golpe y se leia como un cambio de pantalla, no como
- * algo que se abre encima. La animacion se hace aca para que sea la misma en los
- * dos lados.
- *
- * Desde abajo por donde nace el gesto: el mas esta abajo al centro, y lo que
- * sube desde ahi se entiende como su consecuencia.
+ * La animación se hace acá y no en el Stack porque `presentation: 'modal'` no
+ * anima nada en web.
  */
 
+import { durations } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { transicion, useMovimientoReducido } from '../datos/animacion';
 import { useTema } from '../datos/tema';
 
 export function PantallaModal({ children }: { children: ReactNode }) {
   const { nombre: tema, theme } = useTema();
   const margenes = useSafeAreaInsets();
+  const reducido = useMovimientoReducido();
 
   const entrada = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(entrada, {
-      toValue: 1,
-      // Mas largo que el cambio de vista: aca si hay una escena --una hoja que
-      // se levanta-- y no un simple acuse de recibo.
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [entrada]);
+    transicion(entrada, 1, { duracion: durations.escena, reducido }).start();
+  }, [entrada, reducido]);
 
   return (
     <Animated.View
@@ -55,11 +34,8 @@ export function PantallaModal({ children }: { children: ReactNode }) {
           paddingTop: margenes.top,
           paddingBottom: margenes.bottom,
           opacity: entrada,
-          transform: [{
-            // 24 y no 8: esto no llega, se levanta. El recorrido mas largo es lo
-            // que lo distingue del cambio de vista.
-            translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }),
-          }],
+          // Sube más que el cambio de vista: esto no llega, se levanta.
+          transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
         },
       ]}
     >

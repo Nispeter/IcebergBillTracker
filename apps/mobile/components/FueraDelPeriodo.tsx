@@ -1,40 +1,30 @@
 /**
- * El aviso de que lo que se esta mirando **no es hoy**.
+ * El aviso de que lo que se mira no es hoy. Las seis vistas comparten período,
+ * así que uno puede volver al Resumen y leer cifras de julio creyendo que son
+ * de este mes.
  *
- * Las seis vistas comparten un solo periodo, asi que retroceder un mes en
- * Movimientos deja tambien el Resumen, las Categorias y el Dia a dia en ese mes.
- * Eso es deliberado --cambiar de vista no deberia cambiar de fecha-- pero tiene
- * un costo: uno navega, se va a otra pantalla, vuelve, y lee cifras de julio
- * creyendo que son de este mes. El nombre del periodo lo decia, arriba, en doce
- * puntos y en el mismo gris de siempre.
- *
- * Aca se dice con el unico color calido de la app. El ambar tiene dos trabajos
- * --la accion principal y lo que pide atencion-- y esto es de los segundos: no
- * hay nada roto, pero el numero que se esta leyendo no es el que uno cree.
- *
- * ## Dos piezas y no una
- *
- * El `!` **explica** y el circulo **arregla**, y estan separados porque quien ya
- * entendio el aviso --que es cualquiera despues de la primera vez-- solo quiere
- * el segundo. Si el circulo tambien abriera la hoja, volver a hoy costaria dos
- * toques para siempre. La hoja igual lleva su propio boton para volver, porque
- * quien la abrio para entender ya tiene ahi lo que necesita.
- *
- * No se dibuja nada cuando se esta en el periodo actual, que es casi todo el
- * tiempo: un aviso permanente deja de leerse en una semana.
+ * Dos piezas: el `!` explica y el círculo devuelve a hoy, para que quien ya
+ * entendió el aviso vuelva de un toque. No dibuja nada en el período actual,
+ * que es casi siempre: un aviso permanente deja de leerse.
  */
 
-import { radii, spacing, type Theme } from '@iceberg/ui';
+import { holguraDeToque, radii, spacing } from '@iceberg/ui';
 import { CalendarCheck } from 'phosphor-react-native/src/icons/CalendarCheck';
 import { Warning } from 'phosphor-react-native/src/icons/Warning';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { BotonDeIcono } from './Boton';
+import { useEstilos, type Estilo } from '../datos/estilos';
 import { useExplicar } from '../datos/explicacion';
 import { nombreDePeriodo, usePeriodo } from '../datos/periodo';
+import { useTema } from '../datos/tema';
 
-export function FueraDelPeriodo({ theme }: { theme: Theme }) {
+const CIRCULO = 22;
+
+export function FueraDelPeriodo() {
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useTema();
   const periodo = usePeriodo();
   const explicar = useExplicar();
-  const styles = crearEstilos(theme);
 
   if (periodo.esElActual) return null;
 
@@ -42,7 +32,11 @@ export function FueraDelPeriodo({ theme }: { theme: Theme }) {
 
   return (
     <View style={styles.fila}>
-      <Pressable
+      <BotonDeIcono
+        icono={Warning}
+        tamano={15}
+        peso="fill"
+        color={theme.alerta}
         onPress={() => explicar(
           'No estás en el período actual',
           `Estás mirando **${mirando}**, y todas las vistas lo comparten: el resumen, `
@@ -51,17 +45,14 @@ export function FueraDelPeriodo({ theme }: { theme: Theme }) {
           + 'cambie la fecha. El botón de al lado te devuelve a hoy cuando quieras.',
           { etiqueta: 'Volver a hoy', alTocar: periodo.alDia },
         )}
-        hitSlop={10}
-        accessibilityRole="button"
-        accessibilityLabel={`Estás mirando ${mirando}, que no es el período actual. Tocar para saber más`}
-      >
-        <Warning size={15} weight="fill" color={theme.alerta} />
-      </Pressable>
-
+        accesible={`Estás mirando ${mirando}, que no es el período actual. Tocar para saber más`}
+      />
+      {/* Contorno y no relleno: relleno ámbar es el más de la barra, la acción
+          de la app; esto es una salida chica. */}
       <Pressable
         onPress={periodo.alDia}
         style={styles.circulo}
-        hitSlop={8}
+        hitSlop={holguraDeToque(CIRCULO)}
         accessibilityRole="button"
         accessibilityLabel="Volver al período de hoy"
       >
@@ -71,19 +62,12 @@ export function FueraDelPeriodo({ theme }: { theme: Theme }) {
   );
 }
 
-function crearEstilos(theme: Theme) {
+function crearEstilos({ theme }: Estilo) {
   return StyleSheet.create({
     fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    /**
-     * Contorno y no relleno.
-     *
-     * Relleno de ambar seria el mismo tratamiento que el mas de la barra de
-     * abajo, que es **la** accion de la app; esto es una salida de emergencia
-     * chica. El contorno lo deja legible sin ponerlo al mismo nivel.
-     */
     circulo: {
-      width: 22,
-      height: 22,
+      width: CIRCULO,
+      height: CIRCULO,
       borderRadius: radii.full,
       alignItems: 'center',
       justifyContent: 'center',

@@ -1,32 +1,30 @@
-/** Edicion de una cuenta periodica. */
+/** Edición de una cuenta periódica. */
 
 import type { dates, recurrence } from '@iceberg/core';
 import { borrarRegla, editarRegla, obtenerRegla } from '@iceberg/db';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Text } from 'react-native';
+import { NoExiste } from '../../components/Formulario';
 import { FormularioRegla, type ValoresDeRegla } from '../../components/FormularioRegla';
+import { PantallaModal } from '../../components/PantallaModal';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
-import { useTema } from '../../datos/tema';
-import { PantallaModal } from '../../components/PantallaModal';
 
 export default function EditarRegla() {
-  const { theme } = useTema();
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [error, setError] = useState<string | null>(null);
 
-  // Se lee una sola vez: el formulario es su propio estado desde ahi.
+  // Se lee una sola vez: desde ahí el formulario es su propio borrador.
   const regla = useMemo(() => obtenerRegla(db, contexto, id), [db, contexto, id]);
 
   if (regla === null) {
     return (
       <PantallaModal>
-        <Text style={{ padding: 24, color: theme.silencio }}>Esa cuenta periódica ya no existe.</Text>
+        <NoExiste mensaje="Esa cuenta periódica ya no existe" />
       </PantallaModal>
     );
   }
@@ -34,7 +32,6 @@ export default function EditarRegla() {
   return (
     <PantallaModal>
       <FormularioRegla
-        theme={theme}
         titulo="Editar cuenta periódica"
         inicial={{
           tipo: regla.tipo,

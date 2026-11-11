@@ -352,6 +352,14 @@ export const ALTO_DE_LA_BARRA = 58;
 /** Ancho máximo del contenido: en una tableta o en web la columna no se estira. */
 export const ANCHO_MAXIMO = 480;
 
+/** El área mínima que se puede tocar con el pulgar, en dp. La de Android. */
+export const TOQUE_MINIMO = 48;
+
+/** El `hitSlop` que lleva algo de `lado` dp hasta el área mínima de toque. */
+export function holguraDeToque(lado: number): number {
+  return Math.max(0, Math.ceil((TOQUE_MINIMO - lado) / 2));
+}
+
 /** La columna de contenido de cada vista: centrada, con el margen lateral de siempre. */
 export const columna = {
   paddingHorizontal: spacing.lg,
@@ -411,11 +419,19 @@ export const elevation = {
   glowRadius: 1,
 } as const;
 
-/** Duraciones de animacion, en milisegundos. */
+/**
+ * Duraciones de las transiciones, en milisegundos. Lo que se va sale más rápido
+ * de lo que llega: al cerrar, uno ya decidió.
+ */
 export const durations = {
-  instant: 120,
-  quick: 200,
-  calm: 320,
+  /** Algo que se cierra o se va. */
+  salida: 160,
+  /** El cambio entre vistas hermanas: un acuse de recibo, no una escena. */
+  cambio: 180,
+  /** Un panel o una burbuja que aparece. */
+  entrada: 200,
+  /** Una hoja que se levanta desde abajo. */
+  escena: 240,
 } as const;
 
 /**

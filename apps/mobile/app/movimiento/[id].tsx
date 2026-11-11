@@ -2,30 +2,24 @@
 
 import type { dates } from '@iceberg/core';
 import { borrarMovimiento, editarMovimiento, obtenerMovimiento } from '@iceberg/db';
-import { fonts, pesos, spacing } from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { NoExiste } from '../../components/Formulario';
 import { FormularioMovimiento, type ValoresDelFormulario } from '../../components/FormularioMovimiento';
+import { PantallaModal } from '../../components/PantallaModal';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
-import { useLetra } from '../../datos/letra';
 import { volver } from '../../datos/navegacion';
-import { useTema } from '../../datos/tema';
-import { PantallaModal } from '../../components/PantallaModal';
 
 export default function EditarMovimiento() {
-  const { theme } = useTema();
-  const letra = useLetra();
-
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [error, setError] = useState<string | null>(null);
 
-  // Se lee una sola vez: el formulario es un borrador local, no una vista de la
-  // base. Si se releyera en vivo, cada tecla se pisaria con el valor guardado.
+  // Se lee una sola vez: el formulario es un borrador, no una vista viva de la
+  // base, o cada tecla se pisaría con el valor guardado.
   const movimiento = useMemo(
     () => (id ? obtenerMovimiento(db, contexto, id) : null),
     [db, contexto, id],
@@ -33,30 +27,18 @@ export default function EditarMovimiento() {
 
   if (!movimiento) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.fondo, padding: spacing.xxl, gap: spacing.md }}>
-        <Text style={{ fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.tinta }}>
-          Ese movimiento ya no existe
-        </Text>
-        <Text
-          onPress={() => volver(router)}
-          style={{ fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.acentoTexto }}
-        >
-          Volver
-        </Text>
-      </View>
+      <PantallaModal>
+        <NoExiste mensaje="Ese movimiento ya no existe" />
+      </PantallaModal>
     );
   }
 
   function guardar(valores: ValoresDelFormulario) {
     try {
-      // `cuentaId` nulo significa que no hay ninguna cuenta, y entonces no hay
-      // nada que mover: se deja la que el movimiento ya tenia. `editarMovimiento`
+      // Sin cuenta (no queda ninguna) se deja la que ya tenía: `editarMovimiento`
       // ignora lo que llega `undefined`.
       const { cuentaId, ...resto } = valores;
-      editarMovimiento(db, contexto, movimiento!.id, {
-        ...resto,
-        cuentaId: cuentaId ?? undefined,
-      });
+      editarMovimiento(db, contexto, movimiento!.id, { ...resto, cuentaId: cuentaId ?? undefined });
       avisar('Cambios guardados');
       volver(router);
     } catch (e) {
@@ -67,6 +49,7 @@ export default function EditarMovimiento() {
   function borrar() {
     try {
       borrarMovimiento(db, contexto, movimiento!.id);
+      avisar('Movimiento borrado');
       volver(router);
     } catch (e) {
       setError((e as Error).message);
@@ -76,7 +59,6 @@ export default function EditarMovimiento() {
   return (
     <PantallaModal>
       <FormularioMovimiento
-        theme={theme}
         titulo="Editar movimiento"
         inicial={{
           tipo: movimiento.tipo,

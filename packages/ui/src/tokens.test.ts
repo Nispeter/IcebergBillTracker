@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  charts, dark, durations, elevation, fontSizes, fonts, fontsNativas, light, pesos, radii, spacing, themes,
+  charts, dark, durations, elevation, fontSizes, fonts, fontsNativas, holguraDeToque, light, pesos,
+  radii, spacing, themes, TOQUE_MINIMO,
   type Theme,
 } from './tokens';
 
@@ -285,6 +286,14 @@ describe('escalas', () => {
     expect(fontsNativas.texto).not.toBe(fontsNativas.mono);
   });
 
+  it('la holgura lleva cualquier icono al area minima de toque', () => {
+    for (const lado of [12, 15, 22, 26, 40]) {
+      expect(lado + 2 * holguraDeToque(lado)).toBeGreaterThanOrEqual(TOQUE_MINIMO);
+    }
+    expect(holguraDeToque(TOQUE_MINIMO)).toBe(0);
+    expect(holguraDeToque(60)).toBe(0);
+  });
+
   it('los pesos son valores que React Native acepta', () => {
     for (const peso of Object.values(pesos)) expect(peso).toMatch(/^[1-9]00$/);
     expect(new Set(Object.values(pesos)).size).toBe(Object.values(pesos).length);
@@ -292,7 +301,9 @@ describe('escalas', () => {
 
   it('elevation y durations tienen valores utiles', () => {
     expect(elevation.hairlineWidth).toBe(1);
-    expect(durations.instant).toBeLessThan(durations.quick);
-    expect(durations.quick).toBeLessThan(durations.calm);
+    expect(durations.salida).toBeLessThan(durations.entrada);
+    expect(durations.cambio).toBeLessThan(durations.escena);
+    // Pasando los 250 ms la interfaz empieza a sentirse lenta.
+    expect(Math.max(...Object.values(durations))).toBeLessThanOrEqual(250);
   });
 });

@@ -1,49 +1,23 @@
 /**
- * El pingüino, en SVG. Es la marca de la app.
+ * El pingüino, en SVG: la marca de la app y su estado de ánimo.
  *
- * La forma sigue una referencia que dio el usuario: un pingüino panzón de frente,
- * con la **panza y la cara en una sola mancha blanca**, ojos chicos y altos,
- * pico redondeado y dos aletas que salen a los lados y terminan en punta.
+ * La panza y la cara son una sola mancha blanca grande, que es lo que sobrevive
+ * al achique; el contorno con aletas da la silueta. Sus colores no se invierten
+ * con el tema: con los ojos claros sobre fondo oscuro la cara deja de leerse.
  *
- * Antes hubo dos intentos que no funcionaron, y por qué falló cada uno importa:
- *
- * 1. **Cuerpo con cuello y aletas pegadas**: a 20 px las aletas eran dos manchas
- *    y el conjunto se leía como un huevo con ojos.
- * 2. **Solo la cara**: se leía, pero como búho. Faltaba la silueta del cuerpo,
- *    que es lo que dice "pingüino" antes que cualquier detalle.
- *
- * Lo que resuelve las dos cosas es que la mancha blanca sea **una sola y grande**:
- * ocupa casi todo el frente, así que sobrevive al achique, y el contorno negro
- * con aletas da la silueta.
- *
- * El acento ámbar de toda la paleta está definido en `tokens.ts` como "el ámbar
- * del pico del pingüino", así que el pico es lo único que lo lleva.
- *
- * **Sus colores son fijos, no se dan vuelta con el tema.** El iceberg sí se
- * invierte y funciona; acá invertir dejaría las pupilas claras sobre blanco
- * oscuro y la cara deja de leerse. Por eso tiene sus propios tokens.
- *
- * **Los estados cambian solo los ojos.** A 20 px cualquier otra cosa —una pose,
- * un objeto en la mano— es barro. Los ojos son lo único que sobrevive, y
- * alcanzan: dos arcos hacia abajo se leen como dormido y dos cejas inclinadas
- * como preocupado, sin que haya que explicarlo.
- *
- * Se usan donde el pingüino es grande: pantallas vacías y avisos. En la barra
- * lateral va siempre `normal`, porque a ese tamaño un estado no se distingue y
- * cambiar el logo según los datos sería confuso.
+ * Los estados cambian solo los ojos, que es lo único que se distingue a 20 px.
  */
 
-import type { Theme } from '@iceberg/ui';
 import { useEffect, useState } from 'react';
 import Svg, { Circle, G, Path } from 'react-native-svg';
+import { useMovimientoReducido } from '../datos/animacion';
+import { useTema } from '../datos/tema';
 
 /**
- * En qué anda el pingüino.
- *
  * - `normal`: lo de siempre.
- * - `dormido`: no hay nada que mirar. Para pantallas vacías.
- * - `alerta`: hay algo que resolver hoy. Para vencidos y avisos.
- * - `contento`: no queda nada pendiente. Para cuando la noticia es buena.
+ * - `dormido`: no hay nada que mirar.
+ * - `alerta`: hay algo que resolver hoy.
+ * - `contento`: no queda nada pendiente.
  */
 export type EstadoDelPinguino = 'normal' | 'dormido' | 'alerta' | 'contento';
 
@@ -52,112 +26,65 @@ const ALTO = 72;
 /** Las aletas se salen un poco a los lados: el viewBox las deja entrar. */
 const VIEWBOX = '-2 0 68 72';
 
-/** Cuerpo: un huevo ancho, más panzón abajo que arriba. */
 const CUERPO = 'M32,2 C45,2 53,13 53,27 C53,33 55,40 55,47 C55,60 45,69 32,69'
   + ' C19,69 9,60 9,47 C9,40 11,33 11,27 C11,13 19,2 32,2 Z';
-
-/**
- * Aletas: salen del costado y bajan hasta terminar en punta.
- *
- * Son lo que rompe el ovalo. Sin ellas la silueta es un huevo y podria ser
- * cualquier animal.
- */
 const ALETA_IZQUIERDA = 'M13,27 C3,33 -1,49 3,60 C5,65 11,64 12,57 C13,48 13,36 13,27 Z';
 const ALETA_DERECHA = 'M51,27 C61,33 65,49 61,60 C59,65 53,64 52,57 C51,48 51,36 51,27 Z';
-
-/** Panza y cara en una sola mancha: es la que tiene que sobrevivir al achique. */
 const PANZA = 'M32,16 C40,16 45,23 46,31 C48,37 49,42 49,48 C49,58 42,65 32,65'
   + ' C22,65 15,58 15,48 C15,42 16,37 18,31 C19,23 24,16 32,16 Z';
 
-/** Ojos cerrados: dos arcos con la curva hacia abajo. */
+/** Dormido: dos arcos hacia abajo. Contento: los mismos, hacia arriba. */
 const OJO_DORMIDO_IZQUIERDO = 'M21,27 C23,30 27,30 29,27';
 const OJO_DORMIDO_DERECHO = 'M35,27 C37,30 41,30 43,27';
-
-/**
- * Ojos contentos: los mismos arcos que dormido, con la curva al reves.
- *
- * Dos arcos hacia arriba se leen como una sonrisa aunque esten donde van los
- * ojos, que es el truco de siempre. Y como es la misma forma invertida, a 20 px
- * se distingue de `dormido` sin agregar un solo trazo.
- */
 const OJO_CONTENTO_IZQUIERDO = 'M21,29 C23,25 27,25 29,29';
 const OJO_CONTENTO_DERECHO = 'M35,29 C37,25 41,25 43,29';
 
-/** Cejas inclinadas hacia adentro: es lo que se lee como preocupación. */
+/** Cejas inclinadas hacia adentro: se leen como preocupación. */
 const CEJA_IZQUIERDA = 'M20,20 L30,23';
 const CEJA_DERECHA = 'M44,20 L34,23';
 
-/** Grosor de los trazos, en unidades del viewBox: se escala con el dibujo. */
+/** Grosor de los trazos, en unidades del viewBox. */
 const TRAZO = 2.5;
 
-/** Pico: redondeado y chico, entre los ojos y un poco más abajo. */
 const PICO = 'M32,32 C36,32 40,35 40,38 C40,42 36,45 32,45 C28,45 24,42 24,38 C24,35 28,32 32,32 Z';
 
 /**
- * El pico abierto es el mismo pico, estirado hacia abajo.
- *
- * No hay un segundo dibujo: se escala el que ya esta, anclado en su borde de
- * arriba --el punto (32, 32), donde nace-- asi que crece hacia la panza como
- * una boca que se abre y no como un pico que se infla. De paso se angosta un
- * poco, que es lo que hace un pico de verdad al abrirse.
- *
- * En SVG plano y no con `Animated`: el driver nativo no mueve props de SVG, asi
- * que la alternativa era animar por JS igual. Dos fotogramas alternados leen
- * como habla desde que existen los dibujos animados, y cuestan un `setTimeout`.
+ * El pico abierto es el mismo pico estirado hacia abajo desde donde nace, así
+ * que se abre como una boca. Va en SVG y no con `Animated` porque el driver
+ * nativo no mueve props de SVG: dos fotogramas alternados alcanzan.
  */
 const PICO_ABIERTO = 'translate(32,32) scale(0.9,1.7) translate(-32,-32)';
 
-/**
- * Cuanto dura cada fotograma del habla, en milisegundos.
- *
- * Al azar dentro del rango a proposito. Con un intervalo fijo el pico late como
- * un metronomo y se lee como una maquina; el habla de verdad es irregular, y
- * bastan unas decimas de diferencia entre silaba y silaba para que el ojo lo
- * compre.
- */
+/** Cada sílaba dura al azar dentro del rango: a ritmo fijo el pico late como una máquina. */
 const SILABA_MINIMA = 90;
 const SILABA_MAXIMA = 210;
 
 /**
- * El pestaneo.
- *
- * Es el gesto mas barato que existe para que un dibujo deje de parecer un icono:
- * no cambia de pose, no se mueve de lugar, y sin embargo un pinguino que
- * pestanea se lee como alguien que esta ahi. Dura lo que dura uno de verdad
- * --poco mas de un decimo de segundo-- porque uno lento se lee como sueno.
- *
- * El rato entre pestaneos es al azar y largo, por lo mismo que las silabas: a
- * intervalo fijo se convierte en un tic. Y **cada pinguino tiene el suyo**, que
- * es lo que importa en el Resumen: seis parados sobre el hielo pestaneando a la
- * vez darian miedo; desfasados, el hielo parece habitado.
+ * Pestañea poco más de un décimo de segundo, cada rato al azar y largo. Cada
+ * pingüino lleva su propio reloj: varios pestañeando a la vez darían miedo.
  */
 const PESTANEO = 130;
 const ENTRE_PESTANEOS_MINIMO = 2600;
 const ENTRE_PESTANEOS_MAXIMO = 7000;
 
 export function Pinguino(
-  { theme, tamano = 20, estado = 'normal', hablando = false }:
+  { tamano = 20, estado = 'normal', hablando = false }:
   {
-    theme: Theme;
     tamano?: number;
     estado?: EstadoDelPinguino;
-    /** Mueve el pico mientras sea verdadero. Ver `PICO_ABIERTO`. */
+    /** Mueve el pico mientras sea verdadero. */
     hablando?: boolean;
   },
 ) {
+  const { theme } = useTema();
+  const quieto = useMovimientoReducido();
   const alto = (tamano / ANCHO) * ALTO;
   const [picoAbierto, setPicoAbierto] = useState(false);
   const [pestaneando, setPestaneando] = useState(false);
 
-  /**
-   * Solo pestanea el que tiene los ojos abiertos.
-   *
-   * `dormido` los tiene cerrados y `contento` son dos arcos que se leen como
-   * sonrisa: en los dos casos un pestaneo no tendria nada que cerrar. `alerta`
-   * si pestanea --son las mismas pupilas con cejas encima-- y de hecho ahi
-   * ayuda: lo que pide atencion conviene que se vea vivo.
-   */
-  const puedePestanear = estado === 'normal' || estado === 'alerta';
+  // Solo pestañea con los ojos abiertos: dormido ya los tiene cerrados y
+  // contento son dos arcos sin nada que cerrar.
+  const puedePestanear = !quieto && (estado === 'normal' || estado === 'alerta');
 
   useEffect(() => {
     if (!puedePestanear) { setPestaneando(false); return undefined; }
@@ -184,7 +111,7 @@ export function Pinguino(
   }, [puedePestanear]);
 
   useEffect(() => {
-    if (!hablando) { setPicoAbierto(false); return undefined; }
+    if (!hablando || quieto) { setPicoAbierto(false); return undefined; }
 
     let siguiente: ReturnType<typeof setTimeout>;
     let vivo = true;
@@ -198,10 +125,10 @@ export function Pinguino(
     };
     silaba();
 
-    // Cerrar el pico al desmontar importa: si no, el ultimo fotograma queda
-    // congelado con la boca abierta y el pinguino parece atragantado.
+    // Cerrarlo al terminar: si no, el último fotograma queda con la boca abierta.
     return () => { vivo = false; clearTimeout(siguiente); setPicoAbierto(false); };
-  }, [hablando]);
+  }, [hablando, quieto]);
+
   const linea = {
     stroke: theme.pinguinoCuerpo,
     strokeWidth: TRAZO,
@@ -217,8 +144,6 @@ export function Pinguino(
       <Path d={PANZA} fill={theme.pinguinoPanza} />
 
       {estado === 'dormido' || pestaneando ? (
-        // El pestaneo reusa los ojos de `dormido`: cerrar los ojos es cerrar
-        // los ojos, y no hacia falta un tercer par de trazos para decirlo.
         <>
           <Path d={OJO_DORMIDO_IZQUIERDO} {...linea} />
           <Path d={OJO_DORMIDO_DERECHO} {...linea} />

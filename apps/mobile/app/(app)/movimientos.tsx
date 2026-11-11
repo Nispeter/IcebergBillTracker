@@ -1,86 +1,72 @@
 /**
- * Listado completo de movimientos, con filtros y paginado.
+ * El listado completo de movimientos, con filtros y por tandas.
  *
- * Home muestra los ultimos ocho; esta es la vista para buscar.
- *
- * Tres decisiones que sostienen la pantalla:
- *
- * - **El filtro viaja a SQL**, no se aplica sobre todo lo cargado en memoria.
- * - **El encabezado sale de un agregado**, no de contar las filas visibles: con
- *   paginado tiene que decir cuantos hay en total, no cuantos se trajeron.
- * - **`FlatList` y no `ScrollView`**: con seiscientas filas, montarlas todas de
- *   una hace que la pantalla tarde en aparecer y que el scroll se sienta pesado.
+ * El filtro viaja a SQL; el encabezado sale de un agregado y no de contar las
+ * filas traídas; y es una `FlatList`, que solo dibuja lo que se ve.
  */
 
 import { money } from '@iceberg/core';
 import type { FiltroDeMovimientos, Movimiento, TipoDeMovimiento } from '@iceberg/db';
-import {
-  capas, columna, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
+import { capas, columna, spacing } from '@iceberg/ui';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Anteriores } from '../../components/Anteriores';
 import { Ayuda } from '../../components/Ayuda';
+import { Boton } from '../../components/Boton';
 import { ConDesplegable } from '../../components/ConDesplegable';
 import { EXPLICACION_ANOMALIA, FilaMovimiento } from '../../components/FilaMovimiento';
-import { Pantalla } from '../../components/Pantalla';
-import { useAireInferior } from '../../datos/desplazamiento';
-import { ChipDisparador, ListaDeOpciones } from '../../components/SelectorDesplegable';
 import { iconoDeCategoria } from '../../components/iconos';
-import { Pinguino } from '../../components/Pinguino';
-import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
-import { useLetra } from '../../datos/letra';
-import { usePeriodo } from '../../datos/periodo';
-import { useTema } from '../../datos/tema';
+import { Pantalla } from '../../components/Pantalla';
+import {
+  ChipDisparador, ListaDeOpciones, useOpcionesDeCategoria,
+} from '../../components/SelectorDesplegable';
+import { Vacio } from '../../components/Vacio';
 import { useCategorias } from '../../datos/catalogo';
+import { useAnomalias, useMovimientosFiltrados, useResumenDeFiltro } from '../../datos/consultas';
+import { useAireInferior } from '../../datos/desplazamiento';
+import { useEstilos, type Estilo } from '../../datos/estilos';
+import { usePeriodo } from '../../datos/periodo';
 
 /**
- * Cuantos se traen por tanda, a eleccion.
- *
- * El tamaño de tanda no es una constante del programa sino una preferencia: en
- * un mes tranquilo cuarenta son todos y el boton de "ver mas" nunca aparece; en
- * uno cargado, alguien que busca un movimiento viejo prefiere traer cien de una
- * y desplazar, y alguien con el telefono justo prefiere veinticinco.
- *
- * `null` es "todos": el limite no se aplica y la consulta trae el filtro
- * entero. Se sostiene porque la lista es virtual --`FlatList` solo dibuja lo
- * que se ve-- y porque las cifras del encabezado nunca salieron de las filas,
- * sino de un `SUM` aparte.
+ * Cuántos se traen por tanda. `null` es "todos": la consulta va sin `LIMIT`, y
+ * aguanta porque la lista es virtual y el encabezado sale de un `SUM` aparte.
  */
-const TAMANOS: readonly { valor: number | null; etiqueta: string }[] = [
+const TANDAS: readonly { valor: number | null; etiqueta: string }[] = [
   { valor: 25, etiqueta: '25 por tanda' },
   { valor: 40, etiqueta: '40 por tanda' },
   { valor: 100, etiqueta: '100 por tanda' },
   { valor: null, etiqueta: 'Todos de una vez' },
 ];
 
-const POR_PAGINA_INICIAL = 40;
+const TANDA_INICIAL = 40;
+
+const TIPOS: readonly { valor: TipoDeMovimiento | null; etiqueta: string }[] = [
+  { valor: null, etiqueta: 'Todos los movimientos' },
+  { valor: 'gasto', etiqueta: 'Solo gastos' },
+  { valor: 'ingreso', etiqueta: 'Solo ingresos' },
+];
 
 type Desplegable = 'tipo' | 'categoria' | 'tanda' | null;
 
 export default function Movimientos() {
-  const { theme } = useTema();
-  const letra = useLetra();
+  const styles = useEstilos(crearEstilos);
   const aireInferior = useAireInferior();
-  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const categorias = useCategorias();
+  const opcionesDeCategoria = useOpcionesDeCategoria('Todas las categorías');
   const { rango } = usePeriodo();
-  // Se puede llegar aca desde una categoria de la torta o desde un dia del
-  // calendario. El parametro precarga el filtro.
+  // Se llega desde una categoría o desde un día del calendario: precargan el filtro.
   const params = useLocalSearchParams<{ categoria?: string; dia?: string }>();
 
   const [tipo, setTipo] = useState<TipoDeMovimiento | null>(null);
-  const [categoriaId, setCategoriaId] = useState<string | null>(
-    (params.categoria as string | undefined) ?? null,
-  );
+  const [categoriaId, setCategoriaId] = useState<string | null>(params.categoria ?? null);
   const [abierto, setAbierto] = useState<Desplegable>(null);
   const [pagina, setPagina] = useState(1);
-  const [porPagina, setPorPagina] = useState<number | null>(POR_PAGINA_INICIAL);
+  const [porPagina, setPorPagina] = useState<number | null>(TANDA_INICIAL);
 
   const filtro = useMemo<FiltroDeMovimientos>(
     () => ({
-      // El listado vive dentro del periodo global, como el resto de las vistas.
+      // Dentro del período global, como el resto de las vistas.
       desde: params.dia ? (params.dia as never) : rango.start,
       hasta: params.dia ? (params.dia as never) : rango.end,
       ...(tipo === null ? {} : { tipo }),
@@ -90,8 +76,6 @@ export default function Movimientos() {
   );
 
   const movimientos = useMovimientosFiltrados(
-    // Sin `limite` la consulta no aplica `LIMIT`, que es justo lo que se quiere
-    // en "todos de una vez".
     useMemo(
       () => (porPagina === null ? filtro : { ...filtro, limite: pagina * porPagina }),
       [filtro, pagina, porPagina],
@@ -100,159 +84,121 @@ export default function Movimientos() {
   const resumen = useResumenDeFiltro(filtro);
   const anomalias = useAnomalias();
   const hayMas = movimientos.length < resumen.cantidad;
+  const hayFiltros = tipo !== null || categoriaId !== null;
 
-  /** Cambiar de filtro vuelve a la primera pagina: si no, se veria un tramo suelto. */
-  const cambiarFiltro = useCallback((accion: () => void) => {
+  // Cambiar de filtro o de tanda vuelve a la primera página: si no, se vería un tramo suelto.
+  const cambiar = useCallback((accion: () => void) => {
     accion();
     setPagina(1);
     setAbierto(null);
   }, []);
 
-  /** Cambiar de tanda vuelve al principio, igual que cambiar de filtro. */
-  const cambiarTanda = useCallback((valor: number | null) => {
-    setPorPagina(valor);
-    setPagina(1);
-    setAbierto(null);
-  }, []);
-
-  const opcionesDeTipo = useMemo(() => [
-    { valor: null, etiqueta: 'Todos los movimientos' },
-    { valor: 'gasto' as const, etiqueta: 'Solo gastos' },
-    { valor: 'ingreso' as const, etiqueta: 'Solo ingresos' },
-  ], []);
-
-  const opcionesDeCategoria = useMemo(() => [
-    { valor: null, etiqueta: 'Todas las categorías' },
-    ...categorias.todas.map((categoria) => ({
-      valor: categoria.id,
-      etiqueta: categoria.nombre,
-      icono: iconoDeCategoria(categoria.id),
-    })),
-  ], [categorias]);
+  const alternar = (cual: Exclude<Desplegable, null>) => setAbierto(abierto === cual ? null : cual);
 
   const encabezado = (
-    // Elevado para que el panel del filtro tape las filas de abajo. El `zIndex`
-    // del panel solo compite dentro de este subarbol; sin esto, cada fila de la
-    // lista —que viene despues en el orden del documento— le pasa por encima.
+    // Elevado para que el panel de un filtro tape las filas que vienen después.
     <View style={styles.encabezado}>
       <View style={styles.cabecera}>
         <Text style={styles.resumen}>
           {resumen.cantidad} {resumen.cantidad === 1 ? 'movimiento' : 'movimientos'}
           {' · '}{money.formatSigned(resumen.neto)}
         </Text>
-        <Ayuda titulo="Movimientos fuera de lo habitual" theme={theme} texto={EXPLICACION_ANOMALIA} />
+        <Ayuda titulo="Movimientos fuera de lo habitual" texto={EXPLICACION_ANOMALIA} />
       </View>
 
-      {/* Los dos disparadores en una linea, y un solo panel **encima** a lo
-          ancho: abrir un filtro no puede empujar la lista de movimientos. */}
+      {/* Los disparadores en una línea y un solo panel encima a lo ancho:
+          abrir un filtro no puede empujar la lista. */}
       <ConDesplegable
         abierto={abierto !== null}
         disparador={(
           <View style={styles.filtros}>
             <ChipDisparador
-              theme={theme}
               etiqueta={tipo === null ? 'Todos' : tipo === 'gasto' ? 'Gastos' : 'Ingresos'}
               abierto={abierto === 'tipo'}
               activo={tipo !== null}
-              onPress={() => setAbierto(abierto === 'tipo' ? null : 'tipo')}
+              onPress={() => alternar('tipo')}
               accesible="Filtrar por tipo"
             />
             <ChipDisparador
-              theme={theme}
               etiqueta={categoriaId === null ? 'Categoría' : categorias.nombreCorto(categoriaId)}
               icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
               abierto={abierto === 'categoria'}
               activo={categoriaId !== null}
-              onPress={() => setAbierto(abierto === 'categoria' ? null : 'categoria')}
+              onPress={() => alternar('categoria')}
               accesible="Filtrar por categoría"
             />
-            {/* Va con los filtros y no al pie de la lista: es una preferencia de
-                como se ve el listado, igual que ellos, y al pie habria que
-                desplazar hasta el final para cambiarla. */}
+            {/* Con los filtros y no al pie: es cómo se ve el listado, y al pie
+                habría que desplazar hasta el final para cambiarlo. */}
             <ChipDisparador
-              theme={theme}
-              etiqueta={porPagina === null ? 'Todos' : String(porPagina)}
+              etiqueta={porPagina === null ? 'Todos de una vez' : `${porPagina} por tanda`}
               abierto={abierto === 'tanda'}
-              activo={porPagina !== POR_PAGINA_INICIAL}
-              onPress={() => setAbierto(abierto === 'tanda' ? null : 'tanda')}
+              activo={porPagina !== TANDA_INICIAL}
+              onPress={() => alternar('tanda')}
               accesible="Cuántos movimientos traer por tanda"
             />
           </View>
         )}
         panel={abierto === 'tanda' ? (
           <ListaDeOpciones
-            theme={theme}
-            opciones={TAMANOS}
+            opciones={TANDAS}
             seleccionado={porPagina}
-            onElegir={cambiarTanda}
+            onElegir={(valor) => cambiar(() => setPorPagina(valor))}
           />
         ) : abierto === 'tipo' ? (
           <ListaDeOpciones
-            theme={theme}
-            opciones={opcionesDeTipo}
+            opciones={TIPOS}
             seleccionado={tipo}
-            onElegir={(valor) => cambiarFiltro(() => setTipo(valor))}
+            onElegir={(valor) => cambiar(() => setTipo(valor))}
           />
         ) : (
           <ListaDeOpciones
-            theme={theme}
             opciones={opcionesDeCategoria}
             seleccionado={categoriaId}
-            onElegir={(valor) => cambiarFiltro(() => setCategoriaId(valor))}
+            onElegir={(valor) => cambiar(() => setCategoriaId(valor))}
           />
         )}
       />
-
-      <View style={styles.espacio} />
     </View>
   );
 
   return (
     <Pantalla titulo="Movimientos">
-      {/* Los filtros van **fuera** de la lista, no en su `ListHeaderComponent`.
-          Ahi adentro no podian abrirse por encima: el envoltorio que FlatList
-          le pone al encabezado lleva `zIndex: 0`, que crea un contexto de
-          apilado y encierra todo lo de adentro por debajo de las filas. De
-          paso quedan fijos, que para un filtro es mejor: no se van con el
-          scroll justo cuando uno quiere cambiarlo. */}
+      {/* Fuera de la lista y no en su `ListHeaderComponent`: FlatList envuelve
+          el encabezado en un contexto de apilado que deja el panel debajo de
+          las filas. De paso los filtros quedan fijos al desplazar. */}
       <View style={styles.fijo}>{encabezado}</View>
       <FlatList
         data={movimientos}
         keyExtractor={(tx) => tx.id}
         renderItem={({ item }: { item: Movimiento }) => (
-          <FilaMovimiento tx={item} theme={theme} anomala={anomalias.has(item.id)} />
+          <FilaMovimiento tx={item} anomala={anomalias.has(item.id)} />
         )}
-        ListEmptyComponent={(
-          <View style={styles.vacio}>
-            <Pinguino theme={theme} tamano={40} estado="dormido" />
-            <Text style={styles.vacioTexto}>Ningún movimiento con esos filtros.</Text>
-          </View>
-        )}
+        ListEmptyComponent={hayFiltros ? (
+          <Vacio texto="Ningún movimiento con esos filtros.">
+            <Boton
+              variante="texto"
+              etiqueta="Quitar los filtros"
+              onPress={() => cambiar(() => { setTipo(null); setCategoriaId(null); })}
+            />
+          </Vacio>
+        ) : <Vacio texto="Sin movimientos en este período." />}
         ListFooterComponent={(
           <>
             {hayMas ? (
-              <Pressable
+              <Boton
+                etiqueta={`Ver más · ${movimientos.length} de ${resumen.cantidad}`}
+                accesible="Ver más movimientos"
                 onPress={() => setPagina(pagina + 1)}
-                style={styles.verMas}
-                accessibilityRole="button"
-                accessibilityLabel="Ver más movimientos"
-              >
-                <Text style={styles.verMasTexto}>
-                  Ver más · {movimientos.length} de {resumen.cantidad}
-                </Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.pie}>
-                {resumen.cantidad === 0 ? '' : `${resumen.cantidad} en total`}
-              </Text>
+                estilo={styles.verMas}
+              />
+            ) : resumen.cantidad === 0 ? null : (
+              <Text style={styles.pie}>{resumen.cantidad} en total</Text>
             )}
-            {/* En el pie y no en `ListEmptyComponent`: la lista puede quedar
-                vacia por los filtros, y ahi ofrecer otro periodo seria contestar
-                otra pregunta. `Anteriores` mira el periodo, no el filtro. */}
-            <Anteriores theme={theme} />
+            {/* `Anteriores` mira el período, no el filtro: va al pie y no en el vacío. */}
+            <Anteriores />
           </>
         )}
-        // Al llegar al final se trae la tanda siguiente sola; el boton queda
+        // Al llegar al final se trae la tanda siguiente sola; el botón queda
         // para quien prefiera pedirla.
         onEndReached={() => { if (hayMas) setPagina((actual) => actual + 1); }}
         onEndReachedThreshold={0.4}
@@ -263,50 +209,16 @@ export default function Movimientos() {
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
     contenido: columna,
-    encabezado: { zIndex: capas.desplegable },
     fijo: { ...columna, zIndex: capas.desplegable },
-    cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    resumen: {
-      fontFamily: fonts.mono,
-      fontWeight: pesos.regular,
-      fontSize: letra.sm,
-      color: theme.silencio,
-      marginBottom: spacing.lg,
-    },
-
-    filtros: { flexDirection: 'row', gap: spacing.sm },
-    espacio: { height: spacing.lg },
-
-    // El contenedor centra al pinguino y a su linea; el texto va aparte porque
-    // un estilo de texto sobre un `View` no aplica nada.
-    vacio: { alignItems: 'center', gap: spacing.sm, marginTop: spacing.xxl },
-    vacioTexto: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.regular,
-      fontSize: letra.sm,
-      color: theme.silencio,
-      textAlign: 'center',
-    },
-
-    verMas: {
-      marginTop: spacing.lg,
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-      borderRadius: radii.sm,
-    },
-    verMasTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.acentoTexto },
-    pie: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.regular,
-      fontSize: letra.xs,
-      color: theme.silencio,
-      textAlign: 'center',
-      marginTop: spacing.xl,
-    },
+    encabezado: { zIndex: capas.desplegable, paddingBottom: spacing.lg },
+    // La `i` junto a lo que explica, no al otro extremo.
+    cabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+    resumen: { ...t.cifra, fontSize: t.cuerpo.fontSize, color: theme.silencio },
+    filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    verMas: { alignSelf: 'stretch', marginTop: spacing.lg },
+    pie: { ...t.etiqueta, textAlign: 'center', marginTop: spacing.xl },
   });
 }

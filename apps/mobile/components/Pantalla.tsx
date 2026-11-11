@@ -1,48 +1,24 @@
 /**
- * El marco que comparten todas las vistas: menu, marca, periodo y el boton de agregar.
+ * El marco de las seis vistas: el encabezado con el período, el nombre de la
+ * vista y el fondo de agua.
  *
- * Existe para que el periodo este **en todas partes**. Si cada pantalla armara
- * su propio encabezado, tarde o temprano alguna se olvidaria de la barra y el
- * usuario perderia la referencia de que fecha esta mirando.
+ * El período está en todas porque es global: cambiar de vista no cambia la
+ * fecha que se mira. La barra de abajo no vive acá sino en el layout del grupo,
+ * para que no se desvanezca en cada cambio de vista.
  *
- * El **mas vive en la barra de abajo**, en el medio y sobresaliendo. Esa barra
- * no se dibuja aca sino en `app/(app)/_layout.tsx`, un nivel mas arriba: si
- * viviera dentro de la pantalla se desvaneceria con ella en cada transicion, y
- * lo que tiene que hacer es quedarse quieta. Ver `BarraInferior`.
+ * El fondo es una columna de agua que se hace más honda hacia abajo, fija a la
+ * pantalla: lo hondo es la parte baja de la pantalla, no del contenido.
  *
- * El **fondo es una columna de agua**: un degradado que se hace mas hondo hacia
- * abajo. Va aca y no en cada pantalla para que la profundidad sea de la app y no
- * de una vista, y **no se desplaza**: lo hondo es la parte baja de la pantalla,
- * no la parte baja del contenido.
- *
- * Las **tres rayitas abren la lista de cuentas**, y por eso no se dibujan si hay
- * una sola: los destinos se mudaron a la barra de abajo. La lista sale como una
- * burbuja colgada del boton, sin pantallas intermedias; ver `MenuDeCuenta`.
- *
- * ## El nombre de la vista, bajo el encabezado
- *
- * Existe por lo mismo que la barra: seis iconos sin etiqueta dicen a donde se
- * puede ir, pero no **donde se esta**. El titulo lo confirma despues del toque,
- * que es cuando hace falta, y ademas le pone nombre a pantallas que antes
- * empezaban directo con una cifra sin decir de que eran.
- *
- * ## Al entrar, el contenido se funde
- *
- * **Solo el contenido.** El encabezado, la columna de agua y la barra de abajo
- * se quedan quietos: son los mismos en las seis vistas, y fundirlos seria un
- * parpadeo de cosas que no cambiaron. Lo que cambia es lo del medio.
- *
- * Fundido y no deslizamiento porque las seis vistas son **hermanas**: deslizar
- * de lado contaria un avance que no existe, y ademas habria que decidir hacia
- * que lado va cada par de destinos. Sube 8 px, lo justo para que se lea como
- * contenido que llega y no como un destello.
+ * Al entrar solo se funde el contenido (el encabezado, el agua y la barra son
+ * los mismos en las seis vistas). Fundido y no deslizamiento: las vistas son
+ * hermanas, no pasos de un recorrido.
  */
 
-import { capas, columna, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
+import { capas, columna, durations, holguraDeToque, spacing } from '@iceberg/ui';
 import { StatusBar } from 'expo-status-bar';
 import { List } from 'phosphor-react-native/src/icons/List';
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Ayuda } from './Ayuda';
@@ -50,65 +26,48 @@ import { BarraDePeriodo } from './BarraDePeriodo';
 import { FueraDelPeriodo } from './FueraDelPeriodo';
 import { Pinguino } from './Pinguino';
 import { useAbrirMenuDeCuenta } from './MenuDeCuenta';
+import { transicion, useMovimientoReducido } from '../datos/animacion';
 import { useCuentas } from '../datos/consultas';
-import { useAncla, useZonaDeContenido } from '../datos/tutorial';
-import { useLetra } from '../datos/letra';
+import { useEstilos, type Estilo } from '../datos/estilos';
 import { useTema } from '../datos/tema';
+import { useAncla, useZonaDeContenido } from '../datos/tutorial';
+
+/** El ancho de cada costado del encabezado: el período queda centrado en la pantalla. */
+const COSTADO = 44;
 
 export function Pantalla(
   { children, titulo, ayudaDelTitulo, sinPeriodo, permitirFuturo }: {
     children: ReactNode;
-    /** El nombre de la vista. El mismo que lleva en la barra de abajo. */
-    titulo?: string;
-    /**
-     * Que es esta vista, si el nombre no alcanza.
-     *
-     * Casi ninguna la necesita --"Movimientos" o "Ajustes" se explican solos--,
-     * y por eso es opcional en vez de obligatoria: una `i` al lado de algo
-     * evidente es ruido.
-     */
+    /** El nombre de la vista, el mismo que lleva en la barra de abajo. */
+    titulo: string;
+    /** Qué es esta vista, si el nombre no alcanza. */
     ayudaDelTitulo?: string;
     sinPeriodo?: boolean;
-    /** Ver `BarraDePeriodo`: solo Tempanos necesita mirar hacia adelante. */
+    /** Ver `BarraDePeriodo`: solo Témpanos mira hacia adelante. */
     permitirFuturo?: boolean;
   },
 ) {
   const { nombre: tema, theme } = useTema();
-  const letra = useLetra();
-  // Sin esto el encabezado se dibuja debajo del reloj y el flotante debajo de la
-  // barra de gestos: la app va a pantalla completa por `edgeToEdgeEnabled`.
+  const styles = useEstilos(crearEstilos);
+  // La app va a pantalla completa: el encabezado empieza debajo del reloj.
   const margenes = useSafeAreaInsets();
-  const styles = crearEstilos(theme, margenes, letra);
   const abrirMenuDeCuenta = useAbrirMenuDeCuenta();
-  // Con una sola cuenta el menu no tendria nada adentro: es lo unico que quedo
-  // ahi desde que los destinos se mudaron a la barra de abajo.
+  // Las rayitas abren la lista de cuentas: con una sola no hay qué elegir.
   const hayQueElegirCuenta = useCuentas().length > 1;
-  // La burbuja se cuelga de donde quedo el boton, y eso solo se sabe midiendolo.
   const rayitas = useRef<View>(null);
-  // El tutorial ilumina la barra de periodo, y necesita saber donde termina el
-  // encabezado para no dibujar su tarjeta encima. Ver `datos/tutorial`.
   const ancla = useAncla();
   const zona = useZonaDeContenido();
 
-  // Corre una sola vez por montaje, y cada destino monta su propia `Pantalla`:
-  // eso es lo que hace que la animacion coincida con el cambio de vista.
+  const reducido = useMovimientoReducido();
   const entrada = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(entrada, {
-      toValue: 1,
-      // Corto a proposito: es el acuse de que el toque llego, no una escena.
-      // Pasando los 200 ms, navegar empieza a sentirse lento.
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [entrada]);
+    transicion(entrada, 1, { duracion: durations.cambio, reducido }).start();
+  }, [entrada, reducido]);
 
   return (
     <View style={styles.raiz}>
       <StatusBar style={tema === 'dark' ? 'light' : 'dark'} />
 
-      {/* La columna de agua. Detras de todo y quieta. */}
       <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
         <Defs>
           <LinearGradient id="columnaDeAgua" x1="0" y1="0" x2="0" y2="1">
@@ -118,65 +77,48 @@ export function Pantalla(
         </Defs>
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#columnaDeAgua)" />
       </Svg>
-      <View style={styles.marco}>
+
+      <View style={[styles.marco, { paddingTop: spacing.lg + margenes.top }]}>
         <View style={styles.encabezado}>
-          {/* Sin burbuja: tres lineas ya se leen como menu, y el circulo solo
-              agregaba un borde mas a una fila que ya tiene varios. El area
-              tocable la sostiene el `hitSlop`, no el dibujo. */}
           {hayQueElegirCuenta ? (
             <Pressable
               ref={rayitas}
-              // Sin esto Android puede colapsar la vista en el arbol nativo
-              // --pasa con cualquiera que no dibuje nada propio-- y entonces no
-              // hay nada que medir: la burbuja saldria en la esquina.
+              // Sin esto Android colapsa la vista en el árbol nativo y no hay qué medir.
               collapsable={false}
-              // Se mide al tocar y no en un efecto: en ese instante el boton ya
-              // esta dibujado y el encabezado no se mueve mas.
+              // Se mide al tocar: en ese instante el botón ya está dibujado y quieto.
               onPress={() => rayitas.current?.measureInWindow(
                 (x, y, _ancho, alto) => abrirMenuDeCuenta({ x, y, alto }),
               )}
-              style={styles.lateral}
+              style={styles.costado}
               accessibilityRole="button"
               accessibilityLabel="Cambiar de cuenta"
-              hitSlop={12}
+              hitSlop={holguraDeToque(22)}
             >
               <List size={18} weight="bold" color={theme.tinta} />
             </Pressable>
-          ) : <View style={styles.lateral} />}
+          ) : <View style={styles.costado} />}
 
           {sinPeriodo ? (
-            <View style={styles.marcaFila}>
-              <Pinguino theme={theme} tamano={18} />
-              <Text style={styles.marca}>ICEBERG</Text>
+            <View style={styles.centro}>
+              <Pinguino tamano={18} />
             </View>
           ) : (
-            <>
-              <View ref={ancla('periodo')} collapsable={false} style={styles.periodo}>
-                <BarraDePeriodo theme={theme} permitirFuturo={permitirFuturo} />
-              </View>
-              {/* El hueco del ancho del menu, al otro lado. Sin el, el periodo se
-                  centra en el espacio que sobra despues del boton y queda corrido
-                  media hamburguesa a la derecha.
-
-                  Es tambien donde vive el aviso de "esto no es hoy": a la derecha
-                  del periodo, que es lo que el aviso califica, y ocupando un
-                  hueco que ya estaba reservado. `FueraDelPeriodo` no dibuja nada
-                  cuando se esta en el periodo actual, asi que el encabezado no se
-                  mueve al aparecer. */}
-              <View style={[styles.lateral, styles.lateralDerecho]}>
-                <FueraDelPeriodo theme={theme} />
-              </View>
-            </>
+            <View ref={ancla('periodo')} collapsable={false} style={styles.centro}>
+              <BarraDePeriodo permitirFuturo={permitirFuturo} />
+            </View>
           )}
-        </View>
-        {titulo === undefined ? null : (
-          <View style={styles.filaDelTitulo}>
-            <Text style={styles.tituloDeVista}>{titulo}</Text>
-            {ayudaDelTitulo === undefined ? null : (
-              <Ayuda titulo={titulo} texto={ayudaDelTitulo} theme={theme} />
-            )}
+          {/* El costado derecho mide lo mismo que el del menú, para que el centro
+              quede centrado en la pantalla. Ahí vive el aviso de "esto no es
+              hoy", que no dibuja nada en el período actual. */}
+          <View style={[styles.costado, styles.costadoDerecho]}>
+            {sinPeriodo ? null : <FueraDelPeriodo />}
           </View>
-        )}
+        </View>
+
+        <View style={styles.filaDelTitulo}>
+          <Text style={styles.titulo} accessibilityRole="header">{titulo}</Text>
+          {ayudaDelTitulo === undefined ? null : <Ayuda titulo={titulo} texto={ayudaDelTitulo} />}
+        </View>
       </View>
 
       <Animated.View
@@ -195,64 +137,18 @@ export function Pantalla(
   );
 }
 
-function crearEstilos(theme: Theme, margenes: { top: number; bottom: number }, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
     raiz: { flex: 1, backgroundColor: theme.fondo },
-    // `flex: 1` para que envolver el contenido no le cambie el alto a ninguna
-    // pantalla: antes colgaban directo de la raiz.
     cuerpo: { flex: 1 },
-    /**
-     * Elevado sobre el contenido para que el panel del periodo se abra encima.
-     *
-     * El marco va **antes** que los hijos en el orden del documento, asi que sin
-     * esto cualquier fila de la pantalla le pasa por arriba. El numero es mayor
-     * que el de los desplegables de contenido: si los dos estan abiertos, el del
-     * periodo manda, porque es el que se acaba de tocar.
-     */
-    marco: {
-      ...columna,
-      paddingTop: spacing.lg + margenes.top,
-      paddingBottom: spacing.sm,
-      zIndex: capas.encabezado,
-    },
-    // El periodo va en la misma linea que el menu: es marco, no contenido, y no
-    // merece una franja propia.
+    // Sobre el contenido, para que el selector de período se abra por encima:
+    // el marco va antes en el documento y sin esto las filas le pasan por arriba.
+    marco: { ...columna, paddingBottom: spacing.sm, zIndex: capas.encabezado },
     encabezado: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, zIndex: capas.encabezado },
-    periodo: { flex: 1, zIndex: capas.encabezado },
-    marcaFila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    marca: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xs, color: theme.tinta, letterSpacing: 3 },
-    /**
-     * Las dos columnas de los costados, del mismo ancho.
-     *
-     * Iguales para que el periodo quede centrado en la pantalla y no en lo que
-     * sobra: si el hueco de la derecha fuera del tamano de su contenido, el
-     * nombre del mes se correria solo en las pantallas donde aparece el aviso.
-     * El ancho lo pide el lado mas lleno --el `!` mas el circulo de volver-- y
-     * al otro le sobra, que no se nota porque ahi no hay nada dibujado.
-     */
-    lateral: { width: 44, height: 22, alignItems: 'flex-start', justifyContent: 'center' },
-    lateralDerecho: { alignItems: 'flex-end' },
-    /**
-     * Mas grande que un titulo de seccion y mas chico que una cifra.
-     *
-     * `lg` contra los `sm` de `Titulo`: tiene que leerse como el nombre de la
-     * pantalla y no como una seccion mas, pero sin competir con el numero
-     * protagonista que viene abajo en varias vistas.
-     */
-    tituloDeVista: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.semibold,
-      fontSize: letra.lg,
-      color: theme.tinta,
-    },
-    // La `i` pegada al titulo y no al borde derecho: explica **esto**, y a diez
-    // centimetros de distancia deja de estar claro que. Ver `Titulo.tsx`.
-    filaDelTitulo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      marginTop: spacing.md,
-    },
-
+    centro: { flex: 1, alignItems: 'center', zIndex: capas.encabezado },
+    costado: { width: COSTADO, height: 22, alignItems: 'flex-start', justifyContent: 'center' },
+    costadoDerecho: { alignItems: 'flex-end' },
+    filaDelTitulo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
+    titulo: t.titulo,
   });
 }

@@ -1,15 +1,10 @@
 /**
  * Reglas propias de categorización: "si dice X, es Y".
  *
- * El catálogo que trae la app reconoce el 60 % de las filas que tienen un
- * comercio. El resto son negocios chicos que solo tú sabes clasificar, y
- * escribir la regla una vez es mucho mejor que categorizar el mismo almacén
- * todos los meses.
- *
- * La pantalla ofrece **los nombres que más se repiten sin categoría**: es lo que
- * convierte esto en algo usable. Pedirle a alguien que escriba patrones de
- * memoria, mirando una lista de 700 movimientos en otra pantalla, es pedirle que
- * no lo use.
+ * El catálogo de la app reconoce el 60 % de los comercios; el resto son
+ * negocios chicos que solo uno sabe clasificar. Lo que hace usable esta
+ * pantalla es ofrecer los nombres sin categoría que más se repiten: escribir
+ * patrones de memoria es pedirle a alguien que no la use.
  */
 
 import { rules } from '@iceberg/core';
@@ -17,33 +12,33 @@ import {
   aplicarCategorias, borrarReglaDeCategoria, crearReglaDeCategoria,
   sinCategoriaQueSeReconocen, type ReglaCategoria,
 } from '@iceberg/db';
-import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
+import { spacing } from '@iceberg/ui';
 import { useRouter } from 'expo-router';
 import { Trash } from 'phosphor-react-native/src/icons/Trash';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ConDesplegable } from '../components/ConDesplegable';
-import { ChipDisparador, ListaDeOpciones } from '../components/SelectorDesplegable';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Boton, BotonDeIcono } from '../components/Boton';
+import { Campo, Entrada, ErrorDelFormulario, Formulario } from '../components/Formulario';
 import { iconoDeCategoria } from '../components/iconos';
+import { PantallaModal } from '../components/PantallaModal';
+import { Desplegable, useOpcionesDeCategoria } from '../components/SelectorDesplegable';
+import { Titulo } from '../components/Titulo';
 import { useAvisar } from '../datos/aviso';
 import { useDatos } from '../datos/BaseDeDatos';
+import { useCategorias } from '../datos/catalogo';
 import { useMovimientos, useReglasDeCategoria } from '../datos/consultas';
-import { useLetra } from '../datos/letra';
+import { useEstilos, type Estilo } from '../datos/estilos';
 import { volver } from '../datos/navegacion';
 import { useTema } from '../datos/tema';
-import { PantallaModal } from '../components/PantallaModal';
-import { useCategorias } from '../datos/catalogo';
 
-/** Cuantos nombres sin reconocer se ofrecen. Mas que esto es una lista, no una ayuda. */
+/** Cuántos nombres sin reconocer se ofrecen. Más que esto es una lista, no una ayuda. */
 const SUGERENCIAS = 8;
 
 export default function ReglasDeCategoria() {
+  const styles = useEstilos(crearEstilos);
   const { theme } = useTema();
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
   const categorias = useCategorias();
+  const opciones = useOpcionesDeCategoria();
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
   const router = useRouter();
@@ -52,9 +47,9 @@ export default function ReglasDeCategoria() {
   const movimientos = useMovimientos();
 
   const [patron, setPatron] = useState('');
-  const [categoriaId, setCategoriaId] = useState<string>('comida');
+  const [categoriaId, setCategoriaId] = useState('comida');
   const [eligiendo, setEligiendo] = useState(false);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   /** Los gastos que hoy nadie sabe clasificar, agrupados por nombre. */
   const sinReconocer = useMemo(() => {
@@ -75,250 +70,136 @@ export default function ReglasDeCategoria() {
       .slice(0, SUGERENCIAS);
   }, [movimientos, reglas]);
 
+  // `reglas` y `movimientos` no se usan adentro, pero cuando cambian la cuenta cambia.
   const porAplicar = useMemo(
     () => sinCategoriaQueSeReconocen(db, contexto).length,
-    // Se recalcula cuando cambian las reglas o los movimientos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [db, contexto, reglas, movimientos],
   );
 
-  const opciones = useMemo(
-    () => categorias.todas.map((c) => ({
-      valor: c.id, etiqueta: c.nombre, icono: iconoDeCategoria(c.id),
-    })),
-    [],
-  );
-
-  function agregar(texto: string) {
+  function agregar() {
     try {
-      crearReglaDeCategoria(db, contexto, { patron: texto, categoriaId });
+      crearReglaDeCategoria(db, contexto, { patron, categoriaId });
       avisar('Regla guardada');
       setPatron('');
-      setAviso(null);
+      setError(null);
     } catch (e) {
-      setAviso((e as Error).message);
+      setError((e as Error).message);
     }
+  }
+
+  function aplicar() {
+    const cuantos = aplicarCategorias(db, contexto);
+    avisar(`${cuantos} ${cuantos === 1 ? 'movimiento categorizado' : 'movimientos categorizados'}`);
   }
 
   return (
     <PantallaModal>
-      <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
-        <View style={styles.encabezado}>
-          <Text style={styles.titulo}>Reglas de categoría</Text>
-          <Pressable onPress={() => volver(router)} accessibilityRole="button">
-            <Text style={styles.cancelar}>Cerrar</Text>
-          </Pressable>
-        </View>
-
+      <Formulario titulo="Reglas de categoría" salida="Cerrar" onCancelar={() => volver(router)}>
         <Text style={styles.ayuda}>
-          Si la descripción contiene el texto, el gasto va a esa categoría. Se aplica a lo
-          que importes y a lo que ya está sin clasificar.
+          Si la descripción contiene el texto, el gasto va a esa categoría. Se aplica a lo que
+          importes y a lo que ya está sin clasificar.
         </Text>
 
-        <View style={styles.campo}>
-          <Text style={styles.etiqueta}>Si dice</Text>
-          <TextInput
+        <Campo etiqueta="Si dice">
+          <Entrada
             value={patron}
             onChangeText={setPatron}
             placeholder="comercial alexis"
-            placeholderTextColor={theme.silencio}
-            style={styles.entrada}
             autoCapitalize="none"
+            autoCorrect={false}
             accessibilityLabel="Texto del patrón"
           />
-        </View>
+        </Campo>
 
-        <View style={styles.campo}>
-          <Text style={styles.etiqueta}>Es</Text>
-          <ConDesplegable
+        <Campo etiqueta="Es" elevado={eligiendo}>
+          <Desplegable
             abierto={eligiendo}
-            disparador={(
-              <View style={styles.filaChip}>
-                <ChipDisparador
-                  theme={theme}
-                  etiqueta={categorias.nombreCorto(categoriaId)}
-                  icono={iconoDeCategoria(categoriaId)}
-                  abierto={eligiendo}
-                  activo
-                  onPress={() => setEligiendo(!eligiendo)}
-                  accesible={`Categoría ${categorias.nombre(categoriaId)}. Tocar para cambiar`}
-                />
-              </View>
-            )}
-            panel={(
-              <ListaDeOpciones
-                theme={theme}
-                opciones={opciones}
-                seleccionado={categoriaId}
-                onElegir={(valor: string) => {
-                  setCategoriaId(valor);
-                  setEligiendo(false);
-                }}
-              />
-            )}
+            onAlternar={() => setEligiendo(!eligiendo)}
+            etiqueta={categorias.nombreCorto(categoriaId)}
+            icono={iconoDeCategoria(categoriaId)}
+            activo
+            accesible={`Categoría ${categorias.nombre(categoriaId)}. Tocar para cambiar`}
+            opciones={opciones}
+            valor={categoriaId}
+            onElegir={(valor) => { setCategoriaId(valor); setEligiendo(false); }}
           />
-        </View>
+        </Campo>
 
-        <Pressable
-          onPress={() => agregar(patron)}
-          disabled={patron.trim() === ''}
-          style={[styles.guardar, patron.trim() === '' && styles.apagado]}
-          accessibilityRole="button"
-          accessibilityLabel="Agregar regla"
-        >
-          <Text style={styles.guardarTexto}>Agregar regla</Text>
-        </Pressable>
+        <ErrorDelFormulario error={error} />
 
-        {aviso === null ? null : <Text style={styles.error}>{aviso}</Text>}
+        <Boton
+          variante="principal"
+          etiqueta="Agregar regla"
+          onPress={agregar}
+          deshabilitado={patron.trim() === ''}
+        />
 
         {porAplicar > 0 ? (
-          <Pressable
-            onPress={() => {
-              const cuantos = aplicarCategorias(db, contexto);
-              setAviso(`${cuantos} ${cuantos === 1 ? 'movimiento categorizado' : 'movimientos categorizados'}.`);
-            }}
-            style={styles.aplicar}
-            accessibilityRole="button"
-            accessibilityLabel="Aplicar a los movimientos sin categoría"
-          >
-            <Text style={styles.aplicarTexto}>
-              Categorizar {porAplicar}{' '}
-              {porAplicar === 1 ? 'movimiento que ya está' : 'movimientos que ya están'}
-            </Text>
-          </Pressable>
+          <Boton
+            etiqueta={`Categorizar ${porAplicar} ${porAplicar === 1
+              ? 'movimiento que ya está'
+              : 'movimientos que ya están'}`}
+            accesible="Aplicar las reglas a los movimientos sin categoría"
+            onPress={aplicar}
+          />
         ) : null}
 
         {sinReconocer.length > 0 ? (
-          <>
-            <Text style={styles.seccion}>Sin clasificar, los más repetidos</Text>
-            <Text style={styles.ayuda}>
-              Toca uno para usarlo como patrón. Conviene acortarlo a lo que se repite.
-            </Text>
+          <View>
+            <Titulo
+              primero
+              texto="Sin clasificar, los más repetidos"
+              ayuda="Toca uno para usarlo como patrón. Conviene acortarlo a lo que se repite."
+            />
             {sinReconocer.map(([nombre, veces]) => (
               <Pressable
                 key={nombre}
                 onPress={() => setPatron(nombre)}
-                style={styles.sugerencia}
+                style={({ pressed }) => [styles.fila, pressed && styles.apretada]}
                 accessibilityRole="button"
                 accessibilityLabel={`Usar ${nombre} como patrón`}
               >
-                <Text style={styles.sugerenciaTexto} numberOfLines={1}>{nombre}</Text>
+                <Text style={styles.patron} numberOfLines={1}>{nombre}</Text>
                 <Text style={styles.veces}>{veces}×</Text>
               </Pressable>
             ))}
-          </>
+          </View>
         ) : null}
 
         {reglas.length > 0 ? (
-          <>
-            <Text style={styles.seccion}>Tus reglas</Text>
+          <View>
+            <Titulo primero texto="Tus reglas" />
             {reglas.map((regla: ReglaCategoria) => {
               const Icono = iconoDeCategoria(regla.categoriaId);
               return (
                 <View key={regla.id} style={styles.fila}>
                   <Text style={styles.patron} numberOfLines={1}>{regla.patron}</Text>
                   <Icono size={13} weight="regular" color={theme.silencio} />
-                  <Text style={styles.categoria}>
-                    {categorias.nombreCorto(regla.categoriaId)}
-                  </Text>
-                  <Pressable
+                  <Text style={styles.categoria}>{categorias.nombreCorto(regla.categoriaId)}</Text>
+                  <BotonDeIcono
+                    icono={Trash}
+                    tamano={16}
                     onPress={() => borrarReglaDeCategoria(db, contexto, regla.id)}
-                    style={styles.borrar}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Borrar la regla ${regla.patron}`}
-                    hitSlop={8}
-                  >
-                    <Trash size={13} weight="regular" color={theme.vencidoTexto} />
-                  </Pressable>
+                    accesible={`Borrar la regla ${regla.patron}`}
+                  />
                 </View>
               );
             })}
-          </>
+          </View>
         ) : null}
-      </ScrollView>
+      </Formulario>
     </PantallaModal>
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.xl,
-      paddingBottom: spacing.xxxl,
-      maxWidth: 520,
-      width: '100%',
-      alignSelf: 'center',
-      gap: spacing.md,
-    },
-    encabezado: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingTop: spacing.xxl,
-    },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio },
-
-    campo: { gap: spacing.xs },
-    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
-    entrada: {
-      fontFamily: fonts.mono,
-      fontWeight: pesos.regular,
-      fontSize: letra.md,
-      color: theme.tinta,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-      paddingVertical: spacing.sm,
-    },
-    filaChip: { flexDirection: 'row' },
-
-    guardar: {
-      backgroundColor: theme.acento,
-      borderRadius: radii.sm,
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-    },
-    apagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.sobreAcento },
-    aplicar: {
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
-    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.acentoTexto },
-
-    seccion: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.semibold,
-      fontSize: letra.xs,
-      color: theme.tinta,
-      paddingTop: spacing.lg,
-    },
-    sugerencia: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      paddingVertical: spacing.sm,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-    },
-    sugerenciaTexto: { flex: 1, fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    veces: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
-
-    fila: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.sm,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-    },
-    patron: { flex: 1, fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    categoria: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
-    borrar: { padding: 2 },
+    ayuda: { ...t.nota, lineHeight: t.cuerpo.fontSize + 4 },
+    fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+    apretada: { opacity: 0.6 },
+    patron: { ...t.cifra, flex: 1 },
+    veces: { ...t.cifraDeGrafico },
+    categoria: { ...t.etiqueta, color: theme.silencio },
   });
 }

@@ -1,56 +1,38 @@
 /**
- * Que cuenta se esta mirando. `null` es "todas".
+ * Qué cuenta se está mirando; `null` es "todas". Es un alcance global, como el
+ * período: cambiarlo cambia toda la app, no solo la pantalla actual.
  *
- * Es un alcance global, igual que el periodo: cambiarlo cambia **toda** la app
- * --el saldo, el iceberg, las categorias, el calendario, los tempanos y la
- * lista-- y no solo la pantalla en la que uno esta. El caso que lo motiva es
- * tener un libro compartido y otro personal en el mismo telefono.
+ * La app abre con la cuenta de la estrella (o la primera creada): quien lleva
+ * dos libros separados casi siempre quiere ver uno. La estrella vive en
+ * `ajustes`, que no se sincroniza, porque es preferencia de cada teléfono. Se
+ * lee una sola vez al montar: releerla movería el alcance por debajo de quien
+ * está mirando otra cosa.
  *
- * ## La cuenta por defecto
- *
- * La app abre con la cuenta marcada con estrella en Ajustes, no con "todas".
- * Quien tiene dos libros separados casi siempre quiere ver uno, y el
- * consolidado es la excepcion; arrancar sumandolo todo obliga a elegir en cada
- * arranque.
- *
- * La marca vive en `ajustes`, que **no se sincroniza**: cual mirar primero es
- * preferencia de cada telefono y no tiene por que ser la misma para las dos
- * personas que comparten un libro.
- *
- * Se lee **una sola vez**, al montar. Despues manda lo que el usuario elija en
- * la sesion: si releyera el ajuste, cambiar la estrella movería el alcance por
- * debajo de los pies de quien esta mirando otra cosa.
- *
- * ## Solo guarda el id
- *
- * No consulta las cuentas. Si lo hiciera habria un ciclo: `consultas.ts`
- * necesita saber cual esta activa para filtrar, y este proveedor necesitaria a
- * `consultas.ts` para listarlas. Quien las lista es `consultas.ts` mismo --que
- * si puede depender de las dos cosas, como ya hacen `useSaldoInicial` y
- * `useVolverATodasSiSeBorroLaCuenta`-- y el menu que las dibuja. El ajuste se
- * lee con `leerAjuste`, que es una funcion suelta sobre la base, no un hook de
- * consulta.
- *
- * ## Por que el filtro se inyecta y no se pasa a mano
- *
- * Casi todo el analisis cuelga de `useMovimientos`, y el saldo de
- * `useSaldoInicial`. Poniendo el alcance ahi adentro, las dieciocho consultas de
- * la app quedan filtradas sin que ninguna pantalla tenga que acordarse. Una
- * pantalla que necesite pasar por encima --el detalle de una cuenta puntual--
- * pone su propio `cuentaId` en el filtro y ese gana.
+ * Solo guarda el id. Listar las cuentas acá crearía un ciclo con
+ * `consultas.ts`, que es quien filtra todo por este alcance.
  */
 
+import type { TipoDeCuenta } from '@iceberg/db';
 import { CLAVE_CUENTA_POR_DEFECTO, escribirAjuste, leerAjuste, listarCuentas } from '@iceberg/db';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useDatos } from './BaseDeDatos';
+
+/** Cómo se lee cada tipo de cuenta en pantalla. */
+export const NOMBRES_DE_TIPO_DE_CUENTA: Record<TipoDeCuenta, string> = {
+  corriente: 'Corriente',
+  vista: 'Vista',
+  ahorro: 'Ahorro',
+  credito: 'Crédito',
+  efectivo: 'Efectivo',
+};
 
 interface ValorDeCuenta {
   /** La cuenta activa, o `null` para ver todas juntas. */
   readonly cuentaId: string | null;
   readonly elegir: (cuentaId: string | null) => void;
-  /** La que lleva estrella: con la que abre la app. `null` si es "todas". */
+  /** La de la estrella: con la que abre la app. `null` si es "todas". */
   readonly porDefecto: string | null;
-  /** Pone o quita la estrella. Volver a marcar la misma la quita. */
+  /** Pone o quita la estrella. */
   readonly marcarPorDefecto: (cuentaId: string | null) => void;
 }
 
@@ -64,32 +46,16 @@ const Contexto = createContext<ValorDeCuenta>({
 export function ProveedorDeCuenta({ children }: { children: ReactNode }) {
   const { db, contexto } = useDatos();
 
-  /**
-   * Con que cuenta abrir cuando nadie eligio estrella.
-   *
-   * **La primera creada, no "todas".** El consolidado es la vista rara: quien
-   * tiene dos libros separados quiere ver uno, y arrancar sumandolos obliga a
-   * elegir en cada arranque. Y quien tiene una sola cuenta --la mayoria-- no
-   * nota ninguna diferencia, porque una cuenta sumada es esa misma cuenta.
-   *
-   * Se listan aca con `listarCuentas`, que es una funcion suelta sobre la base y
-   * no un hook: usar `useCuentas` traeria el ciclo que este archivo evita.
-   */
-  const inicial = () => {
-    const guardada = leerAjuste(db, CLAVE_CUENTA_POR_DEFECTO);
-    if (guardada) return guardada;
-    return listarCuentas(db, contexto)[0]?.id ?? null;
-  };
-
-  // Dentro del inicializador: `useState` solo lo corre en el primer render, y si
-  // no seria una consulta a la base en cada uno.
-  const [cuentaId, elegir] = useState<string | null>(inicial);
+  // En los inicializadores de `useState`, que corren una sola vez.
+  const [cuentaId, elegir] = useState<string | null>(
+    () => leerAjuste(db, CLAVE_CUENTA_POR_DEFECTO) || (listarCuentas(db, contexto)[0]?.id ?? null),
+  );
   const [porDefecto, setPorDefecto] = useState<string | null>(
     () => leerAjuste(db, CLAVE_CUENTA_POR_DEFECTO) || null,
   );
 
   const marcarPorDefecto = useCallback((id: string | null) => {
-    // Cadena vacia y no `delete`: el ajuste existe igual, solo que dice "todas".
+    // Cadena vacía y no borrar el ajuste: existe igual, y dice "todas".
     escribirAjuste(db, CLAVE_CUENTA_POR_DEFECTO, id ?? '');
     setPorDefecto(id);
   }, [db]);

@@ -1,22 +1,19 @@
 /**
- * "¿De dónde sale este número?" — lo que va dentro de la hoja.
+ * "¿De dónde sale este número?", dentro de la hoja.
  *
- * Cada cifra del Resumen es el final de una cuenta, y una cuenta que no se puede
- * abrir hay que creerla. Aca se abre: una frase que dice como se calcula y
- * despues, o los renglones de la aritmetica, o los movimientos que la componen.
- *
- * La lista se corta en ocho. Mas que eso no cabe sin scroll y deja de ser una
- * respuesta rapida: para ver todo esta la pantalla de movimientos.
+ * Una cifra que no se puede abrir hay que creerla. Acá se abre: cómo se calcula
+ * en una frase y después la aritmética o los movimientos que la componen,
+ * cortados en ocho: para ver todo está la pantalla de movimientos.
  */
 
 import { money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
-import { elevation, fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
+import { elevation, spacing } from '@iceberg/ui';
 import { StyleSheet, Text, View } from 'react-native';
-import { useLetra } from '../datos/letra';
+import { useEstilos, type Estilo } from '../datos/estilos';
 
 /** Un paso de la cuenta: "Ingreso +$1.488.700". */
-export interface Renglon {
+interface Renglon {
   readonly etiqueta: string;
   readonly monto: money.Money;
   /** Si resta en vez de sumar. Cambia el signo que se dibuja, no el monto. */
@@ -25,7 +22,7 @@ export interface Renglon {
 
 export interface Detalle {
   readonly total: money.Money;
-  /** Como se calcula, en una frase. */
+  /** Cómo se calcula, en una frase. */
   readonly formula: string;
   readonly renglones?: readonly Renglon[];
   readonly movimientos?: readonly Movimiento[];
@@ -33,9 +30,8 @@ export interface Detalle {
 
 const TOPE = 8;
 
-export function DetalleDeCifra({ detalle, theme }: { detalle: Detalle; theme: Theme }) {
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+export function DetalleDeCifra({ detalle }: { detalle: Detalle }) {
+  const styles = useEstilos(crearEstilos);
   const movimientos = detalle.movimientos ?? [];
   const visibles = movimientos.slice(0, TOPE);
   const resto = movimientos.length - visibles.length;
@@ -72,11 +68,11 @@ export function DetalleDeCifra({ detalle, theme }: { detalle: Detalle; theme: Th
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t, letra }: Estilo) {
   return StyleSheet.create({
     raiz: { gap: 2 },
-    total: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.px(28), color: theme.tinta, letterSpacing: -0.5 },
-    formula: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(17), color: theme.silencio, paddingBottom: spacing.sm },
+    total: { ...t.cifra, fontSize: letra.px(28), fontWeight: t.accion.fontWeight, letterSpacing: -0.5 },
+    formula: { ...t.nota, lineHeight: letra.px(17), paddingBottom: spacing.sm },
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -85,8 +81,8 @@ function crearEstilos(theme: Theme, letra: Letra) {
       borderTopWidth: elevation.hairlineWidth,
       borderTopColor: theme.hairline,
     },
-    etiqueta: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    resto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio, paddingTop: spacing.sm },
+    etiqueta: { ...t.etiqueta, flex: 1, color: theme.tinta },
+    monto: t.cifra,
+    resto: { ...t.nota, paddingTop: spacing.sm },
   });
 }

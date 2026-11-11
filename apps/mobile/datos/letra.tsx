@@ -1,22 +1,14 @@
 /**
- * El tamano de letra elegido, compartido por toda la app.
+ * El tamaño de letra elegido en Ajustes, compartido por toda la app.
  *
- * Va en un contexto y no en un hook por pantalla porque son casi treinta las
- * que lo necesitan: treinta `useLiveQuery` sobre la misma fila de una tabla de
- * clave-valor seria treinta suscripciones para leer un numero. Aca se lee una
- * vez y se reparte.
- *
- * `useLetra` **no revienta fuera del proveedor**, al reves que `useTema` o
- * `useDatos`. La razon es donde vive: el proveedor cuelga de la base --el ajuste
- * esta en SQLite-- asi que lo que se dibuja antes de que la base abra queda
- * afuera por fuerza. Eso es la pantalla de "Preparando la base…", que se ve un
- * instante y con el tamano de siempre.
+ * En un contexto: lo necesitan casi todas las pantallas, y una consulta por
+ * pantalla sería leer el mismo número treinta veces. Fuera del proveedor (la
+ * pantalla de "Preparando la base…", que se dibuja antes de que la base abra)
+ * vale el tamaño de siempre.
  */
 
 import { letraConEscala, LETRA_NORMAL, type Letra } from '@iceberg/ui';
-import {
-  CLAVE_ESCALA_DE_LETRA, consultaDeAjuste, escribirAjuste,
-} from '@iceberg/db';
+import { CLAVE_ESCALA_DE_LETRA, consultaDeAjuste, escribirAjuste } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useDatos } from './BaseDeDatos';
@@ -28,20 +20,17 @@ export function ProveedorDeLetra({ children }: { children: ReactNode }) {
   const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_ESCALA_DE_LETRA), [db]);
   const { data } = useLiveQuery(consulta);
   const crudo = data?.[0]?.valor;
-
-  // La identidad del objeto es lo que hace que las pantallas recalculen sus
-  // estilos: `crearEstilos` esta memoizado contra el, igual que contra el tema.
+  // La identidad del objeto es la que hace que `useEstilos` rearme las hojas.
   const letra = useMemo(() => letraConEscala(Number(crudo)), [crudo]);
-
   return <Contexto.Provider value={letra}>{children}</Contexto.Provider>;
 }
 
-/** Los tamanos de letra ya escalados. Para `crearEstilos(theme, letra)`. */
+/** Los tamaños ya escalados. Las pantallas los reciben por `useEstilos`. */
 export function useLetra(): Letra {
   return useContext(Contexto);
 }
 
-/** Cambia el tamano para toda la app. El valor se acota al leerlo. */
+/** Cambia el tamaño para toda la app. El valor se acota al leerlo. */
 export function useCambiarEscala(): (escala: number) => void {
   const { db } = useDatos();
   return (escala: number) => escribirAjuste(db, CLAVE_ESCALA_DE_LETRA, String(escala));

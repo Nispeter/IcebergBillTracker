@@ -1,84 +1,48 @@
 /**
  * Una sola hoja para todas las explicaciones de la app.
  *
- * Antes cada `?` abria su propia burbuja absoluta, y esa burbuja peleaba el
- * apilado con lo que tuviera al lado: `zIndex` en la raiz, `zIndex` en el
- * contenedor, `zIndex` en el padre del padre. Cada vez que una pantalla crecia
- * aparecia otro caso de "el globo se dibuja atras". No era un bug, era un
- * enfoque que garantizaba bugs: un elemento flotante solo compite dentro de su
- * contexto de apilado, y ese contexto lo decide cualquier ancestro.
+ * Cada `i` pide que se muestre; la hoja vive una vez, al final del árbol, y se
+ * dibuja encima de todo sin pelear el apilado (las burbujas absolutas de antes
+ * se dibujaban detrás según el ancestro de turno).
  *
- * La hoja no tiene ese problema **por construccion**: vive una sola vez, arriba
- * de todo, y las pantallas solo piden que se muestre. De paso todas las
- * explicaciones de la app se presentan igual, que es lo que el usuario pidio
- * cuando dijo que prefiere como muestra la informacion la `i` del saldo.
+ * El pingüino la cuenta de a un párrafo si así se eligió en Ajustes, y tocar
+ * adelanta: una animación que no se puede saltar molesta a la segunda vez, y
+ * las explicaciones se releen.
  */
 
+import { elevation, radii, spacing } from '@iceberg/ui';
 import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
-import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
-  type ReactNode,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
-import { DialogoDelPinguino } from '../components/DialogoDelPinguino';
+import { Boton } from '../components/Boton';
+import { DialogoDelPinguino, enParrafos } from '../components/DialogoDelPinguino';
 import { Hoja } from '../components/Hoja';
+import { useMovimientoReducido } from './animacion';
 import { useExplicacionDeAPoco } from './consultas';
-import { useLetra } from './letra';
+import { useEstilos, type Estilo } from './estilos';
 
 /**
- * Cuanto tarda el pinguino en decir un parrafo, en milisegundos.
- *
- * Proporcional al largo, porque una frase larga tarda mas en decirse y un pico
- * que se mueve el mismo rato para una linea que para cinco delata que el gesto
- * es de adorno. Con tope: pasado un rato el movimiento deja de ser simpatico y
- * molesta para leer, que es lo unico que la hoja vino a permitir.
- *
- * No pretende ser la velocidad real de lectura --nadie espera a que termine
- * para leer, se lee mientras aparece-- sino el ritmo de una conversacion.
- *
- * Los numeros salieron de mirarlo corriendo. Con doce milisegundos por caracter
- * el caso comun --dos o tres parrafos-- quedaba bien, pero la ayuda de
- * Sincronizar son ocho y tardaba mas de diez segundos en terminar de salir.
- * Aca se paga el ritmo del caso comun, que es de dos segundos, y la de ocho se
- * adelanta con un toque, que para eso esta.
+ * Cuánto tarda el pingüino en decir un párrafo: proporcional al largo, con
+ * tope. Es el ritmo de una conversación, no la velocidad de lectura.
  */
 function cuantoTarda(parrafo: string): number {
   return Math.min(1400, 300 + parrafo.length * 7);
 }
 
-/** El respiro entre un parrafo y el siguiente. */
+/** El respiro entre un párrafo y el siguiente. */
 const PAUSA = 180;
 
 /**
- * El texto partido en lo que seran las burbujas.
- *
- * Por parrafo, que es la particion que los textos ya traen puesta: estan
- * escritos con doble salto de linea entre ideas, asi que cada burbuja cae
- * exactamente donde el autor separo un tema del siguiente. Partir por oracion
- * daria burbujas de tres palabras y partir por largo cortaria a la mitad de una
- * frase.
+ * Lo que se puede hacer desde la explicación. Casi ninguna lo lleva; sí la de
+ * "no estás en el período actual", donde explicar y arreglar son la misma frase.
  */
-function enParrafos(texto: string): string[] {
-  return texto.split('\n\n').map((p) => p.trim()).filter((p) => p !== '');
-}
-
-/**
- * Lo que se puede hacer desde la explicacion, si hay algo que hacer.
- *
- * Casi ninguna lo lleva: una definicion se lee y se cierra. Lo lleva la que
- * avisa que estas parado en otro periodo, porque ahi la explicacion y el arreglo
- * son la misma frase --"no estas en septiembre" / "volver a septiembre"-- y
- * obligar a cerrar la hoja para despues buscar el boton seria pedir dos pasos
- * para una sola decision.
- */
-export interface AccionDeExplicacion {
+interface AccionDeExplicacion {
   readonly etiqueta: string;
   alTocar(): void;
 }
 
-/** Muestra una explicacion. El titulo es el de la seccion que la pidio. */
+/** Muestra una explicación. El título es el de la sección que la pidió. */
 type Explicar = (titulo: string, texto: string, accion?: AccionDeExplicacion) => void;
 
 const Contexto = createContext<Explicar>(() => {});
@@ -87,48 +51,33 @@ export function useExplicar(): Explicar {
   return useContext(Contexto);
 }
 
-/** Cuanto tarda un punto en subir y volver a bajar. */
+/** Lo que tarda un punto en subir y bajar, el desfase entre puntos y el respiro de la ola. */
 const SALTO = 200;
-/** Cuanto se atrasa cada punto respecto del anterior: es lo que hace la ola. */
 const RETRASO = 140;
-/** El respiro al final de la ola, para que no parezca un tren de puntos. */
 const RESPIRO = 240;
 
 /**
- * Los tres puntitos de "estoy escribiendo".
- *
- * Dicen algo que la burbuja sola no puede decir: que **viene mas**. Sin ellos,
- * una explicacion de dos parrafos y una de ocho se ven igual mientras sale la
- * primera, y quien no sabe que faltan seis cierra la hoja creyendo que eso era
- * todo.
- *
- * Los puntos saltan de a uno, desfasados, en vez de parpadear todos juntos: la
- * ola es lo que se lee como actividad. Va con `Animated` y no alternando estados
- * como el pico porque aca **si** se puede usar el driver nativo --son
- * `translateY` y `opacity` sobre vistas normales, no props de SVG-- asi que sale
- * suave y sin costo por fotograma.
+ * Los tres puntitos de "estoy escribiendo": dicen que viene más, para que nadie
+ * cierre la hoja creyendo que el primer párrafo era todo.
  */
-function Escribiendo({ styles }: { styles: ReturnType<typeof crearEstilos> }) {
+function Escribiendo() {
+  const styles = useEstilos(crearEstilos);
+  const quieto = useMovimientoReducido();
   const primero = useRef(new Animated.Value(0)).current;
   const segundo = useRef(new Animated.Value(0)).current;
   const tercero = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Todos duran lo mismo aunque arranquen a destiempo: si no, `parallel`
-    // termina cuando acaba el mas largo y el desfase se pierde en la vuelta
-    // siguiente.
+    if (quieto) return undefined;
+    // Todos duran lo mismo aunque arranquen desfasados, o el desfase se pierde
+    // en la vuelta siguiente.
     const largo = (RETRASO * 2) + (SALTO * 2) + RESPIRO;
     const salto = (valor: Animated.Value, retraso: number) => Animated.sequence([
       Animated.delay(retraso),
-      Animated.timing(valor, {
-        toValue: 1, duration: SALTO, easing: Easing.out(Easing.quad), useNativeDriver: true,
-      }),
-      Animated.timing(valor, {
-        toValue: 0, duration: SALTO, easing: Easing.in(Easing.quad), useNativeDriver: true,
-      }),
+      Animated.timing(valor, { toValue: 1, duration: SALTO, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(valor, { toValue: 0, duration: SALTO, easing: Easing.in(Easing.quad), useNativeDriver: true }),
       Animated.delay(largo - retraso - (SALTO * 2)),
     ]);
-
     const ola = Animated.loop(Animated.parallel([
       salto(primero, 0),
       salto(segundo, RETRASO),
@@ -136,18 +85,17 @@ function Escribiendo({ styles }: { styles: ReturnType<typeof crearEstilos> }) {
     ]));
     ola.start();
     return () => ola.stop();
-  }, [primero, segundo, tercero]);
+  }, [primero, segundo, tercero, quieto]);
 
   return (
     <View style={styles.escribiendo} accessibilityLabel="El pingüino sigue contando">
       {[primero, segundo, tercero].map((valor, indice) => (
         <Animated.View
+          // eslint-disable-next-line react/no-array-index-key
           key={indice}
           style={[styles.punto, {
             opacity: valor.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
-            transform: [{
-              translateY: valor.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }),
-            }],
+            transform: [{ translateY: valor.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
           }]}
         />
       ))}
@@ -155,12 +103,11 @@ function Escribiendo({ styles }: { styles: ReturnType<typeof crearEstilos> }) {
   );
 }
 
-export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; children: ReactNode }) {
+export function ProveedorDeExplicacion({ children }: { children: ReactNode }) {
+  const styles = useEstilos(crearEstilos);
   const [abierta, setAbierta] = useState<
     { titulo: string; texto: string; accion?: AccionDeExplicacion } | null
   >(null);
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
 
   const explicar = useCallback<Explicar>(
     (titulo, texto, accion) => setAbierta({ titulo, texto, accion }),
@@ -170,32 +117,20 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
   const { deAPoco } = useExplicacionDeAPoco();
   const texto = abierta?.texto;
   const parrafos = useMemo(() => enParrafos(texto ?? ''), [texto]);
-  /** Cuantas burbujas ya se dijeron. */
+  /** Cuántas burbujas ya se dijeron. */
   const [dichas, setDichas] = useState(0);
   const [hablando, setHablando] = useState(false);
   const faltan = dichas < parrafos.length;
 
-  /**
-   * Al abrirse arranca la conversacion; al cerrarse se corta.
-   *
-   * `texto` como dependencia y no el objeto entero: abrir otra explicacion tiene
-   * que volver a empezar de la primera burbuja, y ese es el unico campo que
-   * distingue una explicacion de otra.
-   */
+  // Abrir otra explicación vuelve a la primera burbuja; el texto es lo que las distingue.
   useEffect(() => {
     if (texto === undefined) { setDichas(0); return; }
     setDichas(deAPoco ? 1 : enParrafos(texto).length);
   }, [texto, deAPoco]);
 
-  /**
-   * La linea de tiempo, en un solo lugar.
-   *
-   * Cada vez que aparece una burbuja el pinguino habla lo que dure ese parrafo,
-   * se calla, y recien despues de la pausa aparece la siguiente. Tenerlo en un
-   * efecto y no en dos evita el desfase clasico: dos temporizadores con la misma
-   * duracion que arrancan en renders distintos y terminan a destiempo, y el pico
-   * queda moviendose sobre una burbuja que ya termino.
-   */
+  // La línea de tiempo en un solo efecto: habla lo que dure el párrafo, calla,
+  // y tras la pausa aparece el siguiente. Con dos temporizadores el pico quedaba
+  // moviéndose sobre una burbuja ya terminada.
   useEffect(() => {
     if (dichas === 0) { setHablando(false); return undefined; }
 
@@ -211,122 +146,56 @@ export function ProveedorDeExplicacion({ theme, children }: { theme: Theme; chil
   return (
     <Contexto.Provider value={explicar}>
       {children}
-      {/* Va **despues** de los hijos: es lo ultimo del arbol, asi que se dibuja
-          encima de todo sin necesitar un solo `zIndex`. */}
-      <Hoja
-        abierta={abierta !== null}
-        titulo={abierta?.titulo ?? ''}
-        theme={theme}
-        onCerrar={() => setAbierta(null)}
-      >
-        {/*
-          El pinguino dice la explicacion, y la dice de a un parrafo.
-
-          Es la misma informacion que antes, puesta como una conversacion en vez
-          de como un cartel. Cambia poco y cambia todo: un recuadro de texto es
-          el sistema informandote y una burbuja es alguien contestandote lo que
-          preguntaste, que es literalmente lo que paso --tocaste una `i`--.
-
-          **Tocar adelanta.** Una animacion que no se puede saltar es una
-          animacion que molesta a la segunda vez, y aca la segunda vez llega
-          rapido: las explicaciones se releen. Toda el area es el boton, no un
-          "saltar" chiquito en una esquina, porque el gesto que sale solo cuando
-          uno se impacienta es tocar la pantalla en cualquier parte.
-
-          El pinguino va **arriba** y no centrado: las burbujas crecen hacia
-          abajo y con una explicacion de cuatro parrafos uno centrado terminaria
-          hablando desde el medio de la conversacion.
-        */}
+      <Hoja abierta={abierta !== null} titulo={abierta?.titulo ?? ''} onCerrar={() => setAbierta(null)}>
+        {/* Toda el área adelanta: el gesto de la impaciencia es tocar en cualquier parte. */}
         <Pressable
           onPress={() => setDichas(parrafos.length)}
           disabled={!faltan}
           accessibilityRole={faltan ? 'button' : undefined}
           accessibilityLabel={faltan ? 'Ver la explicación completa' : undefined}
         >
-          {/* La forma de hablar sale de `DialogoDelPinguino`, que la comparte
-              con el tutorial de bienvenida: la maquinaria de decirlo de a poco
-              se queda aca, que es lo unico que no es de los dos. */}
           <DialogoDelPinguino
-            theme={theme}
             parrafos={parrafos.slice(0, dichas)}
             hablando={hablando}
-            pie={
-              /* Los puntitos ocupan el lugar de la burbuja que viene, y el
-                 renglon de abajo dice que se puede no esperarla. Los dos se van
-                 con la ultima burbuja, que es cuando dejan de ser ciertos. */
-              !faltan ? null : (
-                <>
-                  <Escribiendo styles={styles} />
-                  <Text style={styles.pista}>toca para verlo todo</Text>
-                </>
-              )
-            }
+            pie={!faltan ? null : (
+              <>
+                <Escribiendo />
+                <Text style={styles.pista}>toca para verlo todo</Text>
+              </>
+            )}
           />
         </Pressable>
 
-        {/* Cierra sola: lo que la hoja explicaba deja de ser cierto en cuanto se
-            toca el boton, asi que dejarla abierta mostraria una frase vieja. */}
+        {/* Cierra la hoja al tocarla: lo que explicaba deja de ser cierto. */}
         {abierta?.accion === undefined ? null : (
-          <Pressable
+          <Boton
+            variante="principal"
+            etiqueta={abierta.accion.etiqueta}
             onPress={() => { abierta.accion?.alTocar(); setAbierta(null); }}
-            style={styles.accion}
-            accessibilityRole="button"
-            accessibilityLabel={abierta.accion.etiqueta}
-          >
-            <Text style={styles.accionTexto}>{abierta.accion.etiqueta}</Text>
-          </Pressable>
+            estilo={styles.accion}
+          />
         )}
       </Hoja>
     </Contexto.Provider>
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
-    /**
-     * La burbuja de los puntitos.
-     *
-     * Angosta --`alignSelf: 'flex-start'`-- para que no se estire al ancho de
-     * la columna: una burbuja vacia del porte de un parrafo se leeria como un
-     * mensaje que no cargo, que es lo contrario de lo que dice.
-     */
+    // Angosta: una burbuja vacía del porte de un párrafo parecería un mensaje que no cargó.
     escribiendo: {
       alignSelf: 'flex-start',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.md,
+      padding: spacing.md,
       borderRadius: radii.md,
       backgroundColor: theme.superficieHonda,
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },
-    punto: {
-      width: 5,
-      height: 5,
-      borderRadius: radii.full,
-      backgroundColor: theme.silencio,
-    },
-    pista: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.regular,
-      fontSize: letra.px(10),
-      color: theme.silencio,
-      paddingLeft: spacing.xs,
-    },
-    accion: {
-      marginTop: spacing.lg,
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-      borderRadius: radii.sm,
-      backgroundColor: theme.acento,
-    },
-    accionTexto: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.semibold,
-      fontSize: letra.sm,
-      color: theme.sobreAcento,
-    },
+    punto: { width: 5, height: 5, borderRadius: radii.full, backgroundColor: theme.silencio },
+    pista: { ...t.nota, paddingLeft: spacing.xs },
+    accion: { marginTop: spacing.lg },
   });
 }

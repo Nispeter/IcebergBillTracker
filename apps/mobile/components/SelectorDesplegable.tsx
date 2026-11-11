@@ -1,60 +1,31 @@
 /**
- * Un disparador compacto y, cuando se abre, una lista vertical de opciones.
+ * Un disparador compacto y, al abrirse, una lista vertical de opciones.
  *
- * Van separados —`ChipDisparador` y `ListaDeOpciones`— porque el llamador
- * necesita poner **varios disparadores en una linea** y un solo panel debajo,
- * a lo ancho. Metidos en un mismo componente, cada uno abriria su propia grilla
- * y el layout se partiria.
- *
- * La lista reemplaza a la grilla de chips: con doce categorias, una grilla se
- * lee como una nube de etiquetas donde hay que buscar. En columna se recorre de
- * arriba abajo, cada fila tiene su icono, y la elegida se marca.
+ * Van separados (`ChipDisparador` y `ListaDeOpciones`) porque Movimientos pone
+ * varios disparadores en una línea y un solo panel a lo ancho. Para el caso
+ * común, un disparador con su lista, está `Desplegable`.
  */
 
-import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
+import { elevation, radii, spacing } from '@iceberg/ui';
 import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import type { IconProps } from 'phosphor-react-native';
-import type { ComponentType } from 'react';
+import { useMemo, type ComponentType, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-/**
- * El `ScrollView` de `react-native-gesture-handler`, **no el de React Native**.
- *
- * El panel de opciones es un scroll adentro del scroll de la pantalla, y en
- * Android el de afuera se queda con el gesto: la lista de categorias se veia
- * cortada y no habia forma de bajar. `nestedScrollEnabled` es el remedio que
- * documenta React Native y no alcanzo.
- *
- * El de gesture-handler resuelve el conflicto con el sistema de gestos en vez de
- * con el protocolo de scroll anidado de Android, que es lo que falla. La app ya
- * monta `GestureHandlerRootView` en la raiz, que es lo unico que pedia.
- *
- * En web los dos se comportan igual, asi que el cambio no se nota ahi. **Sin
- * probar en Android**: hace falta un telefono.
- */
+// El de gesture-handler y no el de React Native: es un scroll dentro del scroll
+// de la pantalla, y en Android el de afuera se queda con el gesto aunque se
+// pida `nestedScrollEnabled`.
 import { ScrollView } from 'react-native-gesture-handler';
-import { useAltoDisponible } from './ConDesplegable';
-import { useLetra } from '../datos/letra';
+import { ConDesplegable, useAltoDisponible } from './ConDesplegable';
+import { iconoDeCategoria } from './iconos';
+import { useCategorias } from '../datos/catalogo';
+import { useEstilos, type Estilo } from '../datos/estilos';
+import { useTema } from '../datos/tema';
 
-/**
- * Cuanto de la pantalla puede ocupar un desplegable abierto.
- *
- * Bastante, porque mientras esta abierto es lo unico que importa; pero no todo,
- * para que se siga viendo de que campo salio.
- */
+/** Cuánto de la pantalla puede ocupar una lista abierta: casi todo, sin tapar de dónde salió. */
 const FRACCION_DE_PANTALLA = 0.45;
 
-/**
- * Lo que el panel se separa del disparador.
- *
- * Sale como constante porque se usa dos veces y **tienen que ser el mismo
- * numero**: una para dibujar la separacion y otra para descontarla del alto
- * disponible. Cuando no se descontaba, el panel pedia todo el sitio y ademas se
- * corria hacia abajo, asi que se pasaba por el pie justo esta cantidad y el
- * contenedor le recortaba el final de la ultima fila.
- */
+/** La separación entre disparador y panel. Se dibuja y se descuenta del alto: mismo número. */
 const AIRE_SOBRE_EL_PANEL = spacing.sm;
 
 export interface OpcionDeSelector<T> {
@@ -66,9 +37,8 @@ export interface OpcionDeSelector<T> {
 }
 
 export function ChipDisparador({
-  theme, etiqueta, icono: Icono, abierto, activo, onPress, accesible,
+  etiqueta, icono: Icono, abierto, activo, onPress, accesible,
 }: {
-  theme: Theme;
   etiqueta: string;
   icono?: ComponentType<IconProps> | null;
   abierto: boolean;
@@ -77,8 +47,8 @@ export function ChipDisparador({
   onPress: () => void;
   accesible: string;
 }) {
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useTema();
   const color = activo ? theme.fondo : theme.tinta;
 
   return (
@@ -102,34 +72,18 @@ export function ChipDisparador({
 }
 
 export function ListaDeOpciones<T>({
-  theme, opciones, seleccionado, onElegir,
+  opciones, seleccionado, onElegir,
 }: {
-  theme: Theme;
   opciones: readonly OpcionDeSelector<T>[];
   seleccionado: T;
   onElegir: (valor: T) => void;
 }) {
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useTema();
 
-  /**
-   * El alto sale de la pantalla, no de un numero fijo.
-   *
-   * Estaba en 260, que en un telefono deja ver **seis** de las trece
-   * categorias, y el corte caia justo al terminar una fila: se leia como que la
-   * lista se acababa ahi. El indicador de desplazamiento de Android se desvanece
-   * solo, asi que tampoco quedaba esa pista.
-   *
-   * Con una fraccion del alto entran mas y el corte cae **a mitad de fila**, que
-   * es la unica senal que no se desvanece: media fila asomando dice que hay mas
-   * abajo.
-   *
-   * **Pero la fraccion sola no alcanzaba.** Es un numero ciego: no sabe donde
-   * quedo el disparador, asi que abriendo cerca del pie de la pantalla el panel
-   * pedia mas alto del que habia y se salia por abajo, donde no hay como
-   * desplazarse. `useAltoDisponible` es lo que el desplegable midio contra la
-   * pantalla; entre los dos gana el menor.
-   */
+  // El alto es una fracción de la pantalla, acotada a lo que `ConDesplegable`
+  // midió que queda libre. Corta a mitad de fila: media fila asomando es la
+  // única señal de que hay más que no se desvanece como el indicador de scroll.
   const sitio = useAltoDisponible();
   const fraccion = Math.round(useWindowDimensions().height * FRACCION_DE_PANTALLA);
   const alto = sitio === null
@@ -168,7 +122,63 @@ export function ListaDeOpciones<T>({
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+/** Un disparador con su lista. `junto` va en la misma fila, al otro extremo. */
+export function Desplegable<T>({
+  abierto, onAlternar, etiqueta, icono, activo, accesible, opciones, valor, onElegir, junto,
+}: {
+  abierto: boolean;
+  onAlternar: () => void;
+  etiqueta: string;
+  icono?: ComponentType<IconProps> | null;
+  activo: boolean;
+  accesible: string;
+  opciones: readonly OpcionDeSelector<T>[];
+  valor: T;
+  onElegir: (valor: T) => void;
+  junto?: ReactNode;
+}) {
+  const styles = useEstilos(crearEstilos);
+  return (
+    <ConDesplegable
+      abierto={abierto}
+      disparador={(
+        // En fila aunque haya un solo chip: suelto, se estira a todo el ancho.
+        <View style={styles.fila}>
+          <ChipDisparador
+            etiqueta={etiqueta}
+            icono={icono}
+            abierto={abierto}
+            activo={activo}
+            onPress={onAlternar}
+            accesible={accesible}
+          />
+          {junto}
+        </View>
+      )}
+      panel={<ListaDeOpciones opciones={opciones} seleccionado={valor} onElegir={onElegir} />}
+    />
+  );
+}
+
+/**
+ * Las categorías vivas como opciones, con su icono. Con `primera`, encabeza la
+ * lista una opción nula que se llama así ("Sin categoría", "Todas").
+ */
+export function useOpcionesDeCategoria(): OpcionDeSelector<string>[];
+export function useOpcionesDeCategoria(primera: string): OpcionDeSelector<string | null>[];
+export function useOpcionesDeCategoria(primera?: string): OpcionDeSelector<string | null>[] {
+  const categorias = useCategorias();
+  return useMemo(() => [
+    ...(primera === undefined ? [] : [{ valor: null, etiqueta: primera }]),
+    ...categorias.todas.map((categoria) => ({
+      valor: categoria.id,
+      etiqueta: categoria.nombre,
+      icono: iconoDeCategoria(categoria.id),
+    })),
+  ], [categorias, primera]);
+}
+
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
     chip: {
       flexDirection: 'row',
@@ -183,7 +193,8 @@ function crearEstilos(theme: Theme, letra: Letra) {
     },
     chipActivo: { backgroundColor: theme.tinta, borderColor: theme.tinta },
     chipAbierto: { borderColor: theme.silencio },
-    chipTexto: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs },
+    chipTexto: { ...t.etiqueta, fontWeight: t.accion.fontWeight },
+    fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
     panel: {
       marginTop: AIRE_SOBRE_EL_PANEL,
@@ -201,8 +212,8 @@ function crearEstilos(theme: Theme, letra: Letra) {
     },
     opcionConLinea: { borderTopWidth: elevation.hairlineWidth, borderTopColor: theme.hairline },
     iconoOpcion: { width: 16, alignItems: 'center' },
-    opcionTexto: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.tinta },
-    opcionTextoActivo: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.tinta },
-    detalle: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
+    opcionTexto: { ...t.cuerpo, flex: 1 },
+    opcionTextoActivo: { ...t.cuerpo, flex: 1, fontWeight: t.seccion.fontWeight },
+    detalle: { ...t.cifra, color: theme.silencio },
   });
 }

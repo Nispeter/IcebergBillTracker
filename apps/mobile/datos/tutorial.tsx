@@ -1,59 +1,22 @@
 /**
- * El tutorial de bienvenida: doce pasos sobre el Resumen, saltables.
+ * El tutorial de bienvenida: doce pasos sobre el Resumen, saltables con la X y
+ * repetibles desde Ajustes. El pingüino explica cada cosa mientras la ilumina.
  *
- * La primera vez que la app abre, el pinguino cuenta que significa cada cosa de
- * la pantalla mientras la va iluminando: el saldo, el periodo, el iceberg, la
- * lista, la `i` de las explicaciones, y despues uno por uno los seis destinos de
- * la barra de abajo y el mas del medio. Se sale en cualquier momento con la
- * equis, y se vuelve a ver desde Ajustes.
+ * Las pantallas no saben que existe: solo cuelgan un `ref` de este registro
+ * (`ref={ancla('saldo')}`). El proveedor mide con `measureInWindow`, que da
+ * coordenadas de ventana y sirve para anclas de árboles distintos. Todo lo
+ * anclado lleva `collapsable={false}`: Android colapsa las vistas que no
+ * dibujan nada propio, y una vista colapsada no se puede medir.
  *
- * ## Las pantallas no saben que existe
- *
- * No hay una sola rama de "si el tutorial esta abierto" en ninguna vista. Lo
- * unico que hacen es colgar un `ref` de este registro: `ref={ancla('saldo')}`.
- * El proveedor mide cada uno con `measureInWindow`, que devuelve coordenadas de
- * **ventana** y por eso sirve para anclas de tres arboles distintos --el
- * Resumen, el encabezado de `Pantalla` y la barra de `_layout`-- sin que ninguno
- * tenga que saber donde esta el otro. Es la misma primitiva que `ConDesplegable`
- * ya usa, y se porta igual en Android y en web.
- *
- * Todo elemento anclado lleva ademas `collapsable={false}`: Android colapsa en
- * el arbol nativo cualquier vista **que no dibuje nada propio** --sin fondo, sin
- * borde-- tenga hijos o no, y una vista colapsada no se puede medir. En web no
- * pasa, asi que sin la marca se ve bien mientras se desarrolla y se rompe en el
- * telefono.
- *
- * ## El hueco son cuatro rectangulos, no una mascara
- *
- * Se podria recortar con una mascara SVG, pero el velo ademas tiene que
- * **bloquear los toques** --durante el tutorial, tocar el saldo avanza, no abre
- * su detalle-- y `pointerEvents` sobre un `Svg` no se comporta igual en las dos
- * plataformas. Con cuatro vistas alrededor del hueco el bloqueo lo da el
- * `Pressable` de la raiz, que es lo mismo que hace cualquier otra capa de la
- * app, y la opacidad se anima con el driver nativo.
- *
- * ## Los rectangulos se recortan contra la franja util
- *
- * Dos veces, y las dos por un caso real:
- *
- * - **Contra la ventana a lo ancho.** La escena del iceberg se sale del padding
- *   del contenido a proposito, para que la linea de agua llegue a los dos
- *   bordes. Crecida por la holgura, medía mas que la pantalla y los lados del
- *   velo pedian ancho negativo.
- * - **Contra la zona de contenido a lo alto.** El encabezado esta arriba y la
- *   barra de abajo se dibuja **encima** del contenido: sin descontarla, un paso
- *   podia iluminar algo que la barra estaba tapando.
- *
- * Si el ancla queda fuera de la franja, la pantalla **corre su contenido** una
- * vez y se vuelve a medir: los ultimos movimientos caen bajo el pliegue en
- * cualquier telefono, y sin esto ese paso seria un velo entero con una burbuja
- * hablando de una lista que no se ve. Una vez y no en bucle: si el ancla es mas
- * alta que la franja --la lista con la letra en enorme-- correr no la hace
- * caber, y ahi se ilumina lo que se ve.
+ * El hueco del velo son cuatro rectángulos y no una máscara SVG, porque el velo
+ * además bloquea los toques y `pointerEvents` sobre un `Svg` no se porta igual
+ * en las dos plataformas. Se recorta contra la ventana a lo ancho y contra la
+ * zona de contenido a lo alto (la barra de abajo se dibuja encima). Si el ancla
+ * queda bajo el pliegue, la pantalla corre su contenido una vez y se vuelve a medir.
  */
 
 import {
-  ALTO_DE_LA_BARRA, ANCHO_MAXIMO, capas, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
+  ALTO_DE_LA_BARRA, ANCHO_MAXIMO, capas, durations, elevation, radii, spacing,
 } from '@iceberg/ui';
 import { CLAVE_TUTORIAL_VISTO, escribirAjuste, leerAjuste } from '@iceberg/db';
 import { X } from 'phosphor-react-native/src/icons/X';
@@ -62,12 +25,14 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, View,
+  Animated, Pressable, StyleSheet, Text, useWindowDimensions, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DialogoDelPinguino } from '../components/DialogoDelPinguino';
+import { Boton, BotonDeIcono } from '../components/Boton';
+import { DialogoDelPinguino, enParrafos } from '../components/DialogoDelPinguino';
+import { transicion, useMovimientoReducido } from './animacion';
 import { useDatos } from './BaseDeDatos';
-import { useLetra } from './letra';
+import { useEstilos, type Estilo } from './estilos';
 
 /**
  * Cada cosa que el tutorial puede iluminar.
@@ -240,9 +205,7 @@ export function useMostrarTutorial(): () => void {
   return useContext(Contexto).mostrar;
 }
 
-export function ProveedorDeTutorial(
-  { theme, children }: { theme: Theme; children: ReactNode },
-) {
+export function ProveedorDeTutorial({ children }: { children: ReactNode }) {
   const { db } = useDatos();
 
   /**
@@ -331,7 +294,6 @@ export function ProveedorDeTutorial(
       {children}
       {paso === null ? null : (
         <Velo
-          theme={theme}
           paso={paso}
           registradas={registradas}
           nodos={nodos}
@@ -349,8 +311,7 @@ export function ProveedorDeTutorial(
 }
 
 function Velo(
-  { theme, paso, registradas, nodos, zonaNodo, desplazador, onSiguiente, onSaltar }: {
-    theme: Theme;
+  { paso, registradas, nodos, zonaNodo, desplazador, onSiguiente, onSaltar }: {
     paso: number;
     /** Cambia cuando aparece un ancla nueva. Solo sirve para volver a medir. */
     registradas: number;
@@ -361,10 +322,10 @@ function Velo(
     onSaltar: () => void;
   },
 ) {
-  const letra = useLetra();
   const margenes = useSafeAreaInsets();
   const ventana = useWindowDimensions();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
+  const reducido = useMovimientoReducido();
 
   const [hueco, setHueco] = useState<Rect | null>(null);
   const [zona, setZona] = useState<Rect | null>(null);
@@ -470,13 +431,8 @@ function Velo(
   ]);
 
   useEffect(() => {
-    Animated.timing(entrada, {
-      toValue: 1,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [entrada]);
+    transicion(entrada, 1, { duracion: durations.entrada, reducido }).start();
+  }, [entrada, reducido]);
 
   /**
    * La franja donde vive el contenido que se desplaza.
@@ -586,36 +542,20 @@ function Velo(
       <View style={[styles.tarjeta, posicion]}>
         <View style={styles.cabecera}>
           <Text style={styles.avance}>{paso + 1}/{PASOS.length}</Text>
-          <Pressable
-            onPress={onSaltar}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Saltar el tutorial"
-          >
-            <X size={14} weight="bold" color={theme.silencio} />
-          </Pressable>
+          <BotonDeIcono icono={X} tamano={14} peso="bold" onPress={onSaltar} accesible="Saltar el tutorial" />
         </View>
 
-        <DialogoDelPinguino theme={theme} parrafos={enParrafos(actual.texto)} tamano={36} />
+        <DialogoDelPinguino parrafos={enParrafos(actual.texto)} tamano={36} />
 
-        <Pressable
+        <Boton
+          variante="principal"
+          etiqueta={paso + 1 >= PASOS.length ? 'Listo' : 'Siguiente'}
+          accesible={paso + 1 >= PASOS.length ? 'Terminar el tutorial' : 'Paso siguiente'}
           onPress={onSiguiente}
-          style={styles.siguiente}
-          accessibilityRole="button"
-          accessibilityLabel={paso + 1 >= PASOS.length ? 'Terminar el tutorial' : 'Paso siguiente'}
-        >
-          <Text style={styles.siguienteTexto}>
-            {paso + 1 >= PASOS.length ? 'Listo' : 'Siguiente'}
-          </Text>
-        </Pressable>
+        />
       </View>
     </View>
   );
-}
-
-/** El texto partido por parrafos, que es como ya vienen escritos. */
-function enParrafos(texto: string): string[] {
-  return texto.split('\n\n').map((p) => p.trim()).filter((p) => p !== '');
 }
 
 /**
@@ -636,7 +576,7 @@ function recortar(
   return { x, y, ancho: Math.max(derecha - x, 0), alto: Math.max(abajo - y, 0) };
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   const lleno = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
   return StyleSheet.create({
     capa: { ...lleno, zIndex: capas.tutorial },
@@ -664,17 +604,6 @@ function crearEstilos(theme: Theme, letra: Letra) {
       borderColor: theme.hairline,
     },
     cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    avance: {
-      fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(11), color: theme.silencio,
-    },
-    siguiente: {
-      backgroundColor: theme.acento,
-      borderRadius: radii.sm,
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-    },
-    siguienteTexto: {
-      fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.sobreAcento,
-    },
+    avance: { ...t.cifra, color: theme.silencio },
   });
 }

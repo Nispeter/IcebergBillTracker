@@ -1,38 +1,16 @@
 /**
- * La barra de navegacion, siempre puesta, con el mas en el medio.
+ * La barra de navegación, siempre puesta, con el más en el medio.
  *
- * Cuarta forma que toma esto. El recorrido, para no volver en circulo:
+ * Seis destinos sin etiqueta (a 48 px por casilla, "Movimientos" no entra ni
+ * recortado): lo activo se marca con el icono relleno y en color, y el nombre
+ * viaja en la etiqueta de accesibilidad.
  *
- * 1. **Pestañas fijas abajo.** Se fueron por gastar una franja permanente en
- *    algo que se toca cada tantos minutos.
- * 2. **Panel lateral escondido.** Recuperaba la franja, pero dejaba los destinos
- *    arriba a la izquierda, donde el pulgar no llega.
- * 3. **Bandeja que sube desde abajo.** Ya estaba al alcance, pero seguian siendo
- *    dos toques para cambiar de vista.
- * 4. **Esta barra.** Un toque, y el mas deja de flotar sobre el contenido.
- *
- * ## El mas sobresale, y eso arregla un problema viejo
- *
- * Flotando tapaba algo siempre: a la derecha la columna de montos, a la
- * izquierda los nombres de categoria. Por eso se escondia al desplazar hacia
- * abajo. **Metido en la barra ya no tapa nada** --el contenido reserva el alto
- * de la barra-- asi que esconderse dejo de tener motivo y se saco.
- *
- * Asoma por encima del borde para que no se lea como un destino mas: es la
- * accion, no un lugar al que ir. Y va en **ambar**, el color del pico del
- * pinguino: es lo unico calido en una pantalla de azules, asi que el ojo lo
- * encuentra sin buscarlo.
- *
- * ## Sin etiquetas
- *
- * Seis destinos mas el mas dejan unos 48 px por casilla, y ahi no entra
- * "Movimientos" ni recortado a nueve puntos: quedaria "Movimien…", que ocupa
- * igual y no dice mas que el icono. Lo activo se marca con el icono **relleno**
- * y en color, que se ve de reojo. El nombre viaja en la etiqueta de
- * accesibilidad.
+ * El más asoma por encima del borde para no leerse como un destino más: es la
+ * acción, no un lugar. Va en ámbar, el color del pico del pingüino y lo único
+ * cálido de la pantalla.
  */
 
-import { ALTO_DE_LA_BARRA, capas, elevation, radii, spacing, type Theme } from '@iceberg/ui';
+import { ALTO_DE_LA_BARRA, capas, elevation, radii, spacing } from '@iceberg/ui';
 import { Link, usePathname, useRouter } from 'expo-router';
 import { CalendarBlank } from 'phosphor-react-native/src/icons/CalendarBlank';
 import { ChartPieSlice } from 'phosphor-react-native/src/icons/ChartPieSlice';
@@ -42,9 +20,10 @@ import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { Snowflake } from 'phosphor-react-native/src/icons/Snowflake';
 import { Waves } from 'phosphor-react-native/src/icons/Waves';
 import type { IconProps } from 'phosphor-react-native';
-import { useState, type ComponentType } from 'react';
+import { useMemo, useState, type ComponentType } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEstilo, type Estilo } from '../datos/estilos';
 import { useAncla, type Ancla } from '../datos/tutorial';
 
 interface Destino {
@@ -53,13 +32,7 @@ interface Destino {
   readonly icono: ComponentType<IconProps>;
 }
 
-/**
- * Tres a cada lado del mas.
- *
- * El orden no es casual: va de lo mas general a lo mas detallado, que es el
- * mismo orden en que uno mira sus cuentas. Ajustes al final porque es el unico
- * que no responde una pregunta sobre la plata.
- */
+/** De lo más general a lo más detallado, que es como uno mira sus cuentas. */
 const IZQUIERDA: readonly Destino[] = [
   { ruta: '/', etiqueta: 'Resumen', icono: Waves },
   { ruta: '/categorias', etiqueta: 'Categorías', icono: ChartPieSlice },
@@ -73,20 +46,20 @@ const DERECHA: readonly Destino[] = [
 ];
 
 const MAS = 52;
-/** Cuanto asoma el mas por encima del borde de la barra. */
+/** Cuánto asoma el más por encima del borde de la barra. */
 const SOBRESALE = 16;
 
-export function BarraInferior({ theme }: { theme: Theme }) {
+export function BarraInferior() {
+  const estilo = useEstilo();
+  const { theme } = estilo;
   const margenes = useSafeAreaInsets();
-  const styles = crearEstilos(theme, margenes.bottom);
+  const styles = useMemo(() => crearEstilos(estilo, margenes.bottom), [estilo, margenes.bottom]);
   const router = useRouter();
   const ruta = usePathname();
-  // Ver `FilaMovimiento`: dentro de `Link asChild` el estilo del hijo tiene que
-  // ser un objeto aplanado, asi que el estado de presion se lleva a mano.
+  // Dentro de `Link asChild` el estilo tiene que ser un objeto plano: el
+  // estado de presión se lleva a mano.
   const [masApretado, setMasApretado] = useState(false);
-  // El tutorial ilumina cada destino por separado. La ruta sirve de nombre de
-  // ancla: la casilla ya la tiene a mano y no hay una segunda lista que
-  // mantener en paralelo. Ver `datos/tutorial`.
+  // La ruta hace de nombre de ancla para el tutorial.
   const ancla = useAncla();
 
   const casilla = (destino: Destino) => {
@@ -96,8 +69,7 @@ export function BarraInferior({ theme }: { theme: Theme }) {
       <Pressable
         key={destino.ruta}
         ref={ancla(destino.ruta as Ancla)}
-        // Sin esto Android colapsa en el arbol nativo cualquier vista que no
-        // dibuje nada propio, y una colapsada no se puede medir.
+        // Sin esto Android colapsa la vista y no se puede medir.
         collapsable={false}
         onPress={() => { if (!activo) router.replace(destino.ruta as never); }}
         style={({ pressed }) => [styles.casilla, pressed && styles.casillaApretada]}
@@ -118,14 +90,13 @@ export function BarraInferior({ theme }: { theme: Theme }) {
     <View style={styles.raiz} pointerEvents="box-none">
       <View style={styles.barra}>
         {IZQUIERDA.map(casilla)}
-        {/* El hueco del mas. Va como casilla vacia para que los seis destinos
-            queden repartidos parejo a los dos lados. */}
+        {/* El hueco del más, para que los seis destinos se repartan parejo. */}
         <View style={styles.hueco} />
         {DERECHA.map(casilla)}
       </View>
 
-      {/* Fuera de la barra y centrado por una franja del ancho completo: un
-          elemento absoluto no se centra con `alignSelf`. Ver `datos/aviso.tsx`. */}
+      {/* Fuera de la barra y centrado por una franja a lo ancho: un elemento
+          absoluto no se centra con `alignSelf`. */}
       <View style={styles.franjaDelMas} pointerEvents="box-none">
         <Link href="/nuevo" asChild>
           <Pressable
@@ -145,33 +116,21 @@ export function BarraInferior({ theme }: { theme: Theme }) {
   );
 }
 
-function crearEstilos(theme: Theme, aireDelSistema: number) {
+function crearEstilos({ theme }: Estilo, aireDelSistema: number) {
   return StyleSheet.create({
-    raiz: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: capas.flotante,
-    },
+    raiz: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: capas.flotante },
     barra: {
       flexDirection: 'row',
       alignItems: 'center',
       height: ALTO_DE_LA_BARRA + aireDelSistema,
-      // El margen del sistema va como relleno y no como alto extra: asi los
-      // iconos quedan centrados en la franja util y no encima de la barra de
-      // gestos de Android.
+      // Como relleno y no como alto: los iconos quedan en la franja útil y no
+      // encima de la barra de gestos.
       paddingBottom: aireDelSistema,
       backgroundColor: theme.superficie,
       borderTopWidth: elevation.hairlineWidth,
       borderTopColor: theme.hairline,
     },
-    casilla: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing.sm,
-    },
+    casilla: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm },
     casillaApretada: { opacity: 0.5 },
     hueco: { flex: 1 },
     franjaDelMas: {
@@ -188,8 +147,7 @@ function crearEstilos(theme: Theme, aireDelSistema: number) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.pinguinoPico,
-      // El anillo del color de la barra separa el circulo del borde que cruza
-      // por detras. Sin el, el mas se lee pegado a la linea.
+      // El anillo del color de la barra lo despega del borde que cruza por detrás.
       borderWidth: 3,
       borderColor: theme.superficie,
     },

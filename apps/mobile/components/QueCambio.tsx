@@ -1,69 +1,52 @@
 /**
- * Que categoria explica el cambio del periodo.
- *
- * Es lo unico de la app que responde **por que** en vez de cuanto: "gasto
- * $1.394.390, −5%" no dice que hacer; "comida $265.890, y son $63.610 menos que
- * en julio" si.
- *
- * Vive en Categorias y no en el Resumen: es la misma pregunta que la torta
- * —en que se me va— mirada en el tiempo en vez de en un momento. En el Resumen
- * era densidad que nadie pidio a primera vista.
- *
- * **Cada columna se explica sola.** La primera version mostraba el cambio y un
- * "explica 23%", que es la parte del movimiento total del periodo que aporta esa
- * categoria. Es la metrica mas fina que calcula el motor y no se entendia: 23%
- * de que. Mostrar el gasto **y** el cambio dice lo mismo sin pedir que nadie
- * aprenda una definicion, y el orden de las filas ya deja ver cual pesa mas.
- * `explicacion` sigue calculado en `core`, por si alguna vez tiene donde ir.
+ * Qué categoría explica el cambio del período: lo único de la app que responde
+ * "por qué" en vez de "cuánto". Muestra el gasto y el cambio de las tres que más
+ * movieron la aguja; las que quedaron igual no explican nada.
  */
 
 import { analytics, money } from '@iceberg/core';
-import { fonts, pesos, spacing, type Letra, type Theme } from '@iceberg/ui';
+import { spacing } from '@iceberg/ui';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
-import { Panel } from './Panel';
-import { Titulo } from './Titulo';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
+import { Panel } from './Panel';
+import { Titulo } from './Titulo';
 import { useCategorias } from '../datos/catalogo';
-import { useLetra } from '../datos/letra';
+import { useEstilos, type Estilo } from '../datos/estilos';
+import { useTema } from '../datos/tema';
 
-/** Cuantas filas entran antes de que la lista deje de informar y solo ocupe. */
+/** Más filas dejan de informar y solo ocupan. */
 const FILAS = 3;
 
-/** Anchos fijos: dos columnas de numeros solo se leen si estan alineadas. */
+/** Dos columnas de números solo se leen si están alineadas. */
 const ANCHO_COLUMNA = 84;
 
-/** El ancho que ocupa el `>` de las filas que llevan a algun lado. */
+/** Lo que ocupa el `>`. Las filas que no llevan a ningún lado reservan el hueco igual. */
 const ANCHO_CARET = 12;
 
+const ANCHO_ICONO = 13;
+
 export function QueCambio(
-  { deriva, referencia, theme, onElegir }:
+  { deriva, referencia, onElegir }:
   {
     deriva: readonly analytics.DerivaDeCategoria[];
-    /** Contra que se compara, ya escrito: "julio 2026", "10 al 16 de agosto". */
+    /** Contra qué se compara, ya escrito: "julio 2026". */
     referencia: string;
-    theme: Theme;
-    /** Si viene, cada fila lleva al listado filtrado por esa categoria. */
+    /** Si viene, cada fila lleva al listado filtrado por esa categoría. */
     onElegir?: (categoriaId: string) => void;
   },
 ) {
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useTema();
   const categorias = useCategorias();
 
-  // Una categoria que gasto lo mismo que el periodo pasado no explica nada:
-  // ocuparia una fila para decir "0". `deriva` ya viene ordenada por cuanto
-  // movio la aguja, asi que las que sobreviven son las tres que mas pesaron.
+  // `deriva` ya viene ordenada por cuánto movió la aguja.
   const filas = deriva.filter((fila) => !money.isZero(fila.delta)).slice(0, FILAS);
 
   return (
     <View>
-      {/* El "contra que" va en el titulo y no en un encabezado de columna:
-          "vs. 10 al 16 de agosto" no entra en 84px, y sin el la seccion no se
-          entiende en ningun alcance. */}
       <Titulo
         texto="Variación por categoría"
-        theme={theme}
         ayuda={'Compara lo gastado en cada categoría contra el período anterior del '
           + 'mismo largo. En rojo lo que subió, en verde lo que bajó.\n\n'
           + 'Solo aparecen las categorías que cambiaron: las que quedaron igual no '
@@ -76,38 +59,32 @@ export function QueCambio(
       {filas.length === 0 ? (
         <Text style={styles.vacio}>Sin cambios contra el período anterior.</Text>
       ) : (
-        <Panel theme={theme}>
-          <View style={styles.cabecera}>
-            <View style={styles.hueco} />
+        <Panel>
+          <View style={styles.fila}>
+            <View style={styles.icono} />
             <View style={styles.relleno} />
-            <Text style={styles.cabeceraTexto}>gasto</Text>
-            <Text style={styles.cabeceraTexto}>cambio</Text>
-            <View style={styles.sinCaret} />
+            <Text style={styles.cabecera}>gasto</Text>
+            <Text style={styles.cabecera}>cambio</Text>
+            <View style={styles.caret} />
           </View>
 
           {filas.map((fila) => {
             const esSinCategoria = fila.categoriaId === analytics.SIN_CATEGORIA;
             const Icono = esSinCategoria ? null : iconoDeCategoria(fila.categoriaId);
-            const nombre = categorias.nombreCorto(
-              esSinCategoria ? undefined : fila.categoriaId,
-            );
-            // Los delta en cero ya quedaron fuera: no negativo es subida.
+            const nombre = categorias.nombreCorto(esSinCategoria ? undefined : fila.categoriaId);
+            // Los delta en cero ya se fueron: no negativo es subida, y en gasto
+            // subir nunca conviene.
             const subio = !money.isNegative(fila.delta);
-            // Una categoria que bajo a cero no tiene a donde llevar; el listado
-            // filtrado saldria vacio. Se muestra igual —bajar a cero es
-            // justamente lo que explica el cambio— pero sin prometer un
-            // drill-down que no hay. La columna de gasto en $0 lo deja claro.
+            // Una que bajó a cero no tiene listado que mostrar.
             const tieneADonde = onElegir !== undefined && !esSinCategoria && !money.isZero(fila.total);
 
             const contenido = (
               <>
                 {Icono
-                  ? <Icono size={13} weight="regular" color={theme.silencio} />
-                  : <View style={styles.hueco} />}
+                  ? <Icono size={ANCHO_ICONO} weight="regular" color={theme.silencio} />
+                  : <View style={styles.icono} />}
                 <Text style={styles.nombre} numberOfLines={1}>{nombre}</Text>
                 <Text style={styles.gasto}>{money.format(fila.total)}</Text>
-                {/* El color sale de si conviene, no del signo, igual que las
-                    cifras del Resumen. En gasto, subir nunca conviene. */}
                 <Text style={[styles.cambio, { color: subio ? theme.vencidoTexto : theme.ingresoTexto }]}>
                   {money.formatSigned(fila.delta)}
                 </Text>
@@ -118,7 +95,7 @@ export function QueCambio(
               <Pressable
                 key={fila.categoriaId}
                 onPress={() => onElegir?.(fila.categoriaId)}
-                style={styles.fila}
+                style={({ pressed }) => [styles.fila, pressed && styles.apretada]}
                 accessibilityRole="button"
                 accessibilityLabel={`Ver movimientos de ${nombre}`}
               >
@@ -128,9 +105,7 @@ export function QueCambio(
             ) : (
               <View key={fila.categoriaId} style={styles.fila}>
                 {contenido}
-                {/* Una categoria que bajo a cero no lleva a ningun lado, pero
-                    reserva el hueco para que las columnas no se corran. */}
-                <View style={styles.sinCaret} />
+                <View style={styles.caret} />
               </View>
             );
           })}
@@ -140,38 +115,20 @@ export function QueCambio(
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
-  const columna = {
-    width: ANCHO_COLUMNA,
-    textAlign: 'right',
-    fontFamily: fonts.mono,
-    fontSize: letra.xs,
-  } as const;
-
+function crearEstilos({ theme, t }: Estilo) {
+  const columna = { ...t.cifra, width: ANCHO_COLUMNA, textAlign: 'right' } as const;
   return StyleSheet.create({
-    referencia: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
-
-    cabecera: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: 2 },
-    relleno: { flex: 1 },
-    cabeceraTexto: {
-      width: ANCHO_COLUMNA,
-      textAlign: 'right',
-      fontFamily: fonts.texto,
-      fontWeight: pesos.regular,
-      fontSize: letra.px(10),
-      // Va sobre el fondo hundido del panel, donde el gris de siempre no llega
-      // a AA en el tema claro.
-      color: theme.silencioHondo,
-    },
-
-    // Sin subrayado: lo tocable lo dice el `>`, igual que en la leyenda de la
-    // torta. Ver el comentario largo alla.
+    referencia: t.nota,
     fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
-    sinCaret: { width: ANCHO_CARET },
-    hueco: { width: 13 },
-    nombre: { flex: 1, fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    gasto: { ...columna, fontWeight: pesos.regular, color: theme.tinta },
-    cambio: { ...columna, fontWeight: pesos.medium },
-    vacio: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio, paddingVertical: spacing.md },
+    apretada: { opacity: 0.6 },
+    relleno: { flex: 1 },
+    // Sobre el panel hundido el gris de siempre no llega a AA en el tema claro.
+    cabecera: { ...t.nota, width: ANCHO_COLUMNA, textAlign: 'right', color: theme.silencioHondo },
+    caret: { width: ANCHO_CARET },
+    icono: { width: ANCHO_ICONO },
+    nombre: { ...t.etiqueta, flex: 1, color: theme.tinta },
+    gasto: columna,
+    cambio: { ...columna, fontWeight: t.accion.fontWeight },
+    vacio: { ...t.etiqueta, paddingVertical: spacing.md },
   });
 }

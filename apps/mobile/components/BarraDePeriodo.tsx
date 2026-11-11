@@ -1,45 +1,39 @@
 /**
- * La barra de periodo: flechas para moverse y el nombre al medio.
- *
- * Va en **todas** las vistas. Es deliberadamente chica —una linea— porque no es
- * el contenido, es el marco: lo que importa es lo que hay debajo.
- *
- * El tipo se elige tocando el nombre, en una lista corta que se abre y se
- * cierra. No hay fila de pestañas permanente: el tipo se elige una vez y
- * despues uno navega de periodo en periodo con las flechas, que es lo que se
- * hace casi siempre.
+ * La barra de período: flechas para moverse y el nombre al medio. Es una línea
+ * porque es marco, no contenido. El tipo se elige tocando el nombre; después
+ * se navega con las flechas, que es lo que se hace casi siempre.
  */
 
 import { dates } from '@iceberg/core';
-import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
+import { elevation, holguraDeToque, radii, spacing } from '@iceberg/ui';
 import { CaretDown } from 'phosphor-react-native/src/icons/CaretDown';
 import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft';
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight';
 import { Check } from 'phosphor-react-native/src/icons/Check';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+// El de gesture-handler: dentro del scroll de la pantalla, el nativo cede el gesto.
 import { ScrollView } from 'react-native-gesture-handler';
-import { useLetra } from '../datos/letra';
-import { TIPOS, nombreDePeriodo, usePeriodo, type TipoDePeriodo } from '../datos/periodo';
+import { Boton } from './Boton';
 import { ConDesplegable } from './ConDesplegable';
+import { useEstilos, type Estilo } from '../datos/estilos';
+import { TIPOS, nombreDePeriodo, usePeriodo, type TipoDePeriodo } from '../datos/periodo';
+import { useTema } from '../datos/tema';
+
+/** Lo que mide una flecha con su relleno. */
+const FLECHA = 21;
 
 export function BarraDePeriodo(
-  { theme, permitirFuturo }: {
-    theme: Theme;
+  { permitirFuturo }: {
     /**
-     * Deja avanzar mas alla del periodo que contiene hoy.
-     *
-     * Por defecto la flecha se apaga ahi, para no pasear por meses vacios. Pero
-     * Tempanos habla justamente de lo que **todavia no paso**: sin esto, crear
-     * una cuenta que vence el mes que viene la volvia invisible.
+     * Deja avanzar más allá del período de hoy. Por omisión la flecha se apaga
+     * ahí, para no pasear por meses vacíos; Témpanos sí mira hacia adelante.
      */
     permitirFuturo?: boolean;
   },
 ) {
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useTema();
   const periodo = usePeriodo();
   const [abierto, setAbierto] = useState(false);
   const [desde, setDesde] = useState<string>(periodo.rango.start);
@@ -48,8 +42,8 @@ export function BarraDePeriodo(
   const desdeOk = dates.parsePlainDate(desde);
   const hastaOk = dates.parsePlainDate(hasta);
   const rangoValido = desdeOk !== null && hastaOk !== null && desdeOk <= hastaOk;
-
   const frenado = periodo.esElActual && permitirFuturo !== true;
+  const nombre = nombreDePeriodo(periodo.tipo, periodo.rango);
 
   const elegir = (tipo: TipoDePeriodo) => {
     if (tipo === 'custom') {
@@ -64,38 +58,38 @@ export function BarraDePeriodo(
 
   const barra = (
     <View style={styles.barra}>
-        <Pressable
-          onPress={periodo.anterior}
-          style={styles.flecha}
-          accessibilityRole="button"
-          accessibilityLabel="Período anterior"
-          hitSlop={10}
-        >
-          <CaretLeft size={13} weight="bold" color={theme.tinta} />
-        </Pressable>
+      <Pressable
+        onPress={periodo.anterior}
+        style={styles.flecha}
+        accessibilityRole="button"
+        accessibilityLabel="Período anterior"
+        hitSlop={holguraDeToque(FLECHA)}
+      >
+        <CaretLeft size={13} weight="bold" color={theme.tinta} />
+      </Pressable>
 
-        <Pressable
-          onPress={() => setAbierto(!abierto)}
-          style={styles.centro}
-          accessibilityRole="button"
-          accessibilityLabel={`${nombreDePeriodo(periodo.tipo, periodo.rango)}. Tocar para cambiar el período`}
-          accessibilityState={{ expanded: abierto }}
-        >
-          <Text style={styles.nombre} numberOfLines={1}>
-            {nombreDePeriodo(periodo.tipo, periodo.rango)}
-          </Text>
-          <CaretDown size={10} weight="bold" color={theme.silencio} />
-        </Pressable>
+      <Pressable
+        onPress={() => setAbierto(!abierto)}
+        style={styles.centro}
+        hitSlop={holguraDeToque(FLECHA)}
+        accessibilityRole="button"
+        accessibilityLabel={`${nombre}. Tocar para cambiar el período`}
+        accessibilityState={{ expanded: abierto }}
+      >
+        <Text style={styles.nombre} numberOfLines={1}>{nombre}</Text>
+        <CaretDown size={10} weight="bold" color={theme.silencio} />
+      </Pressable>
 
-        <Pressable
-          onPress={periodo.siguiente}
-          style={styles.flecha}
-          disabled={frenado}
-          accessibilityRole="button"
-          accessibilityLabel="Período siguiente"
-          hitSlop={10}
-        >
-          <CaretRight size={13} weight="bold" color={frenado ? theme.hairline : theme.tinta} />
+      <Pressable
+        onPress={periodo.siguiente}
+        style={styles.flecha}
+        disabled={frenado}
+        accessibilityRole="button"
+        accessibilityLabel="Período siguiente"
+        accessibilityState={{ disabled: frenado }}
+        hitSlop={holguraDeToque(FLECHA)}
+      >
+        <CaretRight size={13} weight="bold" color={frenado ? theme.hairline : theme.tinta} />
       </Pressable>
     </View>
   );
@@ -105,30 +99,20 @@ export function BarraDePeriodo(
       abierto={abierto}
       disparador={barra}
       panel={(
-        /*
-          Desplazable, y no por gusto: los tipos pasaron de cinco a ocho al
-          entrar los moviles, y con el rango libre abierto el panel pide unos
-          390 px. `ConDesplegable` le pone un `maxHeight` con lo que quede de
-          pantalla, asi que en un telefono chico el resto quedaba cortado y sin
-          forma de alcanzarlo. Es el mismo agujero que ya habia tapado la lista
-          de categorias, en otro envase.
-
-          El `ScrollView` de gesture-handler, no el de React Native: el panel
-          vive dentro del scroll de la pantalla y el nativo le cede el gesto al
-          de afuera. Ver `SelectorDesplegable`.
-        */
+        // Desplazable: con el rango libre abierto pide unos 390 px y en un
+        // teléfono chico no entra.
         <ScrollView style={styles.panel} nestedScrollEnabled>
-          {TIPOS.map((t, indice) => {
-            const activo = t.valor === periodo.tipo;
+          {TIPOS.map((tipo, indice) => {
+            const activo = tipo.valor === periodo.tipo;
             return (
               <Pressable
-                key={t.valor}
-                onPress={() => elegir(t.valor)}
+                key={tipo.valor}
+                onPress={() => elegir(tipo.valor)}
                 style={[styles.opcion, indice > 0 && styles.opcionConLinea]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: activo }}
               >
-                <Text style={activo ? styles.opcionTextoActivo : styles.opcionTexto}>{t.etiqueta}</Text>
+                <Text style={activo ? styles.opcionActiva : styles.opcionTexto}>{tipo.etiqueta}</Text>
                 {activo ? <Check size={12} weight="bold" color={theme.acentoTexto} /> : null}
               </Pressable>
             );
@@ -157,23 +141,19 @@ export function BarraDePeriodo(
                   accessibilityLabel="Hasta"
                 />
               </View>
-              <Pressable
+              <Boton
+                variante="principal"
+                etiqueta={rangoValido
+                  ? `Aplicar · ${dates.daysBetween(desdeOk, hastaOk) + 1} días`
+                  : 'Fechas inválidas'}
+                accesible="Aplicar rango"
+                deshabilitado={!rangoValido}
                 onPress={() => {
                   if (!rangoValido) return;
                   periodo.fijarRango(desdeOk, hastaOk);
                   setAbierto(false);
                 }}
-                disabled={!rangoValido}
-                style={[styles.aplicar, !rangoValido && styles.aplicarApagado]}
-                accessibilityRole="button"
-                accessibilityLabel="Aplicar rango"
-              >
-                <Text style={styles.aplicarTexto}>
-                  {rangoValido
-                    ? `Aplicar · ${dates.daysBetween(desdeOk, hastaOk) + 1} días`
-                    : 'Fechas inválidas'}
-                </Text>
-              </Pressable>
+              />
             </View>
           ) : null}
 
@@ -183,7 +163,7 @@ export function BarraDePeriodo(
               style={[styles.opcion, styles.opcionConLinea]}
               accessibilityRole="button"
             >
-              <Text style={styles.opcionTexto}>Volver a hoy</Text>
+              <Text style={styles.volver}>Volver a hoy</Text>
             </Pressable>
           ) : null}
         </ScrollView>
@@ -192,15 +172,13 @@ export function BarraDePeriodo(
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
-    // Todo el grupo va centrado en vez de estirarse: las flechas quedan al lado
-    // del nombre, no en los extremos de la fila. El `hitSlop` de cada una
-    // recupera el area tocable que el circulo daba antes.
+    // Centrada y no estirada: las flechas al lado del nombre, no en los bordes.
     barra: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     flecha: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
     centro: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-    nombre: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
+    nombre: { ...t.etiqueta, fontWeight: t.seccion.fontWeight, color: theme.tinta },
 
     panel: {
       marginTop: spacing.sm,
@@ -213,12 +191,13 @@ function crearEstilos(theme: Theme, letra: Letra) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.sm,
+      paddingVertical: spacing.md,
       paddingHorizontal: spacing.md,
     },
     opcionConLinea: { borderTopWidth: elevation.hairlineWidth, borderTopColor: theme.hairline },
-    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.tinta },
+    opcionTexto: t.cuerpo,
+    opcionActiva: { ...t.cuerpo, fontWeight: t.seccion.fontWeight },
+    volver: t.accion,
 
     libre: {
       padding: spacing.md,
@@ -228,24 +207,13 @@ function crearEstilos(theme: Theme, letra: Letra) {
     },
     campos: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     entrada: {
+      ...t.cifra,
       flex: 1,
-      fontFamily: fonts.mono,
-      fontWeight: pesos.regular,
-      fontSize: letra.xs,
-      color: theme.tinta,
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
       paddingVertical: 4,
     },
     entradaMala: { borderBottomColor: theme.vencidoTexto },
-    guion: { fontFamily: fonts.mono, fontSize: letra.xs, color: theme.silencio },
-    aplicar: {
-      paddingVertical: spacing.sm,
-      alignItems: 'center',
-      borderRadius: radii.sm,
-      backgroundColor: theme.acento,
-    },
-    aplicarApagado: { opacity: 0.4 },
-    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
+    guion: { ...t.cifra, color: theme.silencio },
   });
 }

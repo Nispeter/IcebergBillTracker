@@ -1,50 +1,56 @@
 /**
- * Un grupo de datos, hundido.
+ * Un grupo de datos, hundido, y sus filas.
  *
- * Es la unica forma de profundidad que le sirve a este proyecto. La obvia serian
- * sombras, y no funcionan: sobre la noche polar una sombra negra es invisible,
- * por eso las interfaces oscuras resuelven la elevacion con **luminosidad**. El
- * checklist anti-generico ademas las prohibe explicitamente --"sin sombras
- * `elevation` por defecto"--, y con razon: son la marca de casa del panel
- * generado.
+ * Se hunde en vez de levantarse: sobre la noche polar una sombra es invisible,
+ * así que la profundidad se hace con luminosidad, y lo más hondo está más lejos
+ * de la luz. `superficie` queda para lo que flota encima (hojas, menús).
  *
- * Se hunde en vez de levantarse, que es lo coherente con la metafora: lo que
- * esta mas hondo esta mas lejos de la luz. `superficie` sigue existiendo para lo
- * que **flota** por encima del contenido --hojas, menus, desplegables--.
- *
- * ## Cuando usarlo
- *
- * Para **datos agrupados**: dos o mas filas de etiqueta y valor que se leen
- * juntas. Ahi el panel hace un trabajo que una linea horizontal no puede hacer,
- * que es decir donde **termina** el grupo.
- *
- * Para acciones **no**. Un recuadro alrededor de dos botones es una caja por
- * nada, y una pantalla entera de tarjetas con el mismo padding es justo lo que
- * el checklist llama generico. La regla es: los datos viven en paneles, las
- * acciones viven sueltas en la pagina.
+ * Solo para datos agrupados: ahí el panel dice dónde termina el grupo, cosa que
+ * una línea no puede. Para acciones no: los datos viven en paneles y las
+ * acciones, sueltas.
  */
 
-import { radii, spacing, type Theme } from '@iceberg/ui';
+import { radii, spacing } from '@iceberg/ui';
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEstilos, type Estilo } from '../datos/estilos';
 
-export function Panel(
-  { theme, children, estilo }: { theme: Theme; children: ReactNode; estilo?: StyleProp<ViewStyle> },
-) {
-  return <View style={[crearEstilos(theme).panel, estilo]}>{children}</View>;
+export function Panel({ children, estilo }: { children: ReactNode; estilo?: StyleProp<ViewStyle> }) {
+  const styles = useEstilos(crearEstilos);
+  return <View style={[styles.panel, estilo]}>{children}</View>;
 }
 
-function crearEstilos(theme: Theme) {
+/** Una fila de etiqueta y valor dentro de un `Panel`. */
+export function Dato(
+  { etiqueta, valor, nota }: { etiqueta: string; valor: string; nota?: string },
+) {
+  const styles = useEstilos(crearEstilos);
+  return (
+    <View style={styles.dato}>
+      <View style={styles.fila}>
+        <Text style={styles.etiqueta}>{etiqueta}</Text>
+        <Text style={styles.valor} numberOfLines={1}>{valor}</Text>
+      </View>
+      {nota === undefined ? null : <Text style={styles.nota}>{nota}</Text>}
+    </View>
+  );
+}
+
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
     panel: {
       backgroundColor: theme.superficieHonda,
       borderRadius: radii.md,
-      // Mas abajo que arriba, y no por capricho: la ultima fila quedaba pegada
-      // al borde del panel mientras la primera tenia el titulo de la seccion
-      // dandole aire. Sin esto el grupo se lee cortado por abajo.
+      // Más abajo que arriba: la primera fila tiene el título encima dándole aire.
       paddingTop: spacing.md,
       paddingBottom: spacing.lg,
       paddingHorizontal: spacing.md,
     },
+    dato: { paddingVertical: 5, gap: 1 },
+    fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.lg },
+    // El gris de siempre no pasa AA sobre el fondo hundido en el tema claro.
+    etiqueta: { ...t.etiqueta, color: theme.silencioHondo },
+    valor: { ...t.cifra, fontWeight: t.accion.fontWeight, flexShrink: 1, textAlign: 'right' },
+    nota: { ...t.nota, color: theme.silencioHondo },
   });
 }

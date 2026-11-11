@@ -1,27 +1,21 @@
 /**
- * Decir a mano qué columna es cuál, para bancos que la app no reconoce.
+ * Decir a mano qué columna es cuál, para bancos que la app no reconoce sola.
  *
- * La detección automática busca los encabezados de Banco de Chile. Cualquier
- * otro banco los escribe distinto y la detección falla, así que sin esta
- * pantalla el importador serviría para un solo banco.
- *
- * Lo que la hace usable es **mostrar la hoja**. Preguntar "¿en qué columna está
- * la fecha?" sin enseñar el archivo obliga a abrirlo en otro programa, contar
- * columnas y volver. Con la grilla a la vista se toca y se ve.
+ * Lo que la hace usable es mostrar la hoja: con la grilla a la vista se toca un
+ * campo, se toca su columna, y no hay que abrir el archivo en otro programa a
+ * contar columnas.
  */
 
 import type { csv } from '@iceberg/core';
-import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
+import { elevation, radii, spacing } from '@iceberg/ui';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useLetra } from '../datos/letra';
+import { Boton } from './Boton';
+import { useEstilos, type Estilo } from '../datos/estilos';
 
-/** Cuántas filas se muestran. Con esto alcanza para ver dónde empieza la tabla. */
+/** Con esto alcanza para ver dónde empieza la tabla. */
 const FILAS_VISIBLES = 18;
 
-/** Los campos que hay que asignar. `null` en `obligatorio` significa opcional. */
 const CAMPOS = [
   { clave: 'fecha', etiqueta: 'Fecha', obligatorio: true },
   { clave: 'descripcion', etiqueta: 'Descripción', obligatorio: true },
@@ -34,24 +28,33 @@ const CAMPOS = [
 type Campo = (typeof CAMPOS)[number]['clave'];
 
 function celda(valor: csv.Celda): string {
-  if (valor === null || valor === undefined) return '';
-  return String(valor);
+  return valor === null || valor === undefined ? '' : String(valor);
+}
+
+/**
+ * El índice como letra de columna, como en una planilla. Es el índice dentro
+ * de la matriz, no la letra real del archivo, pero para señalar alcanza.
+ */
+function letraDeColumna(indice: number): string {
+  let n = indice;
+  let salida = '';
+  do {
+    salida = String.fromCharCode(65 + (n % 26)) + salida;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return salida;
 }
 
 export function MapeoDeColumnas(
-  { matriz, inicial, theme, onAplicar, onCancelar }: {
+  { matriz, inicial, onAplicar, onCancelar }: {
     matriz: csv.Matriz;
-    /** El mapeo detectado, si lo hubo. Sirve de punto de partida. */
+    /** El mapeo detectado, si lo hubo: el punto de partida. */
     inicial: csv.MapeoDeColumnas | null;
-    theme: Theme;
     onAplicar: (mapeo: csv.MapeoDeColumnas) => void;
     onCancelar: () => void;
   },
 ) {
-  // `letra` ya es la funcion que nombra las columnas, asi que el hook va con
-  // otro nombre para no taparla.
-  const tipografia = useLetra();
-  const styles = crearEstilos(theme, tipografia);
+  const styles = useEstilos(crearEstilos);
 
   const [filaEncabezado, setFilaEncabezado] = useState(inicial?.filaEncabezado ?? 0);
   const [columnas, setColumnas] = useState<Record<Campo, number | null>>({
@@ -65,23 +68,15 @@ export function MapeoDeColumnas(
   const [asignando, setAsignando] = useState<Campo | null>(null);
 
   const anchoMaximo = matriz.reduce((mayor, fila) => Math.max(mayor, fila.length), 0);
-  const completo = CAMPOS
-    .filter((c) => c.obligatorio)
-    .every((c) => columnas[c.clave] !== null);
-
-  /** Qué campo tiene asignada esa columna, para pintarla en la grilla. */
-  const campoDe = (indice: number): Campo | null => {
-    const encontrado = CAMPOS.find((c) => columnas[c.clave] === indice);
-    return encontrado?.clave ?? null;
-  };
+  const completo = CAMPOS.filter((c) => c.obligatorio).every((c) => columnas[c.clave] !== null);
+  const campoDe = (indice: number): Campo | null =>
+    CAMPOS.find((c) => columnas[c.clave] === indice)?.clave ?? null;
 
   return (
     <View style={styles.raiz}>
       <View style={styles.encabezado}>
-        <Text style={styles.titulo}>Ajustar columnas</Text>
-        <Pressable onPress={onCancelar} accessibilityRole="button">
-          <Text style={styles.cancelar}>Volver</Text>
-        </Pressable>
+        <Text style={styles.titulo} accessibilityRole="header">Ajustar columnas</Text>
+        <Boton variante="texto" etiqueta="Volver" onPress={onCancelar} />
       </View>
 
       <Text style={styles.ayuda}>
@@ -106,7 +101,7 @@ export function MapeoDeColumnas(
               <Text style={activo ? styles.campoTextoActivo : styles.campoTexto}>
                 {campo.etiqueta}
                 {campo.obligatorio ? '' : ' ·'}
-                {asignada === null ? ' —' : ` ${letra(asignada)}`}
+                {asignada === null ? ' —' : ` ${letraDeColumna(asignada)}`}
               </Text>
             </Pressable>
           );
@@ -117,24 +112,21 @@ export function MapeoDeColumnas(
         <View>
           <View style={styles.filaGrilla}>
             <View style={styles.numeroFila} />
-            {Array.from({ length: anchoMaximo }, (_, c) => {
-              const campo = campoDe(c);
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => {
-                    if (asignando === null) return;
-                    setColumnas((previo) => ({ ...previo, [asignando]: c }));
-                    setAsignando(null);
-                  }}
-                  style={[styles.celdaEncabezado, campo !== null && styles.celdaAsignada]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Columna ${letra(c)}`}
-                >
-                  <Text style={styles.letra}>{letra(c)}</Text>
-                </Pressable>
-              );
-            })}
+            {Array.from({ length: anchoMaximo }, (_, c) => (
+              <Pressable
+                key={c}
+                onPress={() => {
+                  if (asignando === null) return;
+                  setColumnas((previo) => ({ ...previo, [asignando]: c }));
+                  setAsignando(null);
+                }}
+                style={[styles.celdaEncabezado, campoDe(c) !== null && styles.celdaAsignada]}
+                accessibilityRole="button"
+                accessibilityLabel={`Columna ${letraDeColumna(c)}`}
+              >
+                <Text style={styles.letra}>{letraDeColumna(c)}</Text>
+              </Pressable>
+            ))}
           </View>
 
           {matriz.slice(0, FILAS_VISIBLES).map((fila, f) => (
@@ -145,15 +137,10 @@ export function MapeoDeColumnas(
                 accessibilityRole="button"
                 accessibilityLabel={`Usar la fila ${f + 1} como encabezado`}
               >
-                <Text style={f === filaEncabezado ? styles.numeroTextoElegido : styles.numeroTexto}>
-                  {f + 1}
-                </Text>
+                <Text style={f === filaEncabezado ? styles.numeroElegido : styles.numero}>{f + 1}</Text>
               </Pressable>
               {Array.from({ length: anchoMaximo }, (_, c) => (
-                <View
-                  key={c}
-                  style={[styles.celda, campoDe(c) !== null && styles.celdaAsignada]}
-                >
+                <View key={c} style={[styles.celda, campoDe(c) !== null && styles.celdaAsignada]}>
                   <Text style={styles.celdaTexto} numberOfLines={1}>{celda(fila[c])}</Text>
                 </View>
               ))}
@@ -162,7 +149,11 @@ export function MapeoDeColumnas(
         </View>
       </ScrollView>
 
-      <Pressable
+      <Boton
+        variante="principal"
+        etiqueta={completo ? 'Usar estas columnas' : 'Falta asignar fecha, descripción, cargos y abonos'}
+        accesible="Aplicar el mapeo"
+        deshabilitado={!completo}
         onPress={() => {
           if (!completo) return;
           onAplicar({
@@ -175,43 +166,18 @@ export function MapeoDeColumnas(
             saldo: columnas.saldo,
           });
         }}
-        disabled={!completo}
-        style={[styles.aplicar, !completo && styles.apagado]}
-        accessibilityRole="button"
-        accessibilityLabel="Aplicar el mapeo"
-      >
-        <Text style={styles.aplicarTexto}>
-          {completo ? 'Usar estas columnas' : 'Falta asignar fecha, descripción, cargos y abonos'}
-        </Text>
-      </Pressable>
+      />
     </View>
   );
 }
 
-/**
- * El indice como letra de columna, que es como las nombra una planilla.
- *
- * Ojo: es el indice **dentro de la matriz**, no la letra real del archivo. Las
- * cartolas de Banco de Chile empiezan en la columna B, asi que su indice 0 es la
- * B del Excel. Igual sirve para senalar, que es para lo que esta.
- */
-function letra(indice: number): string {
-  let n = indice;
-  let salida = '';
-  do {
-    salida = String.fromCharCode(65 + (n % 26)) + salida;
-    n = Math.floor(n / 26) - 1;
-  } while (n >= 0);
-  return salida;
-}
-
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
+  const chica = { ...t.cifraDeGrafico };
   return StyleSheet.create({
     raiz: { gap: spacing.md },
     encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
-    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio },
+    titulo: t.subtitulo,
+    ayuda: { ...t.nota, lineHeight: t.cuerpo.fontSize + 4 },
 
     campos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     campo: {
@@ -221,9 +187,9 @@ function crearEstilos(theme: Theme, letra: Letra) {
       borderWidth: elevation.hairlineWidth,
       borderColor: theme.hairline,
     },
-    campoActivo: { backgroundColor: theme.acento, borderColor: theme.acento },
-    campoTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    campoTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
+    campoActivo: { backgroundColor: theme.tinta, borderColor: theme.tinta },
+    campoTexto: { ...t.etiqueta, color: theme.tinta },
+    campoTextoActivo: { ...t.etiqueta, fontWeight: t.seccion.fontWeight, color: theme.fondo },
 
     grilla: {
       maxHeight: 260,
@@ -241,10 +207,9 @@ function crearEstilos(theme: Theme, letra: Letra) {
       borderRightWidth: elevation.hairlineWidth,
       borderRightColor: theme.hairline,
     },
-    filaElegida: { backgroundColor: theme.acento },
-    numeroTexto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(9), color: theme.silencio },
-    numeroTextoElegido: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: letra.px(9), color: theme.sobreAcento },
-
+    filaElegida: { backgroundColor: theme.tinta },
+    numero: chica,
+    numeroElegido: { ...chica, fontWeight: t.titulo.fontWeight, color: theme.fondo },
     celdaEncabezado: {
       width: 110,
       paddingVertical: 4,
@@ -253,18 +218,9 @@ function crearEstilos(theme: Theme, letra: Letra) {
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
     },
-    letra: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: letra.px(9), color: theme.silencio },
+    letra: { ...chica, fontWeight: t.titulo.fontWeight },
     celda: { width: 110, paddingVertical: 4, paddingHorizontal: spacing.xs },
     celdaAsignada: { backgroundColor: theme.fondo },
-    celdaTexto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.px(9), color: theme.tinta },
-
-    aplicar: {
-      paddingVertical: spacing.md,
-      alignItems: 'center',
-      borderRadius: radii.sm,
-      backgroundColor: theme.acento,
-    },
-    apagado: { opacity: 0.4 },
-    aplicarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
+    celdaTexto: { ...chica, color: theme.tinta },
   });
 }

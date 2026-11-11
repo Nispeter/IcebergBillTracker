@@ -1,35 +1,33 @@
 /**
- * Formulario de una cuenta periodica, compartido por el alta y la edicion.
+ * El formulario de una cuenta periódica, compartido por el alta y la edición.
  *
- * No toca la base: arma los datos y los entrega, igual que
- * `FormularioMovimiento`. Quien lo usa decide si eso es un `crearRegla` o un
- * `editarRegla`.
- *
- * La parte que importa es la de abajo: **la regla se muestra escrita y con sus
- * proximas fechas**. Un formulario de recurrencia con tres campos sueltos
- * —frecuencia, cada, desde— no deja ver que va a pasar, y "el 31 de cada mes"
- * hace algo distinto en febrero de lo que uno supone. Ver las fechas antes de
- * guardar es lo que evita la sorpresa.
+ * Como `FormularioMovimiento`, no toca la base. Lo que importa está al final:
+ * la regla escrita y sus próximas fechas. "El 31 de cada mes" hace algo
+ * distinto en febrero de lo que uno supone, y verlo antes de guardar es lo que
+ * evita la sorpresa.
  */
 
 import { dates, money, recurrence } from '@iceberg/core';
 import type { TipoDeMovimiento } from '@iceberg/db';
+import { elevation, spacing } from '@iceberg/ui';
+import { useMemo, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Boton } from './Boton';
 import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
-import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ConDesplegable } from './ConDesplegable';
-import { ChipDisparador, ListaDeOpciones } from './SelectorDesplegable';
+  Campo, Entrada, EntradaDeFecha, EntradaDeMonto, ErrorDelFormulario, Formulario, Opciones,
+  type Opcion,
+} from './Formulario';
+import { TIPOS } from './FormularioMovimiento';
 import { iconoDeCategoria } from './iconos';
+import { Panel } from './Panel';
+import { Desplegable, useOpcionesDeCategoria } from './SelectorDesplegable';
 import { useCategorias } from '../datos/catalogo';
-import { useLetra } from '../datos/letra';
+import { useEstilos, type Estilo } from '../datos/estilos';
 
 export interface ValoresDeRegla {
   readonly tipo: TipoDeMovimiento;
   readonly montoMinor: number;
   readonly nombre: string;
-  /** `string` y no `CategoryId`: ver `FormularioMovimiento`. */
   readonly categoriaId: string | null;
   readonly frecuencia: recurrence.Frecuencia;
   readonly cada: number;
@@ -37,20 +35,26 @@ export interface ValoresDeRegla {
   readonly hasta: dates.PlainDate | null;
 }
 
-const FRECUENCIAS: readonly { valor: recurrence.Frecuencia; etiqueta: string }[] = [
+const FRECUENCIAS: readonly Opcion<recurrence.Frecuencia>[] = [
   { valor: 'mensual', etiqueta: 'Mensual' },
   { valor: 'semanal', etiqueta: 'Semanal' },
   { valor: 'anual', etiqueta: 'Anual' },
   { valor: 'diaria', etiqueta: 'Diaria' },
 ];
 
-/** Cuantas fechas se muestran de anticipo. Con tres ya se ve el patron. */
+const UNIDADES: Record<recurrence.Frecuencia, string> = {
+  diaria: 'días',
+  semanal: 'semanas',
+  mensual: 'meses',
+  anual: 'años',
+};
+
+/** Cuántas fechas se anticipan. Con tres ya se ve el patrón. */
 const ANTICIPO = 3;
 
 export function FormularioRegla({
-  theme, titulo, inicial, onGuardar, onCancelar, onBorrar, error,
+  titulo, inicial, onGuardar, onCancelar, onBorrar, error,
 }: {
-  theme: Theme;
   titulo: string;
   inicial?: Partial<ValoresDeRegla>;
   onGuardar: (valores: ValoresDeRegla) => void;
@@ -58,28 +62,25 @@ export function FormularioRegla({
   onBorrar?: () => void;
   error?: string | null;
 }) {
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
   const categorias = useCategorias();
+  const opcionesDeCategoria = useOpcionesDeCategoria('Sin categoría');
 
   const [tipo, setTipo] = useState<TipoDeMovimiento>(inicial?.tipo ?? 'gasto');
   const [monto, setMonto] = useState(
     inicial?.montoMinor === undefined ? '' : money.formatNumber(money.money(inicial.montoMinor)),
   );
   const [nombre, setNombre] = useState(inicial?.nombre ?? '');
-  const [categoriaId, setCategoriaId] = useState<string | null>(
-    inicial?.categoriaId ?? null,
-  );
+  const [categoriaId, setCategoriaId] = useState<string | null>(inicial?.categoriaId ?? null);
   const [frecuencia, setFrecuencia] = useState<recurrence.Frecuencia>(inicial?.frecuencia ?? 'mensual');
   const [cada, setCada] = useState(String(inicial?.cada ?? 1));
   const [desde, setDesde] = useState<string>(inicial?.desde ?? dates.today());
   const [hasta, setHasta] = useState<string>(inicial?.hasta ?? '');
   const [eligiendoCategoria, setEligiendoCategoria] = useState(false);
-  const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
 
   const montoParseado = money.parseMoney(monto);
   const desdeParseado = dates.parsePlainDate(desde);
-  // Vacio significa "no termina", que es distinto de una fecha mal escrita.
+  // Vacío es "no termina", que no es lo mismo que una fecha mal escrita.
   const hastaParseado = hasta.trim() === '' ? null : dates.parsePlainDate(hasta);
   const hastaMalEscrito = hasta.trim() !== '' && hastaParseado === null;
   const cadaParseado = /^\d+$/.test(cada.trim()) ? Number(cada.trim()) : null;
@@ -98,7 +99,6 @@ export function FormularioRegla({
     && problemaDeRegla === null
     && !hastaMalEscrito;
 
-  // Las proximas fechas, para ver la regla antes de guardarla.
   const proximas = useMemo(() => {
     if (regla === null || problemaDeRegla !== null) return [];
     const fechas: dates.PlainDate[] = [];
@@ -112,126 +112,58 @@ export function FormularioRegla({
     return fechas;
   }, [regla?.frecuencia, regla?.cada, regla?.desde, regla?.hasta, problemaDeRegla]);
 
-  const opcionesDeCategoria = useMemo(() => [
-    { valor: null, etiqueta: 'Sin categoría' },
-    ...categorias.todas.map((categoria) => ({
-      valor: categoria.id,
-      etiqueta: categoria.nombre,
-      icono: iconoDeCategoria(categoria.id),
-    })),
-  ], []);
+  function guardar() {
+    if (!puedeGuardar || montoParseado === null || regla === null) return;
+    onGuardar({
+      tipo,
+      montoMinor: montoParseado.amountMinor,
+      nombre,
+      categoriaId: pideCategoria ? categoriaId : null,
+      frecuencia: regla.frecuencia,
+      cada: regla.cada,
+      desde: regla.desde,
+      hasta: regla.hasta,
+    });
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
-      <View style={styles.encabezado}>
-        <Text style={styles.titulo}>{titulo}</Text>
-        <Pressable onPress={onCancelar} accessibilityRole="button">
-          <Text style={styles.cancelar}>Cancelar</Text>
-        </Pressable>
-      </View>
+    <Formulario titulo={titulo} onCancelar={onCancelar}>
+      <Opciones opciones={TIPOS} valor={tipo} onElegir={setTipo} />
 
-      <View style={styles.selector}>
-        {(['gasto', 'ingreso'] as const).map((opcion) => (
-          <Pressable
-            key={opcion}
-            onPress={() => setTipo(opcion)}
-            style={[styles.opcion, tipo === opcion && styles.opcionActiva]}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: tipo === opcion }}
-          >
-            <Text style={tipo === opcion ? styles.opcionTextoActivo : styles.opcionTexto}>
-              {opcion === 'gasto' ? 'Gasto' : 'Ingreso'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <EntradaDeMonto etiqueta="Monto" valor={monto} onCambiar={setMonto} />
 
-      <Campo styles={styles} etiqueta="Monto">
-        <View style={styles.filaMonto}>
-          <Text style={styles.simbolo}>$</Text>
-          <TextInput
-            value={monto}
-            // Ver `FormularioMovimiento`: los puntos se ponen solos al escribir.
-            onChangeText={(texto) => setMonto(money.agruparMientrasSeEscribe(texto))}
-            placeholder="0"
-            placeholderTextColor={theme.silencio}
-            keyboardType="numeric"
-            inputMode="numeric"
-            style={styles.entradaMonto}
-            accessibilityLabel="Monto"
-          />
-        </View>
-        {monto.length > 0 && montoParseado === null ? (
-          <Text style={styles.aviso}>No se entiende ese monto. Sin decimales: el peso no los tiene.</Text>
-        ) : null}
-      </Campo>
-
-      <Campo styles={styles} etiqueta="Descripción">
-        <TextInput
+      <Campo etiqueta="Descripción">
+        <Entrada
           value={nombre}
           onChangeText={setNombre}
           placeholder="Arriendo, luz, internet…"
-          placeholderTextColor={theme.silencio}
-          style={styles.entrada}
           accessibilityLabel="Descripción"
         />
       </Campo>
 
       {pideCategoria ? (
-        <Campo styles={styles} etiqueta="Categoría">
-          <ConDesplegable
+        <Campo etiqueta="Categoría" elevado={eligiendoCategoria}>
+          <Desplegable
             abierto={eligiendoCategoria}
-            disparador={(
-              <View style={styles.filaChip}>
-                <ChipDisparador
-                  theme={theme}
-                  etiqueta={categorias.nombreCorto(categoriaId)}
-                  icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
-                  abierto={eligiendoCategoria}
-                  activo={categoriaId !== null}
-                  onPress={() => setEligiendoCategoria(!eligiendoCategoria)}
-                  accesible={
-                    categoriaId === null
-                      ? 'Elegir categoría'
-                      : `Categoría ${categorias.nombre(categoriaId)}. Tocar para cambiar`
-                  }
-                />
-              </View>
-            )}
-            panel={(
-              <ListaDeOpciones
-                theme={theme}
-                opciones={opcionesDeCategoria}
-                seleccionado={categoriaId}
-                onElegir={(valor: string | null) => {
-                  setCategoriaId(valor);
-                  setEligiendoCategoria(false);
-                }}
-              />
-            )}
+            onAlternar={() => setEligiendoCategoria(!eligiendoCategoria)}
+            etiqueta={categorias.nombreCorto(categoriaId)}
+            icono={categoriaId === null ? null : iconoDeCategoria(categoriaId)}
+            activo={categoriaId !== null}
+            accesible={categoriaId === null
+              ? 'Elegir categoría'
+              : `Categoría ${categorias.nombre(categoriaId)}. Tocar para cambiar`}
+            opciones={opcionesDeCategoria}
+            valor={categoriaId}
+            onElegir={(valor) => { setCategoriaId(valor); setEligiendoCategoria(false); }}
           />
         </Campo>
       ) : null}
 
-      <Campo styles={styles} etiqueta="Cada cuánto">
-        <View style={styles.selector}>
-          {FRECUENCIAS.map((opcion) => (
-            <Pressable
-              key={opcion.valor}
-              onPress={() => setFrecuencia(opcion.valor)}
-              style={[styles.opcion, frecuencia === opcion.valor && styles.opcionActiva]}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: frecuencia === opcion.valor }}
-            >
-              <Text style={frecuencia === opcion.valor ? styles.opcionTextoActivo : styles.opcionTexto}>
-                {opcion.etiqueta}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <Campo etiqueta="Cada cuánto">
+        <Opciones opciones={FRECUENCIAS} valor={frecuencia} onElegir={setFrecuencia} />
       </Campo>
 
-      <Campo styles={styles} etiqueta="Repetir cada">
+      <Campo etiqueta="Repetir cada">
         <View style={styles.filaRepetir}>
           <TextInput
             value={cada}
@@ -245,207 +177,62 @@ export function FormularioRegla({
         </View>
       </Campo>
 
-      <Campo styles={styles} etiqueta="Primera vez">
-        <TextInput
-          value={desde}
-          onChangeText={setDesde}
-          placeholder="AAAA-MM-DD"
-          placeholderTextColor={theme.silencio}
-          style={styles.entrada}
-          autoCapitalize="none"
-          accessibilityLabel="Primera vez"
-        />
-        {desdeParseado === null ? (
-          <Text style={styles.aviso}>Fecha inválida. El formato es AAAA-MM-DD.</Text>
-        ) : null}
-      </Campo>
+      <EntradaDeFecha etiqueta="Primera vez" valor={desde} onCambiar={setDesde} />
+      <EntradaDeFecha etiqueta="Hasta" valor={hasta} onCambiar={setHasta} vacia="Sin término" />
 
-      <Campo styles={styles} etiqueta="Hasta">
-        <TextInput
-          value={hasta}
-          onChangeText={setHasta}
-          placeholder="Sin término"
-          placeholderTextColor={theme.silencio}
-          style={styles.entrada}
-          autoCapitalize="none"
-          accessibilityLabel="Hasta"
-        />
-        {hastaMalEscrito ? (
-          <Text style={styles.aviso}>Fecha inválida. Déjalo vacío si no termina.</Text>
-        ) : null}
-      </Campo>
+      {problemaDeRegla !== null ? (
+        <Text style={styles.aviso}>{problemaDeRegla}</Text>
+      ) : regla !== null ? (
+        <Panel>
+          <Text style={styles.resumen}>{recurrence.describirRegla(regla)}</Text>
+          {proximas.length > 0 ? (
+            <Text style={styles.fechas}>
+              Próximas: {proximas.map((f) => dates.formatDate(f)).join(' · ')}
+            </Text>
+          ) : (
+            <Text style={styles.aviso}>Con esas fechas no ocurre nunca.</Text>
+          )}
+        </Panel>
+      ) : null}
 
-      {/* El resumen es la parte util del formulario: dice que se va a guardar. */}
-      <View style={styles.resumen}>
-        {problemaDeRegla !== null ? (
-          <Text style={styles.aviso}>{problemaDeRegla}</Text>
-        ) : regla !== null ? (
-          <>
-            <Text style={styles.resumenTexto}>{recurrence.describirRegla(regla)}</Text>
-            {proximas.length > 0 ? (
-              <Text style={styles.resumenFechas}>
-                Próximas: {proximas.map((f) => dates.formatDate(f)).join(' · ')}
-              </Text>
-            ) : (
-              <Text style={styles.aviso}>Con esas fechas no ocurre nunca.</Text>
-            )}
-          </>
-        ) : null}
-      </View>
+      <ErrorDelFormulario error={error} />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <Pressable
-        onPress={() => {
-          if (!puedeGuardar || montoParseado === null || regla === null) return;
-          onGuardar({
-            tipo,
-            montoMinor: montoParseado.amountMinor,
-            nombre,
-            categoriaId: pideCategoria ? categoriaId : null,
-            frecuencia: regla.frecuencia,
-            cada: regla.cada,
-            desde: regla.desde,
-            hasta: regla.hasta,
-          });
-        }}
-        disabled={!puedeGuardar}
-        style={[styles.guardar, !puedeGuardar && styles.guardarApagado]}
-        accessibilityRole="button"
-        accessibilityLabel="Guardar cuenta periódica"
-      >
-        <Text style={styles.guardarTexto}>Guardar</Text>
-      </Pressable>
+      <Boton
+        variante="principal"
+        etiqueta="Guardar"
+        accesible="Guardar cuenta periódica"
+        onPress={guardar}
+        deshabilitado={!puedeGuardar}
+      />
 
       {onBorrar ? (
-        <Pressable
-          onPress={() => (confirmandoBorrado ? onBorrar() : setConfirmandoBorrado(true))}
-          style={styles.borrar}
-          accessibilityRole="button"
-          accessibilityLabel={confirmandoBorrado ? 'Confirmar borrado' : 'Borrar cuenta periódica'}
-        >
-          <Text style={styles.borrarTexto}>
-            {confirmandoBorrado
-              ? 'Tocar de nuevo para confirmar'
-              : 'Borrar. Lo ya pagado se queda.'}
-          </Text>
-        </Pressable>
+        <Boton
+          variante="peligro"
+          etiqueta="Borrar. Lo ya pagado se queda."
+          confirmar="Tocar de nuevo para borrarla"
+          onPress={onBorrar}
+          estilo={styles.borrar}
+        />
       ) : null}
-    </ScrollView>
+    </Formulario>
   );
 }
 
-const UNIDADES: Record<recurrence.Frecuencia, string> = {
-  diaria: 'días',
-  semanal: 'semanas',
-  mensual: 'meses',
-  anual: 'años',
-};
-
-type Estilos = ReturnType<typeof crearEstilos>;
-
-function Campo({ styles, etiqueta, children }: { styles: Estilos; etiqueta: string; children: ReactNode }) {
-  return (
-    <View style={styles.campo}>
-      <Text style={styles.etiqueta}>{etiqueta}</Text>
-      {children}
-    </View>
-  );
-}
-
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.xl,
-      paddingBottom: spacing.xxxl,
-      maxWidth: 520,
-      width: '100%',
-      alignSelf: 'center',
-      gap: spacing.lg,
-    },
-    encabezado: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingTop: spacing.xxl,
-    },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
-
-    selector: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-    opcion: {
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    opcionActiva: { backgroundColor: theme.acento, borderColor: theme.acento },
-    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
-
-    campo: { gap: spacing.xs },
-    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
-    entrada: {
-      fontFamily: fonts.mono,
-      fontWeight: pesos.regular,
-      fontSize: letra.md,
-      color: theme.tinta,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-      paddingVertical: spacing.sm,
-    },
-    entradaCorta: {
-      width: 64,
-      fontFamily: fonts.mono,
-      fontWeight: pesos.regular,
-      fontSize: letra.md,
-      color: theme.tinta,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-      paddingVertical: spacing.sm,
-      textAlign: 'center',
-    },
     filaRepetir: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-    unidad: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.silencio },
-    filaMonto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    simbolo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.lg, color: theme.silencio },
-    entradaMonto: {
-      flex: 1,
-      fontFamily: fonts.mono,
-      fontWeight: pesos.medium,
-      fontSize: letra.xl,
-      color: theme.tinta,
+    entradaCorta: {
+      ...t.cifraGrande,
+      width: 64,
+      textAlign: 'center',
+      paddingVertical: spacing.sm,
       borderBottomWidth: elevation.hairlineWidth,
       borderBottomColor: theme.hairline,
-      paddingVertical: spacing.sm,
     },
-    filaChip: { flexDirection: 'row' },
-
-    resumen: {
-      gap: 2,
-      padding: spacing.md,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-      backgroundColor: theme.superficie,
-    },
-    resumenTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.sm, color: theme.tinta },
-    resumenFechas: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
-
-    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.vencidoTexto },
-    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.vencidoTexto },
-
-    guardar: {
-      backgroundColor: theme.acento,
-      borderRadius: radii.sm,
-      paddingVertical: spacing.lg,
-      alignItems: 'center',
-      marginTop: spacing.md,
-    },
-    guardarApagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.sobreAcento },
-    borrar: { paddingVertical: spacing.md, alignItems: 'center' },
-    borrarTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.vencidoTexto },
+    unidad: { ...t.cuerpo, color: theme.silencio },
+    resumen: { ...t.seccion, paddingBottom: 2 },
+    fechas: { ...t.cifra, color: theme.silencioHondo },
+    aviso: { ...t.nota, color: theme.vencidoTexto },
+    borrar: { alignSelf: 'center' },
   });
 }

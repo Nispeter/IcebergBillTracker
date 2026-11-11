@@ -1,12 +1,9 @@
 /**
- * Alta y edición de una cuenta.
+ * Alta y edición de una cuenta: la ruta `nueva` crea y cualquier otra edita.
  *
- * Una sola pantalla para las dos cosas: la ruta `nueva` crea y cualquier otra
- * edita. Separarlas sería duplicar el mismo formulario y el mismo validador.
- *
- * El **saldo inicial** es el campo que importa y el que nadie espera: es cuánto
- * había en la cuenta antes del primer movimiento que la app conoce. Sin él, el
- * saldo que muestra la app no es el del banco y no hay forma de cuadrarlos.
+ * El saldo inicial es el campo que nadie espera y el que importa: cuánto había
+ * antes del primer movimiento que la app conoce. Sin él, el saldo de la app no
+ * cuadra con el del banco.
  */
 
 import { money } from '@iceberg/core';
@@ -14,31 +11,31 @@ import {
   TIPOS_DE_CUENTA, borrarCuenta, crearCuenta, editarCuenta, listarCuentas, obtenerCuenta,
   type TipoDeCuenta,
 } from '@iceberg/db';
-import {
-  elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { Boton } from '../../components/Boton';
+import {
+  Campo, Entrada, EntradaDeMonto, ErrorDelFormulario, Formulario, NoExiste, Opciones, type Opcion,
+} from '../../components/Formulario';
+import { PantallaModal } from '../../components/PantallaModal';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
-import { useLetra } from '../../datos/letra';
+import { NOMBRES_DE_TIPO_DE_CUENTA } from '../../datos/cuenta';
+import { useEstilos, type Estilo } from '../../datos/estilos';
 import { volver } from '../../datos/navegacion';
-import { useTema } from '../../datos/tema';
-import { PantallaModal } from '../../components/PantallaModal';
 
-const NOMBRES: Record<TipoDeCuenta, string> = {
-  corriente: 'Corriente',
-  vista: 'Vista',
-  ahorro: 'Ahorro',
-  credito: 'Crédito',
-  efectivo: 'Efectivo',
-};
+const TIPOS: readonly Opcion<TipoDeCuenta>[] = TIPOS_DE_CUENTA.map(
+  (tipo) => ({ valor: tipo, etiqueta: NOMBRES_DE_TIPO_DE_CUENTA[tipo] }),
+);
+
+const AL_COMPARTIR: readonly Opcion<boolean>[] = [
+  { valor: true, etiqueta: 'Se incluye', accesible: 'Incluir esta cuenta al compartir' },
+  { valor: false, etiqueta: 'Queda fuera', accesible: 'Dejar esta cuenta fuera al compartir' },
+];
 
 export default function EditarCuenta() {
-  const { theme } = useTema();
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
   const router = useRouter();
@@ -56,15 +53,20 @@ export default function EditarCuenta() {
     cuenta === null ? '' : money.formatNumber(money.money(cuenta.saldoInicialMinor)),
   );
   const [comparte, setComparte] = useState(cuenta === null || cuenta.sincroniza === 1);
-  const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Vacio vale cero: es lo que uno quiere decir al dejarlo en blanco.
   const saldoParseado = saldo.trim() === '' ? money.money(0) : money.parseMoney(saldo);
   const puedeGuardar = nombre.trim().length > 0 && saldoParseado !== null;
-
-  // La ultima cuenta no se puede borrar: sin ninguna, la app no deja escribir.
+  // Sin ninguna cuenta la app no puede registrar movimientos.
   const esLaUnica = !esNueva && listarCuentas(db, contexto).length <= 1;
+
+  if (!esNueva && cuenta === null) {
+    return (
+      <PantallaModal>
+        <NoExiste mensaje="Esa cuenta ya no existe" />
+      </PantallaModal>
+    );
+  }
 
   function guardar() {
     if (!puedeGuardar || saldoParseado === null) return;
@@ -81,223 +83,74 @@ export default function EditarCuenta() {
     }
   }
 
-  if (!esNueva && cuenta === null) {
-    return (
-      <PantallaModal>
-        <Text style={styles.ayuda}>Esa cuenta ya no existe.</Text>
-      </PantallaModal>
-    );
-  }
-
   return (
     <PantallaModal>
-      <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
-        <View style={styles.encabezado}>
-          <Text style={styles.titulo}>{esNueva ? 'Nueva cuenta' : 'Editar cuenta'}</Text>
-          <Pressable onPress={() => volver(router)} accessibilityRole="button">
-            <Text style={styles.cancelar}>Cancelar</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.campo}>
-          <Text style={styles.etiqueta}>Nombre</Text>
-          <TextInput
+      <Formulario titulo={esNueva ? 'Nueva cuenta' : 'Editar cuenta'} onCancelar={() => volver(router)}>
+        <Campo etiqueta="Nombre">
+          <Entrada
             value={nombre}
             onChangeText={setNombre}
             placeholder="Cuenta corriente, tarjeta, efectivo…"
-            placeholderTextColor={theme.silencio}
-            style={styles.entrada}
             accessibilityLabel="Nombre"
           />
-        </View>
+        </Campo>
 
-        <View style={styles.campo}>
-          <Text style={styles.etiqueta}>Tipo</Text>
-          <View style={styles.selector}>
-            {TIPOS_DE_CUENTA.map((opcion) => (
-              <Pressable
-                key={opcion}
-                onPress={() => setTipo(opcion)}
-                style={[styles.opcion, tipo === opcion && styles.opcionActiva]}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: tipo === opcion }}
-              >
-                <Text style={tipo === opcion ? styles.opcionTextoActivo : styles.opcionTexto}>
-                  {NOMBRES[opcion]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        <Campo etiqueta="Tipo">
+          <Opciones opciones={TIPOS} valor={tipo} onElegir={setTipo} />
+        </Campo>
 
-        <View style={styles.campo}>
-          <Text style={styles.etiqueta}>Saldo inicial</Text>
-          <View style={styles.filaMonto}>
-            <Text style={styles.simbolo}>$</Text>
-            <TextInput
-              value={saldo}
-              // Ver `FormularioMovimiento`: los puntos se ponen solos al escribir.
-              onChangeText={(texto) => setSaldo(money.agruparMientrasSeEscribe(texto))}
-              placeholder="0"
-              placeholderTextColor={theme.silencio}
-              keyboardType="numeric"
-              inputMode="numeric"
-              style={styles.entradaMonto}
-              accessibilityLabel="Saldo inicial"
-            />
-          </View>
-          <Text style={styles.ayuda}>
-            Cuánto había antes del primer movimiento que registres. Sin esto, el saldo de
-            la app no coincide con el del banco.
-          </Text>
-          {saldo.trim() !== '' && saldoParseado === null ? (
-            <Text style={styles.aviso}>No se entiende ese monto. Sin decimales: el peso no los tiene.</Text>
-          ) : null}
-        </View>
+        <EntradaDeMonto
+          etiqueta="Saldo inicial"
+          valor={saldo}
+          onCambiar={setSaldo}
+          ayuda="Cuánto había antes del primer movimiento que registres. Sin esto, el saldo de la app no coincide con el del banco."
+        />
 
-        {/*
-          Compartir es una propiedad de la cuenta, asi que vive donde viven las
-          demas. Estuvo un rato en la lista de Ajustes --con la idea de verlas
-          todas juntas-- y el resultado fue que cada cuenta aparecia dos veces:
-          una fila para editarla y otra para el interruptor. La lista **muestra**
-          el estado; cambiarlo se hace aca.
-        */}
-        <View style={styles.campo}>
-          <Text style={styles.etiqueta}>Al compartir</Text>
-          <View style={styles.selector}>
-            {[true, false].map((valor) => (
-              <Pressable
-                key={String(valor)}
-                onPress={() => setComparte(valor)}
-                style={[styles.opcion, comparte === valor && styles.opcionActiva]}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: comparte === valor }}
-                accessibilityLabel={valor ? 'Incluir esta cuenta al compartir' : 'Dejar esta cuenta fuera'}
-              >
-                <Text style={comparte === valor ? styles.opcionTextoActivo : styles.opcionTexto}>
-                  {valor ? 'Se incluye' : 'Queda fuera'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.ayuda}>
-            Fuera, esta cuenta no sale en el archivo que le pasas a otra persona, y lo que
-            ella mande de esta cuenta tampoco entra. El respaldo la lleva igual.
-          </Text>
-        </View>
-
-        {error !== null ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Pressable
-          onPress={guardar}
-          disabled={!puedeGuardar}
-          style={[styles.guardar, !puedeGuardar && styles.apagado]}
-          accessibilityRole="button"
-          accessibilityLabel="Guardar cuenta"
+        {/* Compartir es una propiedad de la cuenta: se cambia acá, y la lista
+            de Ajustes solo lo muestra. */}
+        <Campo
+          etiqueta="Al compartir"
+          ayuda="Fuera, esta cuenta no viaja a la carpeta compartida: la otra persona no la ve, y lo que ella mande de esta cuenta tampoco entra."
         >
-          <Text style={styles.guardarTexto}>Guardar</Text>
-        </Pressable>
+          <Opciones opciones={AL_COMPARTIR} valor={comparte} onElegir={setComparte} />
+        </Campo>
+
+        <ErrorDelFormulario error={error} />
+
+        <Boton
+          variante="principal"
+          etiqueta="Guardar"
+          accesible="Guardar cuenta"
+          onPress={guardar}
+          deshabilitado={!puedeGuardar}
+        />
 
         {esNueva ? null : esLaUnica ? (
-          <Text style={styles.ayuda}>
-            Es la única cuenta. No se puede borrar: sin ninguna, la app no puede registrar
+          <Text style={styles.nota}>
+            Es la única cuenta y no se puede borrar: sin ninguna, la app no puede registrar
             movimientos.
           </Text>
         ) : (
-          <Pressable
+          <Boton
+            variante="peligro"
+            etiqueta="Borrar. Sus movimientos se quedan."
+            confirmar="Tocar de nuevo para borrarla"
             onPress={() => {
-              if (!confirmandoBorrado) {
-                setConfirmandoBorrado(true);
-                return;
-              }
               borrarCuenta(db, contexto, cuenta!.id);
+              avisar('Cuenta borrada');
               volver(router);
             }}
-            style={styles.borrar}
-            accessibilityRole="button"
-            accessibilityLabel={confirmandoBorrado ? 'Confirmar borrado' : 'Borrar cuenta'}
-          >
-            <Text style={styles.borrarTexto}>
-              {confirmandoBorrado
-                ? 'Tocar de nuevo para confirmar'
-                : 'Borrar. Sus movimientos se quedan.'}
-            </Text>
-          </Pressable>
+            estilo={styles.borrar}
+          />
         )}
-      </ScrollView>
+      </Formulario>
     </PantallaModal>
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ t }: Estilo) {
   return StyleSheet.create({
-    contenido: {
-      paddingHorizontal: spacing.xl,
-      paddingBottom: spacing.xxxl,
-      maxWidth: 520,
-      width: '100%',
-      alignSelf: 'center',
-      gap: spacing.lg,
-    },
-    encabezado: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingTop: spacing.xxl,
-    },
-    titulo: { fontFamily: fonts.texto, fontWeight: pesos.bold, fontSize: letra.xl, color: theme.tinta },
-    cancelar: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.silencio },
-
-    campo: { gap: spacing.xs },
-    etiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
-    entrada: {
-      fontFamily: fonts.mono,
-      fontWeight: pesos.regular,
-      fontSize: letra.md,
-      color: theme.tinta,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-      paddingVertical: spacing.sm,
-    },
-    filaMonto: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    simbolo: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.lg, color: theme.silencio },
-    entradaMonto: {
-      flex: 1,
-      fontFamily: fonts.mono,
-      fontWeight: pesos.medium,
-      fontSize: letra.xl,
-      color: theme.tinta,
-      borderBottomWidth: elevation.hairlineWidth,
-      borderBottomColor: theme.hairline,
-      paddingVertical: spacing.sm,
-    },
-
-    selector: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-    opcion: {
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.sm,
-      borderWidth: elevation.hairlineWidth,
-      borderColor: theme.hairline,
-    },
-    opcionActiva: { backgroundColor: theme.acento, borderColor: theme.acento },
-    opcionTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.tinta },
-    opcionTextoActivo: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
-
-    ayuda: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, lineHeight: letra.px(18), color: theme.silencio },
-    aviso: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.vencidoTexto },
-    error: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.sm, color: theme.vencidoTexto },
-
-    guardar: {
-      backgroundColor: theme.acento,
-      borderRadius: radii.sm,
-      paddingVertical: spacing.lg,
-      alignItems: 'center',
-      marginTop: spacing.md,
-    },
-    apagado: { opacity: 0.4 },
-    guardarTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.md, color: theme.sobreAcento },
-    borrar: { paddingVertical: spacing.md, alignItems: 'center' },
-    borrarTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.vencidoTexto },
+    nota: t.nota,
+    borrar: { alignSelf: 'center' },
   });
 }

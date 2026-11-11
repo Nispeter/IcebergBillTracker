@@ -1,29 +1,17 @@
 /**
- * Un interruptor de dos estados, con la perilla que se desliza.
+ * Un interruptor de dos estados con la perilla que se desliza.
  *
- * La primera version de esto fueron tres botones --Automatico, Comprometido,
- * Variable-- y era demasiado aparato para una pregunta binaria que se contesta
- * de un toque. El interruptor **llega puesto** en lo que la app dedujo, y
- * cambiarlo es un gesto, no una eleccion entre tres cosas.
- *
- * El estado "automatico" no desaparecio: dejo de ser visible. Quien no lo toca
- * guarda `null` y la deduccion sigue mandando; ver `FormularioMovimiento`.
- *
- * ## El color
- *
- * **Blanco para comprometido, cian para variable**, igual que el iceberg: el
- * hielo sobre la linea de agua es lo comprometido y el agua de abajo lo
- * variable.
- *
- * Nacio al reves, y estuvo asi una version entera. Que dos partes de la app
- * usen los mismos dos colores para decir cosas opuestas es peor que no
- * colorearlas: quien aprendio el iceberg leia el interruptor al reves sin
- * enterarse.
+ * Los colores son los del iceberg: encendido es comprometido y pinta la pista
+ * de hielo; apagado es variable y la pinta de agua. Si el interruptor usara los
+ * mismos dos colores al revés que el dibujo, quien aprendió uno leería mal el
+ * otro.
  */
 
-import { radii, type Theme } from '@iceberg/ui';
+import { durations, holguraDeToque, radii } from '@iceberg/ui';
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet } from 'react-native';
+import { Animated, Pressable, StyleSheet } from 'react-native';
+import { transicion, useMovimientoReducido } from '../datos/animacion';
+import { useTema } from '../datos/tema';
 
 const ANCHO = 46;
 const ALTO = 26;
@@ -31,31 +19,27 @@ const PERILLA = 20;
 const MARGEN = (ALTO - PERILLA) / 2;
 
 export function Interruptor(
-  { encendido, onCambiar, theme, accesible }: {
-    /** Verdadero mueve la perilla a la derecha y pinta la pista de blanco. */
+  { encendido, onCambiar, accesible }: {
     encendido: boolean;
     onCambiar: (valor: boolean) => void;
-    theme: Theme;
     accesible: string;
   },
 ) {
+  const { theme } = useTema();
+  const reducido = useMovimientoReducido();
   const progreso = useRef(new Animated.Value(encendido ? 1 : 0)).current;
 
   useEffect(() => {
-    Animated.timing(progreso, {
-      toValue: encendido ? 1 : 0,
-      duration: 160,
-      easing: Easing.out(Easing.cubic),
-      // El color no se puede animar en el hilo nativo; el desplazamiento si,
-      // pero mezclar los dos drivers en un mismo valor tira error.
-      useNativeDriver: false,
+    // El color no corre en el hilo nativo, y un mismo valor no puede mezclar drivers.
+    transicion(progreso, encendido ? 1 : 0, {
+      duracion: durations.salida, reducido, nativo: false,
     }).start();
-  }, [encendido, progreso]);
+  }, [encendido, progreso, reducido]);
 
   return (
     <Pressable
       onPress={() => onCambiar(!encendido)}
-      hitSlop={8}
+      hitSlop={holguraDeToque(ALTO)}
       accessibilityRole="switch"
       accessibilityState={{ checked: encendido }}
       accessibilityLabel={accesible}
@@ -66,8 +50,6 @@ export function Interruptor(
           {
             backgroundColor: progreso.interpolate({
               inputRange: [0, 1],
-              // Apagado es variable, que es el agua; encendido es comprometido,
-              // que es el hielo.
               outputRange: [theme.acento, theme.hieloSobreAgua],
             }),
           },

@@ -1,33 +1,30 @@
 /**
- * Una fila de movimiento, compartida por Home y por el listado.
+ * Una fila de movimiento, compartida por el Resumen y el listado. Se toca para
+ * editarlo.
  *
- * Estaba duplicada en las dos pantallas y las dos tenian el mismo error: la
- * etiqueta de abajo se decidia mirando `categoriaId` en vez de `tipo`, asi que un
- * **gasto sin categoria** aparecia rotulado "Ingreso" al lado de un monto con
- * signo menos. Con un solo componente, esa decision vive en un solo lugar.
+ * Sin líneas entre filas: el bloque de fecha y los dos renglones ya agrupan, y
+ * el aire entre filas es el triple que el que hay entre renglones.
  */
 
 import { dates, money } from '@iceberg/core';
 import type { Movimiento } from '@iceberg/db';
-import {
-  fonts, pesos, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
+import { spacing } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { iconoDeCategoria } from './iconos';
+import { MarcaDeFecha } from './MarcaDeFecha';
 import { useCategorias } from '../datos/catalogo';
-import { useLetra } from '../datos/letra';
+import { useEstilos, type Estilo } from '../datos/estilos';
+import { useTema } from '../datos/tema';
 
-/** Lo que dice el `?` de las pantallas que muestran el punto. */
+/** Lo que dice la `i` de las pantallas que muestran el punto. */
 export const EXPLICACION_ANOMALIA = 'El punto ámbar marca un gasto muy por encima de lo que '
   + 'sueles pagar en ese mismo lugar. Se compara contra todo tu historial, no contra este período.';
 
 /**
- * Lo que va bajo el nombre. Depende del **tipo**, no de si hay categoria.
- *
- * El nombre lo resuelve el catalogo y no `categories` a secas: una categoria
- * propia no esta en el catalogo de la app y saldria como id pelado.
+ * Lo que va bajo el nombre. Depende del tipo y no de si hay categoría: un gasto
+ * sin categoría no es un ingreso.
  */
 function subtitulo(tx: Movimiento, nombreDeCategoria: (id: string | null) => string): string {
   if (tx.tipo === 'ingreso') return 'Ingreso';
@@ -35,49 +32,32 @@ function subtitulo(tx: Movimiento, nombreDeCategoria: (id: string | null) => str
   return nombreDeCategoria(tx.categoriaId);
 }
 
-/** Los ingresos suman, todo lo demas resta. */
-function signo(tx: Movimiento): string {
-  return tx.tipo === 'ingreso' ? '+' : '−';
-}
-
 export function FilaMovimiento(
-  { tx, theme, anomala }: {
+  { tx, anomala }: {
     tx: Movimiento;
-    theme: Theme;
-    /** Marca el gasto como muy por encima de lo normal para su categoria. */
+    /** Un gasto muy por encima de lo normal para ese comercio. */
     anomala?: boolean;
   },
 ) {
-  const letra = useLetra();
-  const styles = crearEstilos(theme, letra);
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useTema();
   const categorias = useCategorias();
-  /**
-   * El estilo va **aplanado**, y el estado de presion a mano.
-   *
-   * Dentro de `Link asChild`, expo-router exige un objeto de estilo: con una
-   * funcion la fila se queda sin estilo y todo se apila en vertical, sin ningun
-   * error de por medio; con un arreglo tira un error y la pantalla queda en
-   * blanco. `StyleSheet.flatten` deja las dos cosas contentas.
-   */
+  // Dentro de `Link asChild` el estilo tiene que ser un objeto plano: la
+  // respuesta al toque se lleva con estado.
   const [apretada, setApretada] = useState(false);
-  const fecha = tx.ocurridoEn as dates.PlainDate;
   const Icono = tx.categoriaId ? iconoDeCategoria(tx.categoriaId) : null;
+  const esIngreso = tx.tipo === 'ingreso';
 
   return (
     <Link href={{ pathname: '/movimiento/[id]', params: { id: tx.id } }} asChild>
       <Pressable
-        // Responde al toque apagandose. Sin esto no hay forma de saber que la
-        // fila registro el gesto hasta que la pantalla siguiente aparece.
-        style={StyleSheet.flatten([styles.fila, apretada && styles.filaApretada])}
+        style={StyleSheet.flatten([styles.fila, apretada && styles.apretada])}
         onPressIn={() => setApretada(true)}
         onPressOut={() => setApretada(false)}
         accessibilityRole="button"
         accessibilityLabel={`Editar ${tx.nombre}`}
       >
-        <View style={styles.marcaFecha}>
-          <Text style={styles.dia}>{dates.day(fecha)}</Text>
-          <Text style={styles.mes}>{dates.monthShortName(dates.month(fecha))}</Text>
-        </View>
+        <MarcaDeFecha fecha={tx.ocurridoEn as dates.PlainDate} />
         <View style={styles.texto}>
           <Text style={styles.nombre} numberOfLines={1}>{tx.nombre}</Text>
           <View style={styles.meta}>
@@ -85,53 +65,32 @@ export function FilaMovimiento(
             <Text style={styles.subtitulo}>{subtitulo(tx, categorias.nombre)}</Text>
           </View>
         </View>
-        {/* Un punto ambar y nada mas. El ambar es el color de "esto pide
-            atencion" y no hay lugar en una fila para explicar por que; la
-            explicacion vive una sola vez, en el `?` del encabezado. */}
+        {/* La explicación del punto vive una vez, en la `i` del encabezado. */}
         {anomala ? <View style={styles.punto} /> : null}
-        <Text style={tx.tipo === 'ingreso' ? styles.montoIngreso : styles.montoGasto}>
-          {signo(tx)}{money.formatNumber(money.money(tx.montoMinor))}
+        <Text style={esIngreso ? styles.montoIngreso : styles.montoGasto}>
+          {esIngreso ? '+' : '−'}{money.formatNumber(money.money(tx.montoMinor))}
         </Text>
       </Pressable>
     </Link>
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
+function crearEstilos({ theme, t }: Estilo) {
   return StyleSheet.create({
-    /**
-     * Sin subrayado entre filas.
-     *
-     * Con una lista de treinta movimientos eran treinta lineas horizontales, y
-     * no separaban nada que no separara ya el espacio: cada fila trae su bloque
-     * de fecha a la izquierda y dos renglones propios, y el aire entre filas es
-     * el triple que el aire entre esos dos renglones. La agrupacion se lee sola.
-     */
     fila: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.lg,
       paddingVertical: spacing.md,
     },
-    filaApretada: { opacity: 0.55 },
-    marcaFecha: { width: 30, alignItems: 'center' },
-    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
-    mes: {
-      fontFamily: fonts.texto,
-      fontWeight: pesos.regular,
-      fontSize: letra.px(10),
-      color: theme.silencio,
-    },
+    apretada: { opacity: 0.55 },
     texto: { flex: 1, gap: 2 },
-    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
+    nombre: t.nombre,
     meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
-    // En `alerta`: marca un movimiento fuera de lo habitual, y el acento --que
-    // ahora es el agua-- se confunde con el resto de la interfaz.
+    subtitulo: t.etiqueta,
+    // `alerta` y no el acento: el acento es el agua y se confunde con el resto.
     punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.alerta },
-    montoGasto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.md, color: theme.gasto },
-    // `ingresoTexto` es la aurora en su version legible: en claro se oscurece
-    // hasta cumplir AA, en oscuro es la misma aurora viva.
-    montoIngreso: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.md, color: theme.ingresoTexto },
+    montoGasto: { ...t.cifraGrande, color: theme.gasto },
+    montoIngreso: { ...t.cifraGrande, fontWeight: t.accion.fontWeight, color: theme.ingresoTexto },
   });
 }

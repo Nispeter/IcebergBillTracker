@@ -1,68 +1,57 @@
 /**
  * Témpanos: lo que viene, flotando hacia uno.
  *
- * Cada fila es **una ocurrencia**, no una regla: "el arriendo del 5 de
- * septiembre", no "el arriendo". Eso permite marcar una y dejar las otras
- * quietas, que es lo que pasa en la vida real cuando un mes se paga distinto o
- * no se paga.
- *
- * Lo vencido y sin resolver va arriba y en rojo. No es alarmismo: es la unica
- * informacion de la pantalla sobre la que hay que hacer algo hoy.
+ * Cada fila es una ocurrencia ("el arriendo del 5 de septiembre"), no la regla
+ * entera: así se puede marcar una y dejar las otras, que es lo que pasa cuando
+ * un mes se paga distinto. Lo vencido va arriba y en rojo: es lo único de la
+ * pantalla sobre lo que hay que hacer algo hoy.
  */
 
 import { dates, money, recurrence } from '@iceberg/core';
 import {
   crearRegla, desmarcar, listarCuentas, marcarOmitida, marcarPagada, type Tempano,
 } from '@iceberg/db';
-import {
-  columna, elevation, fonts, pesos, radii, spacing, type Letra, type Theme,
-} from '@iceberg/ui';
+import { columna, elevation, holguraDeToque, radii, spacing } from '@iceberg/ui';
 import { Link } from 'expo-router';
 import { ArrowCounterClockwise } from 'phosphor-react-native/src/icons/ArrowCounterClockwise';
 import { Check } from 'phosphor-react-native/src/icons/Check';
-import { Plus } from 'phosphor-react-native/src/icons/Plus';
 import { X } from 'phosphor-react-native/src/icons/X';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ayuda } from '../../components/Ayuda';
-import { Pantalla } from '../../components/Pantalla';
-import { Titulo } from '../../components/Titulo';
-import { useAireInferior } from '../../datos/desplazamiento';
-import { Pinguino } from '../../components/Pinguino';
+import { Boton } from '../../components/Boton';
 import { iconoDeCategoria } from '../../components/iconos';
+import { MarcaDeFecha } from '../../components/MarcaDeFecha';
+import { Pantalla } from '../../components/Pantalla';
+import { Pinguino } from '../../components/Pinguino';
+import { Titulo } from '../../components/Titulo';
+import { Vacio } from '../../components/Vacio';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
-import { useCandidatasARegla, useTempanos } from '../../datos/consultas';
-import { useLetra } from '../../datos/letra';
-import { usePeriodo } from '../../datos/periodo';
-import { useTema } from '../../datos/tema';
 import { useCategorias } from '../../datos/catalogo';
+import { useCandidatasARegla, useTempanos } from '../../datos/consultas';
+import { useAireInferior } from '../../datos/desplazamiento';
+import { useEstilo, useEstilos, type Estilo } from '../../datos/estilos';
+import { usePeriodo } from '../../datos/periodo';
 
-/** Cuanto se asoma la seccion de proximos mas alla del periodo. */
+/**
+ * Cuánto se asoma la sección de próximos más allá del período. Las reglas se
+ * repiten para siempre; tres meses es lo que alcanza a cambiar una decisión de hoy.
+ */
 const DIAS_ADELANTE = 90;
 
+/** Lo que mide el círculo de cada acción de fila; el área táctil llega a 48. */
+const ACCION = 26;
+
 export default function Tempanos() {
-  const { theme } = useTema();
-  const letra = useLetra();
+  const styles = useEstilos(crearEstilos);
   const aireInferior = useAireInferior();
-  const styles = useMemo(() => crearEstilos(theme, letra), [theme, letra]);
   const { rango, corte } = usePeriodo();
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
 
   const tempanos = useTempanos(rango, corte);
-  /**
-   * Lo que viene **despues** del periodo que se esta mirando.
-   *
-   * Tempanos es la unica vista que mira hacia adelante, pero solo veia hasta el
-   * borde del mes: el 28 de agosto la pantalla decia "todo al dia" y el arriendo
-   * del 5 estaba a ocho dias. Que la cuenta exista y no se vea es justo lo que
-   * esta pantalla vino a evitar.
-   *
-   * Noventa dias y no "todo lo que venga": las reglas se repiten para siempre,
-   * asi que sin tope la lista es infinita. Tres meses es lo que alcanza a
-   * cambiar una decision de hoy.
-   */
+  // Lo que vence después del período: el 28 de agosto, el arriendo del 5 ya importa.
   const proximos = useTempanos(
     useMemo(
       () => dates.dateRange(dates.addDays(rango.end, 1), dates.addDays(rango.end, DIAS_ADELANTE)),
@@ -70,8 +59,7 @@ export default function Tempanos() {
     ),
     corte,
   ).filter((t) => t.estado === 'pendiente');
-  // Encontradas en el historial: es lo que evita tener que cargar a mano el
-  // arriendo, la luz y el agua antes de que la pantalla sirva para algo.
+  // Las que se repiten en el historial: evitan cargar a mano el arriendo y la luz.
   const candidatas = useCandidatasARegla(corte);
 
   const pendientes = tempanos.filter((t) => t.estado === 'pendiente');
@@ -80,6 +68,28 @@ export default function Tempanos() {
     pendientes.filter((t) => t.regla.tipo === 'gasto').reduce((s, t) => s + t.montoMinor, 0),
     'CLP',
   );
+
+  const acciones = (tempano: Tempano) => ({
+    onPagar: () => marcarPagada(db, contexto, tempano.regla.id, tempano.ocurreEn),
+    onOmitir: () => marcarOmitida(db, contexto, tempano.regla.id, tempano.ocurreEn),
+    onDeshacer: () => desmarcar(db, contexto, tempano.regla.id, tempano.ocurreEn),
+  });
+
+  function crearDesde(candidata: recurrence.Candidata) {
+    const cuenta = listarCuentas(db, contexto)[0];
+    if (!cuenta) return;
+    crearRegla(db, contexto, {
+      cuentaId: cuenta.id,
+      tipo: 'gasto',
+      montoMinor: candidata.montoMinor,
+      nombre: candidata.nombre,
+      categoriaId: candidata.categoriaId,
+      frecuencia: candidata.frecuencia,
+      cada: candidata.cada,
+      desde: candidata.desde,
+    });
+    avisar('Cuenta periódica creada');
+  }
 
   return (
     <Pantalla
@@ -93,117 +103,58 @@ export default function Tempanos() {
         + 'de arriba y ves lo que se viene.'}
       permitirFuturo
     >
-      <ScrollView
-        contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}
-      >
+      <ScrollView contentContainerStyle={[styles.contenido, { paddingBottom: aireInferior }]}>
         <View style={styles.cabecera}>
           <View style={styles.total}>
-            {/* La `i` va pegada a "por pagar", que es lo que explica. Estaba al
-                otro extremo de la fila, y ahi competia con el + por el mismo
-                rincon: dos iconos juntos, uno ambar y uno gris, obligaban a leer
-                cual era cual. */}
             <View style={styles.etiquetaConAyuda}>
               <Text style={styles.totalEtiqueta}>por pagar</Text>
               <Ayuda
                 titulo="Por pagar"
-                theme={theme}
                 texto={'Cada fila es una fecha concreta, no la cuenta entera. Marcar pagada crea '
-                  + 'el movimiento; omitir no crea nada. Las dos se pueden deshacer.\n\n'
-                  + 'El + de arriba agrega una cuenta que se repite: arriendo, luz, una '
-                  + 'suscripción.'}
+                  + 'el movimiento; omitir no crea nada. Las dos se pueden deshacer.'}
               />
             </View>
             <Text style={styles.totalCifra}>{money.format(porPagar)}</Text>
           </View>
-
-          {/*
-            El unico + de la pantalla, y arriba.
-
-            Habia dos --este y un boton al final de la lista-- que hacian lo
-            mismo. Dos caminos al mismo formulario no es el doble de descubrible:
-            es una pregunta de mas ("¿son distintos?") cada vez que se mira la
-            pantalla. Queda el de arriba, que se ve al entrar y no se mueve con
-            el largo de la lista.
-
-            No compite con el mas de la barra de abajo --que es el de anotar un
-            movimiento-- porque este vive dentro de la vista y al lado de su
-            propia cifra: lo que se agrega desde aca es una cuenta que se repite.
-          */}
-          <Link href="/regla/nueva" asChild>
-            <Pressable
-              style={styles.mas}
-              accessibilityRole="button"
-              accessibilityLabel="Nueva cuenta periódica"
-            >
-              <Plus size={20} weight="bold" color={theme.sobreAcento} />
-            </Pressable>
-          </Link>
+          {/* Con etiqueta y contorno: un círculo relleno sería un segundo botón
+              flotante compitiendo con el más de la barra. */}
+          <Boton etiqueta="Nueva cuenta periódica" href="/regla/nueva" />
         </View>
 
-        {/*
-          El unico momento de la app en que no hay nada que hacer y eso es una
-          buena noticia. Vale decirlo: la pantalla se ve igual de vacia cuando
-          esta todo pagado que cuando no hay nada cargado, y son cosas opuestas.
-        */}
+        {/* Todo pagado y nada cargado se ven igual de vacíos, y son opuestos: vale decirlo. */}
         {vencidos.length === 0 && tempanos.length > 0 && pendientes.length === 0 ? (
           <View style={styles.filaAviso}>
-            <Pinguino theme={theme} tamano={22} estado="contento" />
-            <Text style={styles.avisoAlDia}>Todo al día en este período.</Text>
+            <Pinguino tamano={22} estado="contento" />
+            <Text style={styles.alDia}>Todo al día en este período.</Text>
           </View>
         ) : null}
 
         {vencidos.length > 0 ? (
           <View style={styles.filaAviso}>
-            <Pinguino theme={theme} tamano={22} estado="alerta" />
-            <Text style={styles.aviso}>
-            {vencidos.length === 1 ? '1 cuenta vencida' : `${vencidos.length} cuentas vencidas`}
-              {' sin resolver.'}
+            <Pinguino tamano={22} estado="alerta" />
+            <Text style={styles.vencidos}>
+              {vencidos.length === 1 ? '1 cuenta vencida' : `${vencidos.length} cuentas vencidas`} sin resolver.
             </Text>
           </View>
         ) : null}
 
-        {tempanos.length === 0 ? (
-          <View style={styles.vacio}>
-            <Pinguino theme={theme} tamano={40} estado="dormido" />
-            <Text style={styles.vacioTexto}>
-              No hay cuentas periódicas en este período.
-            </Text>
-          </View>
-        ) : (
-          tempanos.map((tempano) => (
-            <Fila
-              key={`${tempano.regla.id}|${tempano.ocurreEn}`}
-              tempano={tempano}
-              styles={styles}
-              theme={theme}
-              onPagar={() => marcarPagada(db, contexto, tempano.regla.id, tempano.ocurreEn)}
-              onOmitir={() => marcarOmitida(db, contexto, tempano.regla.id, tempano.ocurreEn)}
-              onDeshacer={() => desmarcar(db, contexto, tempano.regla.id, tempano.ocurreEn)}
-            />
-          ))
-        )}
+        {tempanos.length === 0
+          ? <Vacio texto="No hay cuentas periódicas en este período." />
+          : tempanos.map((tempano) => (
+            <Fila key={`${tempano.regla.id}|${tempano.ocurreEn}`} tempano={tempano} {...acciones(tempano)} />
+          ))}
 
         {proximos.length > 0 ? (
           <>
             <Titulo
               texto="Próximos"
-              theme={theme}
               ayuda={'Lo que vence **después** de este período, hasta tres meses adelante.\n\n'
                 + 'Está acá porque el borde del mes no es el borde de tus cuentas: el 28 de '
                 + 'agosto, el arriendo del 5 ya es asunto tuyo.\n\n'
                 + 'Se pueden marcar igual que las de arriba, por si pagas una antes de tiempo.'}
             />
-
             {proximos.map((tempano) => (
-              <Fila
-                key={`${tempano.regla.id}|${tempano.ocurreEn}`}
-                tempano={tempano}
-                styles={styles}
-                theme={theme}
-                onPagar={() => marcarPagada(db, contexto, tempano.regla.id, tempano.ocurreEn)}
-                onOmitir={() => marcarOmitida(db, contexto, tempano.regla.id, tempano.ocurreEn)}
-                onDeshacer={() => desmarcar(db, contexto, tempano.regla.id, tempano.ocurreEn)}
-              />
+              <Fila key={`${tempano.regla.id}|${tempano.ocurreEn}`} tempano={tempano} {...acciones(tempano)} />
             ))}
           </>
         ) : null}
@@ -212,33 +163,11 @@ export default function Tempanos() {
           <>
             <Titulo
               texto="Detectadas en tu historial"
-              theme={theme}
               ayuda={'Movimientos que se repiten con la misma frecuencia y un monto '
                 + 'parecido. Son una propuesta: nada se crea hasta que la confirmes.'}
             />
-
             {candidatas.map((candidata) => (
-              <Sugerencia
-                key={candidata.nombre}
-                candidata={candidata}
-                styles={styles}
-                theme={theme}
-                onCrear={() => {
-                  const cuenta = listarCuentas(db, contexto)[0];
-                  if (!cuenta) return;
-                  crearRegla(db, contexto, {
-                    cuentaId: cuenta.id,
-                    tipo: 'gasto',
-                    montoMinor: candidata.montoMinor,
-                    nombre: candidata.nombre,
-                    categoriaId: candidata.categoriaId,
-                    frecuencia: candidata.frecuencia,
-                    cada: candidata.cada,
-                    desde: candidata.desde,
-                  });
-                  avisar('Cuenta periódica creada');
-                }}
-              />
+              <Sugerencia key={candidata.nombre} candidata={candidata} onCrear={() => crearDesde(candidata)} />
             ))}
           </>
         ) : null}
@@ -247,9 +176,7 @@ export default function Tempanos() {
   );
 }
 
-type Estilos = ReturnType<typeof crearEstilos>;
-
-/** Cuando falta poco o ya se paso, el numero de dias no dice nada por si solo. */
+/** Cerca de hoy, el número de días no dice nada por sí solo. */
 function cuando(diasRestantes: number): string {
   if (diasRestantes === 0) return 'hoy';
   if (diasRestantes === 1) return 'mañana';
@@ -259,29 +186,25 @@ function cuando(diasRestantes: number): string {
 }
 
 function Fila(
-  { tempano, styles, theme, onPagar, onOmitir, onDeshacer }: {
+  { tempano, onPagar, onOmitir, onDeshacer }: {
     tempano: Tempano;
-    styles: Estilos;
-    theme: Theme;
     onPagar: () => void;
     onOmitir: () => void;
     onDeshacer: () => void;
   },
 ) {
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useEstilo();
   const categorias = useCategorias();
   const { regla, estado, diasRestantes } = tempano;
   const Icono = regla.categoriaId ? iconoDeCategoria(regla.categoriaId) : null;
   const vencido = estado === 'pendiente' && diasRestantes < 0;
   const resuelto = estado !== 'pendiente';
-  const dia = dates.day(tempano.ocurreEn);
-  const mes = dates.monthShortName(dates.month(tempano.ocurreEn));
 
   return (
-    <View style={[styles.fila, resuelto && styles.filaResuelta]}>
-      <View style={styles.marcaFecha}>
-        <Text style={vencido ? styles.diaVencido : styles.dia}>{dia}</Text>
-        <Text style={styles.mes}>{mes}</Text>
-      </View>
+    // Lo resuelto sigue a la vista, pero deja de pedir atención.
+    <View style={[styles.fila, resuelto && styles.resuelta]}>
+      <MarcaDeFecha fecha={tempano.ocurreEn} vencida={vencido} />
 
       <View style={styles.texto}>
         <Link href={{ pathname: '/regla/[id]', params: { id: regla.id } }} asChild>
@@ -292,9 +215,7 @@ function Fila(
         <View style={styles.meta}>
           {Icono ? <Icono size={12} weight="regular" color={theme.silencio} /> : null}
           <Text style={vencido ? styles.subtituloVencido : styles.subtitulo}>
-            {estado === 'pagada' ? 'Pagada'
-              : estado === 'omitida' ? 'Omitida'
-                : cuando(diasRestantes)}
+            {estado === 'pagada' ? 'Pagada' : estado === 'omitida' ? 'Omitida' : cuando(diasRestantes)}
             {regla.categoriaId ? ` · ${categorias.nombreCorto(regla.categoriaId)}` : ''}
           </Text>
         </View>
@@ -308,9 +229,9 @@ function Fila(
         <Pressable
           onPress={onDeshacer}
           style={styles.accion}
+          hitSlop={holguraDeToque(ACCION)}
           accessibilityRole="button"
           accessibilityLabel={`Deshacer ${regla.nombre}`}
-          hitSlop={8}
         >
           <ArrowCounterClockwise size={14} weight="bold" color={theme.silencio} />
         </Pressable>
@@ -319,18 +240,18 @@ function Fila(
           <Pressable
             onPress={onOmitir}
             style={styles.accion}
+            hitSlop={holguraDeToque(ACCION)}
             accessibilityRole="button"
             accessibilityLabel={`Omitir ${regla.nombre}`}
-            hitSlop={8}
           >
             <X size={13} weight="bold" color={theme.silencio} />
           </Pressable>
           <Pressable
             onPress={onPagar}
             style={styles.accionPagar}
+            hitSlop={holguraDeToque(ACCION)}
             accessibilityRole="button"
             accessibilityLabel={`Marcar pagada ${regla.nombre}`}
-            hitSlop={8}
           >
             <Check size={13} weight="bold" color={theme.sobreAcento} />
           </Pressable>
@@ -340,14 +261,9 @@ function Fila(
   );
 }
 
-function Sugerencia(
-  { candidata, styles, theme, onCrear }: {
-    candidata: recurrence.Candidata;
-    styles: Estilos;
-    theme: Theme;
-    onCrear: () => void;
-  },
-) {
+function Sugerencia({ candidata, onCrear }: { candidata: recurrence.Candidata; onCrear: () => void }) {
+  const styles = useEstilos(crearEstilos);
+  const { theme } = useEstilo();
   const Icono = candidata.categoriaId ? iconoDeCategoria(candidata.categoriaId) : null;
 
   return (
@@ -367,25 +283,17 @@ function Sugerencia(
           </Text>
         </View>
       </View>
-
       <Text style={styles.monto}>{money.format(money.money(candidata.montoMinor))}</Text>
-
-      <Pressable
-        onPress={onCrear}
-        style={styles.crearChico}
-        accessibilityRole="button"
-        accessibilityLabel={`Crear cuenta periódica ${candidata.nombre}`}
-      >
-        <Text style={styles.crearChicoTexto}>Crear</Text>
-      </Pressable>
+      {/* De contorno: una lista de propuestas no es una pared de acciones principales. */}
+      <Boton etiqueta="Crear" accesible={`Crear cuenta periódica ${candidata.nombre}`} onPress={onCrear} />
     </View>
   );
 }
 
-function crearEstilos(theme: Theme, letra: Letra) {
-  const boton = {
-    width: 26,
-    height: 26,
+function crearEstilos({ theme, t, letra }: Estilo) {
+  const circulo = {
+    width: ACCION,
+    height: ACCION,
     borderRadius: radii.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -395,68 +303,32 @@ function crearEstilos(theme: Theme, letra: Letra) {
     contenido: columna,
     cabecera: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
+      gap: spacing.md,
       paddingTop: spacing.lg,
       paddingBottom: spacing.md,
     },
     total: { gap: 1 },
     etiquetaConAyuda: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    /**
-     * Redondo y relleno con el acento: es la unica accion de la pantalla que
-     * crea algo, y el resto de los botones de aca son de 26 px y con contorno.
-     * A 40 cae comodo bajo el pulgar sin pelearse con la cifra de al lado.
-     */
-    mas: {
-      width: 40,
-      height: 40,
-      borderRadius: radii.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.acento,
-    },
-    totalEtiqueta: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
-    totalCifra: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.px(28), color: theme.tinta, letterSpacing: -0.5 },
-    aviso: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.vencidoTexto, paddingBottom: spacing.sm },
-    // En el verde de los ingresos y no en el acento: es la misma idea de "esto
-    // suma", y ya esta aprendida en las otras pantallas.
-    avisoAlDia: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.ingresoTexto, paddingBottom: spacing.sm },
-
-    // Sin subrayado, igual que en la lista de movimientos: la fecha a la
-    // izquierda y los dos renglones de cada fila ya la separan de la siguiente.
-    fila: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      paddingVertical: spacing.md,
-    },
-    // Lo resuelto sigue a la vista pero deja de pedir atencion.
-    filaResuelta: { opacity: 0.45 },
-    marcaFecha: { width: 30, alignItems: 'center' },
-    dia: { fontFamily: fonts.mono, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
-    diaVencido: { fontFamily: fonts.mono, fontWeight: pesos.bold, fontSize: letra.md, color: theme.vencidoTexto },
-    mes: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.px(10), color: theme.silencio },
-    texto: { flex: 1, gap: 2 },
-    nombre: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.md, color: theme.tinta },
-    meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    subtitulo: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.xs, color: theme.silencio },
-    subtituloVencido: { fontFamily: fonts.texto, fontWeight: pesos.medium, fontSize: letra.xs, color: theme.vencidoTexto },
-    monto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.tinta },
-    montoResuelto: { fontFamily: fonts.mono, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.silencio, textDecorationLine: 'line-through' },
-
-    accion: { ...boton, borderWidth: elevation.hairlineWidth, borderColor: theme.hairline },
-    accionPagar: { ...boton, backgroundColor: theme.acento },
-
-    vacio: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
+    totalEtiqueta: t.etiqueta,
+    totalCifra: { ...t.cifra, fontSize: letra.px(28), fontWeight: t.accion.fontWeight, letterSpacing: -0.5 },
     filaAviso: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
-    vacioTexto: { fontFamily: fonts.texto, fontWeight: pesos.regular, fontSize: letra.sm, color: theme.silencio, paddingVertical: spacing.lg },
+    vencidos: t.error,
+    // El verde de los ingresos: la misma idea de "esto está bien", ya aprendida.
+    alDia: { ...t.error, color: theme.ingresoTexto },
 
-    crearChico: {
-      paddingVertical: 5,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.sm,
-      backgroundColor: theme.acento,
-    },
-    crearChicoTexto: { fontFamily: fonts.texto, fontWeight: pesos.semibold, fontSize: letra.xs, color: theme.sobreAcento },
+    // Sin subrayado: la fecha y los dos renglones ya separan una fila de la siguiente.
+    fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+    resuelta: { opacity: 0.45 },
+    texto: { flex: 1, gap: 2 },
+    nombre: t.nombre,
+    meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    subtitulo: t.etiqueta,
+    subtituloVencido: { ...t.error, fontSize: t.etiqueta.fontSize },
+    monto: { ...t.cifra, fontSize: t.cuerpo.fontSize },
+    montoResuelto: { ...t.cifra, fontSize: t.cuerpo.fontSize, color: theme.silencio, textDecorationLine: 'line-through' },
+    accion: { ...circulo, borderWidth: elevation.hairlineWidth, borderColor: theme.hairline },
+    accionPagar: { ...circulo, backgroundColor: theme.acento },
   });
 }

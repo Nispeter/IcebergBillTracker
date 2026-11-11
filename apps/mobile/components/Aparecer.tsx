@@ -1,21 +1,15 @@
 /**
- * Aparecer y desaparecer sin cortes.
+ * Aparecer y desaparecer sin cortes: un panel que se desvanece subiendo unos
+ * píxeles se lee como algo que estaba ahí; uno que sale de golpe, como un
+ * cambio de pantalla.
  *
- * Un panel que sale de golpe se lee como un cambio de pantalla; uno que se
- * desvanece subiendo unos píxeles se lee como algo que estaba ahí y se mostró.
- * La diferencia es de doscientos milisegundos y cambia por completo la sensación
- * de la app.
- *
- * **Se queda montado mientras se va.** Si se desmontara al cerrar, la animación
- * de salida no se vería nunca: el elemento ya no existiría cuando toca dibujarla.
- * Es lo mismo que hace el menú lateral.
- *
- * Sale más rápido de lo que entra —160 contra 200— porque al cerrar uno ya
- * decidió, y esperar la animación completa se siente lento.
+ * Se queda montado mientras se va, o la animación de salida no se vería nunca.
  */
 
+import { durations } from '@iceberg/ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, type StyleProp, type ViewStyle } from 'react-native';
+import { CURVA, transicion, useMovimientoReducido } from '../datos/animacion';
 
 export function Aparecer(
   { visible, children, estilo, desplazamiento = 6 }: {
@@ -28,18 +22,18 @@ export function Aparecer(
 ) {
   const [montado, setMontado] = useState(visible);
   const progreso = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const reducido = useMovimientoReducido();
 
   useEffect(() => {
     if (visible) setMontado(true);
-    Animated.timing(progreso, {
-      toValue: visible ? 1 : 0,
-      duration: visible ? 200 : 160,
-      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
-      useNativeDriver: true,
+    transicion(progreso, visible ? 1 : 0, {
+      duracion: visible ? durations.entrada : durations.salida,
+      curva: visible ? CURVA.entra : CURVA.sale,
+      reducido,
     }).start(({ finished }) => {
       if (finished && !visible) setMontado(false);
     });
-  }, [visible, progreso]);
+  }, [visible, progreso, reducido]);
 
   if (!montado) return null;
 

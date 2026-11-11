@@ -1,17 +1,15 @@
-/** Alta de una cuenta periodica. */
+/** Alta de una cuenta periódica. */
 
 import { crearRegla, listarCuentas } from '@iceberg/db';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FormularioRegla, type ValoresDeRegla } from '../../components/FormularioRegla';
+import { PantallaModal } from '../../components/PantallaModal';
 import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { volver } from '../../datos/navegacion';
-import { useTema } from '../../datos/tema';
-import { PantallaModal } from '../../components/PantallaModal';
 
 export default function NuevaRegla() {
-  const { theme } = useTema();
   const { db, contexto } = useDatos();
   const avisar = useAvisar();
   const router = useRouter();
@@ -21,7 +19,7 @@ export default function NuevaRegla() {
     try {
       const cuenta = listarCuentas(db, contexto)[0];
       if (!cuenta) {
-        setError('No hay ninguna cuenta creada todavia');
+        setError('No hay ninguna cuenta creada todavía.');
         return;
       }
       crearRegla(db, contexto, { cuentaId: cuenta.id, ...valores });
@@ -35,7 +33,6 @@ export default function NuevaRegla() {
   return (
     <PantallaModal>
       <FormularioRegla
-        theme={theme}
         titulo="Nueva cuenta periódica"
         onGuardar={guardar}
         onCancelar={() => volver(router)}
