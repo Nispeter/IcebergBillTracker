@@ -1,28 +1,11 @@
 /**
- * Que dia es hoy, **y que deje de serlo cuando deje de serlo**.
+ * Qué día es hoy, y que deje de serlo a medianoche. `dates.today()` contesta
+ * una vez; una app que se deja abierta seguía marcando ayer a la mañana siguiente.
  *
- * `dates.today()` contesta bien, pero contesta una vez: lo que devuelve queda
- * congelado en el render donde se llamo. Una app de telefono no se cierra, se
- * deja abierta, y a la mañana siguiente seguia marcando el dia anterior en el
- * calendario. Nada estaba mal calculado; nadie volvia a preguntar.
- *
- * Por eso es un hook y no una funcion: React necesita que algo le avise para
- * volver a dibujar, y ese algo es el estado de aca adentro.
- *
- * ## Cuando vuelve a preguntar
- *
- * En dos momentos, porque son dos formas distintas de cruzar la medianoche:
- *
- * - **Al volver del fondo**, que es el caso comun. El telefono estuvo apagado
- *   toda la noche y con el ni los temporizadores: Android no los corre mientras
- *   el proceso duerme, asi que esperar solo la alarma no alcanza.
- * - **Con una alarma a la medianoche**, para la app que se queda abierta y a la
- *   vista mientras cambia el dia.
- *
- * La alarma se topa en una hora aunque falte mas. La medianoche se calcula con
- * el reloj del dispositivo y `today()` responde en la zona de Chile: si el
- * telefono esta en otra zona las dos no coinciden, y el tope hace que la
- * diferencia se corrija sola en menos de una hora en vez de durar todo un dia.
+ * Vuelve a preguntar al volver del fondo (Android no corre temporizadores con
+ * el proceso dormido) y con una alarma a medianoche, topada en una hora: la
+ * medianoche sale del reloj del teléfono y `today()` de la zona de Chile, y con
+ * el tope cualquier diferencia se corrige sola.
  */
 
 import { dates } from '@iceberg/core';

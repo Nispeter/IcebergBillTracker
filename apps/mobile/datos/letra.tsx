@@ -8,18 +8,15 @@
  */
 
 import { letraConEscala, LETRA_NORMAL, type Letra } from '@iceberg/ui';
-import { CLAVE_ESCALA_DE_LETRA, consultaDeAjuste, escribirAjuste } from '@iceberg/db';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { CLAVE_ESCALA_DE_LETRA, escribirAjuste } from '@iceberg/db';
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useDatos } from './BaseDeDatos';
+import { useAjuste } from './consultas';
 
 const Contexto = createContext<Letra>(LETRA_NORMAL);
 
 export function ProveedorDeLetra({ children }: { children: ReactNode }) {
-  const { db } = useDatos();
-  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_ESCALA_DE_LETRA), [db]);
-  const { data } = useLiveQuery(consulta);
-  const crudo = data?.[0]?.valor;
+  const crudo = useAjuste(CLAVE_ESCALA_DE_LETRA);
   // La identidad del objeto es la que hace que `useEstilos` rearme las hojas.
   const letra = useMemo(() => letraConEscala(Number(crudo)), [crudo]);
   return <Contexto.Provider value={letra}>{children}</Contexto.Provider>;

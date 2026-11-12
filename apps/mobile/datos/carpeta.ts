@@ -1,56 +1,16 @@
 /**
- * La carpeta compartida: el transporte de la sincronizacion.
+ * La carpeta compartida, el transporte de la sincronización: la app no habla
+ * con ninguna nube. Se elige una carpeta con el selector del sistema y cada
+ * teléfono escribe ahí su propio archivo; la nube los mueve como a cualquier
+ * otro, y nadie escribe el archivo de otro, así que no hay conflictos de nube.
  *
- * La idea entera es que **la app no habla con ninguna nube**. El usuario elige
- * una carpeta con el selector del sistema --una de Drive, de Dropbox, de
- * OneDrive o del propio telefono-- y ahi adentro cada aparato escribe un archivo
- * con su nombre. La nube sincroniza esos archivos como sincroniza cualquier otro
- * archivo del usuario, y la app se limita a leer los que no son suyos.
- *
- * Lo que se gana: sin servidor, sin cuenta dentro de la app, sin OAuth y sin
- * claves de API. Y funciona igual con cualquier nube, porque el permiso es sobre
- * una carpeta y no sobre un proveedor.
- *
- * Lo que se pierde: **nadie avisa cuando el otro escribio**. Hay que ir a mirar,
- * asi que esto se pone al dia cuando alguien sincroniza, no en tiempo real.
- *
- * ## Nada se busca por nombre
- *
- * La primera version listaba la carpeta y buscaba su archivo por el nombre que
- * venia en la URI. **En Drive eso no existe.** Una URI de almacenamiento local
- * termina en `primary:Documents/Iceberg/iceberg-01ABC.json` y el nombre esta a
- * la vista; una de Drive termina en `acc=4;doc=encoded=6jU41736SetDJn6Zm...`,
- * que es un identificador opaco. `readDirectoryAsync` devuelve URIs y nada mas:
- * no hay forma de pedir el nombre para mostrar.
- *
- * Por eso ahora **se guarda la URI del archivo propio** y se escribe derecho
- * sobre ella. Y al leer, lo ajeno es "todo lo que hay menos esa URI": tampoco
- * hace falta el nombre.
- *
- * ## Una subcarpeta propia
- *
- * Al elegir se crea `Iceberg` adentro y se guarda **esa**. Sin eso, "todo lo que
- * hay menos lo mio" seria la carpeta entera del usuario --planillas, PDF, lo que
- * tenga-- y habria que abrir cada archivo para descubrir que no era nuestro.
- *
- * ## Un archivo por aparato
- *
- * Nadie escribe el archivo de otro. Asi no hay dos escritores sobre el mismo
- * archivo y el conflicto a nivel de nube desaparece: lo peor que puede pasar es
- * leer una version vieja del archivo ajeno, y la fusion es idempotente, asi que
- * la proxima pasada lo arregla sola.
- *
- * ## Dos plataformas
- *
- * En Android es SAF --el selector de carpetas del sistema--, que entrega permiso
- * permanente sobre la carpeta elegida. En web es la File System Access API, que
- * hace lo mismo con otro nombre; su permiso se guarda en IndexedDB y el
- * navegador lo revalida con un gesto del usuario, que es justamente el boton de
- * sincronizar.
- *
- * SAF vive en `expo-file-system/legacy`: la API nueva todavia no lo expone. Es
- * la unica parte del paquete con fecha de vencimiento y esta aislada aca a
- * proposito, para que el dia que se mueva haya que tocar un solo archivo.
+ * - Nada se busca por nombre: en Drive la URI es un identificador opaco. Se
+ *   guarda la URI del archivo propio, y lo ajeno es todo lo demás.
+ * - Al elegir se crea la subcarpeta `Iceberg` y se guarda esa, para no leer
+ *   todo lo que el usuario tenga en la suya.
+ * - Android usa SAF (en `expo-file-system/legacy`, aislado acá para tocar un
+ *   solo archivo el día que se mueva); web, la File System Access API, con el
+ *   permiso guardado en IndexedDB y revalidado al tocar Sincronizar.
  */
 
 import { nombreDelArchivo, type ArchivoDeCarpeta, type Contexto } from '@iceberg/db';
@@ -72,18 +32,10 @@ const EN_EL_NAVEGADOR = 'web';
 const SUBCARPETA = 'Iceberg';
 
 /**
- * Ya no se puede entrar a la carpeta.
- *
- * **Solo se usa cuando es seguro**, y en la practica eso es un caso: en web, que
- * el manejador guardado en IndexedDB no este o que el navegador niegue el
- * permiso. Ahi no hay nada que reintentar.
- *
- * En Android **no se usa**, y es a proposito. Antes cualquier error de SAF se
- * convertia en este, y quien llamaba borraba la carpeta guardada: un fallo
- * cualquiera --uno de red de Drive, por ejemplo-- dejaba al usuario teniendo que
- * volver a elegir la carpeta y sin saber que habia pasado, porque el mensaje
- * verdadero se perdia en el camino. Ahora los errores de SAF suben tal como
- * vienen.
+ * Ya no se puede entrar a la carpeta, con certeza: en web, el manejador no está
+ * o el navegador niega el permiso. Quien la recibe suelta la carpeta guardada,
+ * así que en Android no se usa: ahí los errores de SAF suben tal como vienen, y
+ * un fallo de red no obliga a volver a elegirla.
  */
 export class CarpetaPerdidaError extends Error {
   override name = 'CarpetaPerdidaError';
@@ -94,16 +46,9 @@ export class CarpetaPerdidaError extends Error {
 }
 
 /**
- * El proveedor de la carpeta no deja escribir.
- *
- * Se descubre al elegirla y no al sincronizar, que es lo que importa: enterarse
- * en el momento de elegir permite elegir otra, mientras que enterarse tres dias
- * despues --cuando uno creia que estaba respaldado-- es la peor forma de
- * fallar.
- *
- * Pasa con proveedores de nube que exponen sus carpetas **solo para leer**. El
- * selector del sistema las muestra igual y devuelve una URI valida, asi que no
- * hay forma de saberlo sin intentar escribir.
+ * El proveedor de la carpeta no deja escribir: algunas nubes exponen sus
+ * carpetas solo para leer y el selector las ofrece igual. Se descubre al
+ * elegirla, cuando todavía se puede elegir otra, y no días después.
  */
 export class CarpetaDeSoloLecturaError extends Error {
   override name = 'CarpetaDeSoloLecturaError';
@@ -118,13 +63,7 @@ export class CarpetaDeSoloLecturaError extends Error {
   }
 }
 
-/**
- * Corre una operacion de SAF diciendo cual era si falla.
- *
- * Sin esto los errores llegaban como un mensaje suelto de Android sin contexto,
- * y desde afuera era imposible saber si habia fallado listar, crear o escribir.
- * Son tres causas distintas con tres salidas distintas.
- */
+/** Corre una operación de SAF diciendo cuál era si falla: listar, crear y escribir fallan distinto. */
 async function alIntentar<T>(que: string, hacer: () => Promise<T>): Promise<T> {
   try {
     return await hacer();
@@ -226,9 +165,7 @@ export async function elegirCarpeta(): Promise<string | null> {
   const permiso = await SAF.requestDirectoryPermissionsAsync();
   if (!permiso.granted) return null;
 
-  // Crear la subcarpeta es ademas **la prueba de que se puede escribir**. Antes
-  // se caia de vuelta a la carpeta elegida si fallaba, y eso escondia el
-  // problema hasta la primera sincronizacion, donde ya no se entendia.
+  // Crear la subcarpeta es además la prueba de que se puede escribir.
   try {
     return await SAF.makeDirectoryAsync(permiso.directoryUri, SUBCARPETA);
   } catch (e) {
@@ -237,11 +174,8 @@ export async function elegirCarpeta(): Promise<string | null> {
 }
 
 /**
- * Un nombre corto de la carpeta, para mostrarlo.
- *
- * En almacenamiento local la URI termina en algo legible; en Drive termina en un
- * identificador opaco y no hay de donde sacar el nombre. Ahi se dice de que
- * proveedor es, que es lo unico cierto que se puede decir.
+ * Un nombre corto de la carpeta, para mostrarlo. Si la URI es un identificador
+ * opaco (Drive), se dice de qué proveedor es, que es lo único cierto.
  */
 export function nombreDeCarpeta(carpeta: string): string {
   if (carpeta === EN_EL_NAVEGADOR) return 'la carpeta elegida';
@@ -254,9 +188,7 @@ export function nombreDeCarpeta(carpeta: string): string {
     cola = carpeta;
   }
 
-  // `acc=4;doc=encoded=...` y compañia: un identificador, no un nombre. Se dice
-  // de que proveedor es, que es lo unico cierto: decir "carpeta Iceberg" seria
-  // afirmar que la subcarpeta se creo, y desde aca no se sabe.
+  // `acc=4;doc=encoded=...`: un identificador, no un nombre.
   if (cola.includes('=')) {
     const proveedor = carpeta.match(/com\.google\.android\.apps\.docs/) ? 'Google Drive' : 'tu nube';
     return `Una carpeta de ${proveedor}`;
@@ -267,11 +199,8 @@ export function nombreDeCarpeta(carpeta: string): string {
 }
 
 /**
- * Escribe el archivo de este aparato y devuelve su URI, para guardarla.
- *
- * `archivoConocido` es la URI de la vuelta anterior. Con ella se escribe derecho
- * y no hace falta listar nada; sin ella se crea el archivo. **Buscarlo por
- * nombre no es una opcion**: ver el encabezado de este archivo.
+ * Escribe el archivo de este teléfono y devuelve su URI, para guardarla. Con la
+ * URI de la vuelta anterior se escribe derecho; sin ella, se crea.
  */
 export async function escribirEnCarpeta(
   carpeta: string, base: string, texto: string, archivoConocido: string | null,
@@ -306,11 +235,8 @@ export async function escribirEnCarpeta(
 }
 
 /**
- * Lee lo que dejaron los otros aparatos.
- *
- * Ajeno es **todo lo que hay menos el archivo propio**, identificado por su URI
- * y no por su nombre. Lo que no se pueda leer o no sea JSON se descarta mas
- * arriba, en `pasarPorCarpeta`, que lo cuenta como cerrado.
+ * Lee lo que dejaron los otros teléfonos: todo menos el archivo propio. Lo que
+ * no sea un respaldo lo descarta `pasarPorCarpeta`, que lo cuenta como cerrado.
  */
 export async function leerCarpeta(
   carpeta: string, propio: string | null,

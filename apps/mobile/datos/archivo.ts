@@ -1,25 +1,12 @@
 /**
- * Elegir un archivo de cartola y convertirlo en una matriz de celdas.
+ * Elegir una cartola y convertirla en una matriz de celdas: la única pieza del
+ * importador que toca la plataforma. `core/csv` recibe la matriz, así que
+ * parsear, deduplicar y categorizar se prueba en Node sin abrir nada.
  *
- * Es lo unico que queda de elegir archivos a mano: el respaldo y la fusion se
- * movieron a la carpeta compartida, en `carpeta.ts`. Una cartola se elige una
- * vez y se importa; un respaldo hay que ir a buscarlo cada vez, y esa diferencia
- * es la que hacia que sincronizar a mano no lo hiciera nadie.
- *
- * Es la unica pieza del importador que toca la plataforma. `core/csv` recibe la
- * matriz y no sabe de archivos, asi que todo lo que sigue —parsear, deduplicar,
- * categorizar— se prueba en Node sin abrir nada.
- *
- * Leer los bytes se hace distinto en cada lado y no hay forma de evitarlo: en
- * web el picker devuelve un `blob:` que se busca con `fetch`, y en Android una
- * ruta `content://` que solo `expo-file-system` sabe leer.
- *
- * Se usa la API **nueva** de `expo-file-system` (`File`, `Paths`). En SDK 57 la
- * vieja —`readAsStringAsync` y compania— se movio a `expo-file-system/legacy` y
- * ya no sale del import normal.
- *
- * **El camino de Android no esta probado**: la app todavia no corre en un
- * telefono. El de web si, con las siete cartolas reales.
+ * Los bytes se leen distinto en cada lado: en web el selector da un `blob:`
+ * que se busca con `fetch`; en Android, una ruta `content://` que solo
+ * `expo-file-system` sabe leer. El camino de web se probó con las siete
+ * cartolas reales; el de Android, no.
  */
 
 import type { csv } from '@iceberg/core';
@@ -40,11 +27,7 @@ const TIPOS = [
   'text/csv',
 ];
 
-/**
- * Abre el selector y devuelve la primera hoja como matriz.
- *
- * `null` si el usuario cancela, que no es un error.
- */
+/** Abre el selector y devuelve la primera hoja como matriz, o `null` si se cancela. */
 export async function elegirCartola(): Promise<ArchivoElegido | null> {
   const elegido = await DocumentPicker.getDocumentAsync({
     type: TIPOS,

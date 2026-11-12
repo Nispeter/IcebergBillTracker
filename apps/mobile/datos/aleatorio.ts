@@ -1,25 +1,11 @@
 /**
- * `crypto.getRandomValues` para Hermes.
+ * `crypto.getRandomValues` para Hermes, que no trae la Web Crypto API. Lo piden
+ * `ulid` (el id de cada fila) y `@noble` (la sal del cifrado); sin esto la app
+ * muere al abrir la base con "Failed to find a reliable PRNG".
  *
- * En el navegador este metodo viene con la plataforma. En React Native **no
- * existe**: Hermes no trae la Web Crypto API, y ningun polyfill entra solo. El
- * sintoma no fue obvio --la app arrancaba y moria con "No se pudo abrir la base:
- * Failed to find a reliable PRNG"-- porque quien lo pide primero es `ulid`, al
- * generar el identificador de la primera fila.
- *
- * Y lo pide **mas de uno**: ademas de los ULID de cada movimiento, `@noble` lo
- * usa para la sal del cifrado del respaldo. Los dos leen el mismo global, asi
- * que se arregla una vez y en un solo lugar.
- *
- * Va con `expo-crypto` y no con `react-native-get-random-values`, que es el
- * polyfill habitual: ese es un modulo nativo de terceros y **no viene dentro de
- * Expo Go**, asi que habria obligado a un development build --justo lo que se
- * queria evitar para poder probar en el telefono--. `expo-crypto` es parte del
- * SDK y ya viene incluido.
- *
- * **Se importa por su efecto, no por lo que exporta**, y tiene que ser lo
- * primero que corra en la app. En web no hace nada: si el metodo ya esta, no se
- * toca.
+ * Con `expo-crypto`, que viene en Expo Go, y no con el polyfill de terceros
+ * habitual, que obligaría a un development build. Se importa por su efecto y
+ * tiene que correr primero. En web no toca nada.
  */
 
 import { getRandomValues } from 'expo-crypto';

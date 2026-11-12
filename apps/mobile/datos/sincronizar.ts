@@ -1,13 +1,8 @@
 /**
- * Una pasada por la carpeta compartida.
- *
- * Son tres pasos --leer lo que dejaron los otros, fusionarlo, y dejar el archivo
- * propio al día-- y acá está solamente el primero y el último, que son los que
- * tocan el sistema de archivos. Lo del medio vive en `db/repositorios/carpeta`,
- * separado justamente para poder probarlo sin abrir nada.
- *
- * Acá también se recuerda **cuál es el archivo propio**, porque no se puede
- * encontrar por nombre: ver `carpeta.ts`.
+ * Una pasada por la carpeta compartida: leer lo de los otros, fusionarlo y dejar
+ * el archivo propio al día. Acá van los dos pasos que tocan archivos; la fusión
+ * vive en `db/repositorios/carpeta`, donde se prueba sin abrir nada. También se
+ * recuerda cuál es el archivo propio, que no se puede encontrar por nombre.
  */
 
 import {

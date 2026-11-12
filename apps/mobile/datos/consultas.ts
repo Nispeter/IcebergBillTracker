@@ -1,30 +1,24 @@
 /**
- * Consultas reactivas de las pantallas.
+ * Las consultas reactivas de las pantallas.
  *
- * `useLiveQuery` se queda escuchando los cambios de SQLite y vuelve a correr la
- * consulta sola.
+ * `useLiveQuery` escucha a SQLite y vuelve a correr la consulta sola, así que
+ * nadie refresca a mano: se agrega un movimiento y la lista, los totales y el
+ * iceberg cambian juntos, porque salen de la misma base.
  *
- * **Ojo con el segundo argumento**: su valor por defecto es `[]`, asi que el
- * efecto corre **una sola vez al montar**. Si la consulta cambia —otro filtro,
- * otro limite— y no se le pasan dependencias, sigue devolviendo el resultado de
- * la primera. Todo hook de aca abajo que arme una consulta variable **tiene que
- * pasarlas**. Por eso ninguna pantalla necesita refrescar a mano despues de
- * escribir: se agrega un movimiento y el listado, los totales y el iceberg se
- * actualizan solos, porque todos salen de la misma base.
- *
- * La alternativa —estado global replicando la base— es justo lo que el plan del
- * proyecto descarta: dos fuentes de verdad que se desincronizan.
+ * Su segundo argumento son las dependencias y por omisión es `[]`: una consulta
+ * que cambia (otro filtro, otro límite) tiene que pasarlas, o sigue devolviendo
+ * el resultado de la primera.
  */
 
 import { analytics, dates, money, recurrence } from '@iceberg/core';
 import {
-  combinarTempanos, consultaDeCuentas, consultaDeInstancias, consultaDeLotes,
+  combinarTempanos, consultaDeAjuste, consultaDeCuentas, consultaDeInstancias, consultaDeLotes,
   consultaDeMiembros, consultaDeMovimientos, consultaDeReglas, consultaDeReglasDeCategoria,
-  consultaDeResumen, consultaDelPrimerDia, resumenDesde,
-  type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote, type Miembro,
+  consultaDeResumen, consultaDelPrimerDia, escribirAjuste, leerAjuste, resumenDesde,
   CLAVE_CATEGORIAS_COMPROMETIDAS, CLAVE_EXPLICACION_DE_A_POCO, CLAVE_PINGUINOS,
-  consultaDeAjuste, escribirAjuste, leerAjuste, type BaseDeDatos,
-  type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro, type Tempano,
+  type BaseDeDatos, type Cuenta, type FiltroDeMovimientos, type Instancia, type Lote,
+  type Miembro, type Movimiento, type Regla, type ReglaCategoria, type ResumenDeFiltro,
+  type Tempano,
 } from '@iceberg/db';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useMemo } from 'react';
@@ -32,51 +26,40 @@ import { useDatos } from './BaseDeDatos';
 import { useCuentaActiva } from './cuenta';
 import { useHoy } from './hoy';
 
+/** El valor crudo de un ajuste, reactivo. `undefined` mientras no esté o no cargue. */
+export function useAjuste(clave: string): string | undefined {
+  const { db } = useDatos();
+  const consulta = useMemo(() => consultaDeAjuste(db, clave), [db, clave]);
+  const { data } = useLiveQuery(consulta, [clave]);
+  return data?.[0]?.valor;
+}
+
 /**
- * Aplica el alcance de cuenta a un filtro, sin pisar lo que ya venga puesto.
- *
- * Que el filtro explicito gane es a proposito: una pantalla que pide una cuenta
- * concreta --el detalle de esa cuenta-- sabe mas que el alcance global.
+ * Aplica el alcance de cuenta a un filtro. Lo explícito gana: una pantalla que
+ * pide una cuenta concreta sabe más que el alcance global.
  */
-function conCuentaActiva(
-  filtro: FiltroDeMovimientos,
-  cuentaId: string | null,
-): FiltroDeMovimientos {
+function conCuentaActiva(filtro: FiltroDeMovimientos, cuentaId: string | null): FiltroDeMovimientos {
   if (cuentaId === null || filtro.cuentaId !== undefined) return filtro;
   return { ...filtro, cuentaId };
 }
 
 /**
- * Todos los movimientos vivos del hogar, del mas nuevo al mas viejo.
- *
- * **Respeta la cuenta activa.** Casi todo el analisis de la app cuelga de aca
- * --el resumen, las categorias, el calendario, las anomalias-- asi que filtrar
- * en este punto deja todas esas vistas dentro del alcance sin que ninguna tenga
- * que acordarse.
+ * Los movimientos vivos, del más nuevo al más viejo, dentro de la cuenta
+ * activa. Casi todo el análisis cuelga de acá, así que filtrar en este punto
+ * deja todas las vistas dentro del alcance sin que ninguna se acuerde.
  */
 export function useMovimientos(limite?: number): Movimiento[] {
   const { db, contexto } = useDatos();
   const { cuentaId } = useCuentaActiva();
   const consulta = useMemo(
-    () => consultaDeMovimientos(
-      db,
-      contexto,
-      conCuentaActiva(limite === undefined ? {} : { limite }, cuentaId),
-    ),
+    () => consultaDeMovimientos(db, contexto, conCuentaActiva(limite === undefined ? {} : { limite }, cuentaId)),
     [db, contexto, limite, cuentaId],
   );
   const { data } = useLiveQuery(consulta, [limite, cuentaId]);
   return (data ?? []) as Movimiento[];
 }
 
-/**
- * El saldo: saldo inicial de las cuentas mas lo que entro menos lo que salio.
- *
- * Se calcula sobre los movimientos ya cargados en vez de con un `SUM` en SQL
- * porque asi hay una sola consulta reactiva en la pantalla. Con 50.000 filas eso
- * deja de servir y pasa a ser un `SUM` incremental; esta anotado como riesgo
- * para F6.
- */
+/** El saldo: el inicial de las cuentas más lo que entró menos lo que salió. */
 export function useSaldo(saldoInicialMinor: number): money.Money {
   return useDesgloseDelSaldo(saldoInicialMinor).saldo;
 }
@@ -84,51 +67,37 @@ export function useSaldo(saldoInicialMinor: number): money.Money {
 export interface DesgloseDelSaldo {
   readonly saldo: money.Money;
   readonly inicial: money.Money;
-  /** Todo lo que entro, desde siempre. */
+  /** Todo lo que entró, desde siempre. */
   readonly ingresos: money.Money;
-  /** Todo lo que salio, desde siempre. */
+  /** Todo lo que salió, desde siempre. */
   readonly gastos: money.Money;
 }
 
+/** Para que el filtro vacío no sea un objeto nuevo en cada render. */
+const SIN_FILTRO: FiltroDeMovimientos = {};
+
 /**
- * El saldo y las tres piezas de las que sale.
- *
- * Existe para que la hoja de "de donde sale este numero" no tenga que rehacer
- * la cuenta ni abrir una segunda consulta identica: si el desglose se calculara
- * aparte, podria decir algo distinto de lo que muestra la cifra.
+ * El saldo y las piezas de las que sale, de una misma consulta: así la hoja de
+ * "de dónde sale" no puede decir algo distinto de la cifra. Suma en SQL, sin
+ * traer las filas; las transferencias las descarta la consulta.
  */
 export function useDesgloseDelSaldo(saldoInicialMinor: number): DesgloseDelSaldo {
-  // Suma en SQL, sin traer las filas. Antes cargaba **todos** los movimientos
-  // solo para volver a sumarlos en memoria: con seiscientos daba igual, con
-  // cincuenta mil son cincuenta mil filas cruzando el puente cada vez que
-  // cambia una. Las transferencias las descarta la propia consulta.
   const total = useResumenDeFiltro(SIN_FILTRO);
-
   return useMemo(() => ({
-    saldo: money.money(
-      saldoInicialMinor + total.ingreso.amountMinor - total.gasto.amountMinor, 'CLP',
-    ),
+    saldo: money.money(saldoInicialMinor + total.ingreso.amountMinor - total.gasto.amountMinor, 'CLP'),
     inicial: money.money(saldoInicialMinor, 'CLP'),
     ingresos: total.ingreso,
     gastos: total.gasto,
   }), [total, saldoInicialMinor]);
 }
 
-/** Constante para que el filtro vacio no sea un objeto nuevo en cada render. */
-const SIN_FILTRO: FiltroDeMovimientos = {};
-
 /**
- * El saldo justo antes de que empiece el rango.
- *
- * Hace falta para dibujar la linea de saldo del periodo: `analytics` solo ve los
- * movimientos que le pasan, y el saldo de verdad arrastra todo lo anterior mas
- * el saldo inicial de las cuentas. Sin esto la linea arrancaria en cero y diria
- * que uno empieza cada mes quebrado.
+ * El saldo justo antes de que empiece el rango, para que la línea de saldo no
+ * arranque en cero: `analytics` solo ve los movimientos que le pasan.
  */
 export function useSaldoAlEmpezar(rango: dates.DateRange): money.Money {
   const movimientos = useMovimientos();
   const inicial = useSaldoInicial();
-
   return useMemo(() => {
     let total = inicial;
     for (const m of movimientos) {
@@ -141,11 +110,9 @@ export function useSaldoAlEmpezar(rango: dates.DateRange): money.Money {
 }
 
 /**
- * El analisis de **cualquier** rango: resumen, comparacion y ritmo.
- *
- * Toma un `DateRange` y no un mes porque el rango ya sabe de que tipo es: el
- * anterior de una semana es la semana pasada completa, y el de marzo es febrero.
- * Toda la logica de "contra que se compara" vive en `core/dates`, no aca.
+ * El análisis de cualquier rango: resumen, comparación, ritmo, categorías y
+ * serie diaria. Contra qué se compara lo decide `core/dates` según el tipo de
+ * rango: el anterior de una semana es la semana pasada completa.
  */
 export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate) {
   const movimientos = useMovimientos();
@@ -170,9 +137,6 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
       porCategoria,
       mayorCategoria: porCategoria[0]?.total.amountMinor ?? 1,
       serie: analytics.seriePorDia(analizables, rango),
-      // Que categoria explica el cambio contra el periodo anterior. El "contra
-      // que" lo decide el rango: el anterior de una semana es la semana pasada
-      // completa, no siete dias atras.
       deriva: analytics.derivaPorCategoria(analizables, rango, dates.previousPeriod(rango)),
       fijo: money.money(
         movimientos
@@ -188,85 +152,47 @@ export function useAnalisisDeRango(rango: dates.DateRange, hoy: dates.PlainDate)
 }
 
 /**
- * Categorias que **suelen** ser compromiso fijo.
- *
- * Es el respaldo, no la verdad: la verdad es que el movimiento haya nacido de
- * una regla. Se conserva porque sin el, un historial recien importado —o la
- * semilla, que no trae reglas— mostraria el comprometido en cero y el iceberg
- * entero bajo el agua. A medida que el usuario crea sus reglas, esta mitad va
- * pesando menos sola.
+ * Las categorías que suelen ser compromiso fijo. Es el respaldo, no la verdad
+ * (la verdad es haber nacido de una regla): sin él, un historial recién
+ * importado mostraría el comprometido en cero.
  */
-export const COMPROMETIDAS_POR_OMISION: readonly string[] = [
+const COMPROMETIDAS_POR_OMISION: readonly string[] = [
   'vivienda', 'servicios', 'deudas', 'ahorros', 'impuestos',
 ];
 
-/**
- * El ajuste crudo convertido en conjunto.
- *
- * Suelto porque hay dos formas de llegar al mismo valor --suscrito y de una
- * sola lectura-- y la nocion de "ausente significa la lista de siempre" tiene
- * que ser la misma en las dos.
- */
+/** Ausente es la lista de siempre; una lista vacía es una elección válida. */
 function interpretarComprometidas(crudo: string | undefined | null): ReadonlySet<string> {
   if (crudo === undefined || crudo === null) return new Set(COMPROMETIDAS_POR_OMISION);
   try {
     const lista = JSON.parse(crudo) as unknown;
-    // Una lista vacia es una eleccion valida --"ninguna categoria es
-    // compromiso por si sola"--, asi que no se cae de vuelta a la de omision.
     return Array.isArray(lista) ? new Set(lista.map(String)) : new Set(COMPROMETIDAS_POR_OMISION);
   } catch {
     return new Set(COMPROMETIDAS_POR_OMISION);
   }
 }
 
-/**
- * Que categorias cuentan como compromiso, segun lo que haya elegido el usuario.
- *
- * Reactiva a proposito: se edita en Ajustes y el Resumen tiene que recalcular
- * sin que haya que salir y volver a entrar.
- */
+/** Qué categorías cuentan como compromiso, según lo elegido en Ajustes. */
 export function useComprometidas(): ReadonlySet<string> {
-  const { db } = useDatos();
-  const consulta = useMemo(
-    () => consultaDeAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS),
-    [db],
-  );
-  const { data } = useLiveQuery(consulta);
-  const crudo = data?.[0]?.valor;
-
+  const crudo = useAjuste(CLAVE_CATEGORIAS_COMPROMETIDAS);
   return useMemo(() => interpretarComprometidas(crudo), [crudo]);
 }
 
 /**
- * Lo mismo, leido una sola vez y sin suscribirse.
- *
- * Para los formularios, que son borradores locales. Sembrar un interruptor con
- * `useComprometidas` seria un bug fino: `useLiveQuery` devuelve vacio en el
- * primer render, asi que el interruptor nace con la lista de omision, y el
- * `useState` no se entera cuando llega la de verdad. Quien apago "vivienda" en
- * Ajustes la veria encendida y al guardar se la volveria a marcar.
+ * Lo mismo, leído una vez y sin suscribirse, para sembrar formularios:
+ * `useLiveQuery` devuelve vacío en el primer render y el `useState` no se
+ * enteraría del valor de verdad.
  */
 export function leerComprometidas(db: BaseDeDatos): ReadonlySet<string> {
   return interpretarComprometidas(leerAjuste(db, CLAVE_CATEGORIAS_COMPROMETIDAS));
 }
 
 /**
- * Marca una categoria como compromiso fijo, o le saca la marca.
- *
- * Va pegado a `useComprometidas` y no suelto en la pantalla porque **guarda la
- * lista entera**, no la categoria tocada, y eso es facil de hacer mal desde
- * afuera: la nocion de "ausente significa la lista de siempre" vive en la
- * lectura, asi que quien escribiera solo la tocada borraria de un saque las
- * cinco de omision sin que nadie lo pida.
- *
- * Lo llaman dos pantallas --Ajustes, que las muestra todas juntas, y la edicion
- * de una categoria-- y las dos se ven al dia solas porque leen del mismo ajuste
- * con `useLiveQuery`.
+ * Marca una categoría como compromiso o le saca la marca. Guarda la lista
+ * entera: escribir solo la tocada borraría de un saque las de omisión.
  */
 export function useMarcarComprometida(): (categoriaId: string, valor: boolean) => void {
   const { db } = useDatos();
   const comprometidas = useComprometidas();
-
   return (categoriaId, valor) => {
     const siguiente = new Set(comprometidas);
     if (valor) siguiente.add(categoriaId);
@@ -275,50 +201,28 @@ export function useMarcarComprometida(): (categoriaId: string, valor: boolean) =
   };
 }
 
-/** Cuantos pinguinos pueden acompanar al iceberg. */
+/** Cuántos pingüinos pueden acompañar al iceberg. */
 export const PINGUINOS_MINIMO = 1;
 export const PINGUINOS_MAXIMO = 6;
-export const PINGUINOS_POR_OMISION = 1;
+const PINGUINOS_POR_OMISION = 1;
 
-/**
- * Cuantos pinguinos mostrar, segun lo que haya elegido el usuario.
- *
- * Reactiva por lo mismo que `useComprometidas`: se cambia en Ajustes y el
- * Resumen tiene que reflejarlo sin salir y volver a entrar.
- */
+/** Cuántos pingüinos mostrar. Se acota al leer: el valor pudo quedar de otra versión. */
 export function usePinguinos(): number {
-  const { db } = useDatos();
-  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_PINGUINOS), [db]);
-  const { data } = useLiveQuery(consulta);
-  const crudo = data?.[0]?.valor;
-
-  const cuantos = Number(crudo);
+  const cuantos = Number(useAjuste(CLAVE_PINGUINOS));
   if (!Number.isFinite(cuantos)) return PINGUINOS_POR_OMISION;
-  // Se acota al leer y no solo al escribir: el valor pudo quedar de una version
-  // con otros limites, y una pantalla no puede romperse por un ajuste viejo.
   return Math.min(PINGUINOS_MAXIMO, Math.max(PINGUINOS_MINIMO, Math.round(cuantos)));
 }
 
-/**
- * Si el pinguino cuenta las explicaciones de a un parrafo.
- *
- * Devuelve tambien como cambiarlo: es un interruptor de dos estados y quien lo
- * lee en la hoja de explicaciones y quien lo mueve en Ajustes son dos pantallas
- * distintas, asi que el par viaja junto para que no haya dos formas de
- * escribirlo.
- */
+/** Si el pingüino cuenta las explicaciones de a un párrafo, y cómo cambiarlo. */
 export function useExplicacionDeAPoco(): { deAPoco: boolean; cambiar: (valor: boolean) => void } {
   const { db } = useDatos();
-  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_EXPLICACION_DE_A_POCO), [db]);
-  const { data } = useLiveQuery(consulta);
-
   return {
-    deAPoco: (data?.[0]?.valor ?? '') === '1',
+    deAPoco: (useAjuste(CLAVE_EXPLICACION_DE_A_POCO) ?? '') === '1',
     cambiar: (valor) => escribirAjuste(db, CLAVE_EXPLICACION_DE_A_POCO, valor ? '1' : ''),
   };
 }
 
-/** Si un gasto de esa categoria cuenta como compromiso fijo. */
+/** Si un gasto de esa categoría cuenta como compromiso fijo. */
 export function esComprometido(
   categoriaId: string | null,
   comprometidas: ReadonlySet<string> = new Set(COMPROMETIDAS_POR_OMISION),
@@ -327,30 +231,22 @@ export function esComprometido(
 }
 
 /**
- * Si un gasto es comprometido: **nacio de una regla**, o su categoria lo delata.
- *
- * El "o" es a proposito y es temporal por naturaleza. Nacer de una regla es la
- * respuesta correcta y no admite discusion; la categoria es lo que salva a los
- * movimientos que ya existian antes de que hubiera reglas.
+ * Si un gasto es comprometido. Manda la marca del propio movimiento (quien lo
+ * corrigió a mano sabe más que cualquier deducción); si no tiene, haber nacido
+ * de una regla; y si no, lo que diga su categoría.
  */
 export function esGastoComprometido(
   movimiento: Movimiento,
   deRegla: ReadonlySet<string>,
   comprometidas?: ReadonlySet<string>,
 ): boolean {
-  // La marca del movimiento gana sobre todo lo demas, incluso sobre haber
-  // nacido de una regla: si alguien se tomo el trabajo de corregirlo, sabe mas
-  // que cualquier deduccion nuestra.
   if (movimiento.comprometido !== null) return movimiento.comprometido === 1;
   return deRegla.has(movimiento.id) || esComprometido(movimiento.categoriaId, comprometidas);
 }
 
 /**
- * Los movimientos del rango que nacieron de una regla, por id.
- *
- * Se lee de las instancias: cuando se marca una cuenta como pagada se guarda
- * ahi el id del movimiento que se creo. Es el enlace que permite dejar de
- * adivinar el comprometido a partir de la categoria.
+ * Los movimientos del rango que nacieron de una regla, por id: al marcar una
+ * cuenta como pagada, la instancia guarda el movimiento que se creó.
  */
 export function useMovimientosDeRegla(rango: dates.DateRange): ReadonlySet<string> {
   const { db, contexto } = useDatos();
@@ -371,36 +267,25 @@ export function useMovimientosDeRegla(rango: dates.DateRange): ReadonlySet<strin
   }, [data]);
 }
 
-/**
- * Movimientos filtrados, reactivos.
- *
- * El filtro va a SQL, no a un `.filter()` sobre todo lo cargado: con 50.000
- * movimientos la diferencia deja de ser academica.
- */
+/** Movimientos filtrados en SQL, no con un `.filter()` sobre todo lo cargado. */
 export function useMovimientosFiltrados(entrada: FiltroDeMovimientos): Movimiento[] {
   const { db, contexto } = useDatos();
   const { cuentaId } = useCuentaActiva();
   const filtro = conCuentaActiva(entrada, cuentaId);
+  // El filtro es un objeto nuevo en cada render: se compara por su contenido.
   const clave = JSON.stringify(filtro);
   const consulta = useMemo(
     () => consultaDeMovimientos(db, contexto, filtro),
-    // El filtro es un objeto nuevo en cada render; se compara por su contenido.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [db, contexto, clave],
   );
-  // Sin `[clave]`, cambiar de filtro no hacia nada: la lista seguia mostrando
-  // el resultado de la primera consulta.
   const { data } = useLiveQuery(consulta, [clave]);
   return (data ?? []) as Movimiento[];
 }
 
 /**
- * Cuantos movimientos cumplen el filtro y cuanto suman, **sin traerlos**.
- *
- * Va aparte de la lista porque con paginado el encabezado tiene que decir el
- * total, no lo que se alcanzo a cargar. Se recalcula cuando cambian los
- * movimientos —el largo de la lista alcanza como senal— o cuando cambia el
- * filtro.
+ * Cuántos movimientos cumplen el filtro y cuánto suman, sin traerlos: con
+ * tandas, el encabezado tiene que decir el total y no lo que se alcanzó a cargar.
  */
 export function useResumenDeFiltro(entrada: FiltroDeMovimientos): ResumenDeFiltro {
   const { db, contexto } = useDatos();
@@ -425,41 +310,18 @@ export function useCuentas(): Cuenta[] {
 }
 
 /**
- * Si la cuenta que se esta mirando ya no existe, volver a "todas".
- *
- * Pasa al borrar la cuenta que uno tenia abierta: el alcance se queda con un id
- * muerto y **todas las consultas devuelven vacio**, sin nada en pantalla que
- * explique por que.
- *
- * ## Por que es un invariante y no un efecto del selector
- *
- * Esto vivia dentro del componente que dibuja la lista de cuentas, y ahi no
- * corria casi nunca: ese componente solo existia mientras el menu estaba
- * abierto. Peor, el menu solo se puede abrir con dos cuentas o mas, asi que el
- * caso que importa era justo el que no se arreglaba: con dos cuentas, borrar la
- * que estabas mirando deja una sola, la app deja de dibujar el boton del menu, y
- * ya no hay forma de que el arreglo corra. La app quedaba en blanco.
- *
- * Aca no depende de que haya algo dibujado: lo llama el layout, que esta montado
- * desde que la app abre.
- *
- * ## Tambien limpia la estrella
- *
- * `borrarCuenta` no toca el ajuste de la cuenta por defecto --es una preferencia
- * de este telefono y la funcion de la base no la conoce--, asi que borrar la
- * cuenta marcada dejaba un id muerto guardado y la app abria vacia **en cada
- * arranque**, no solo esa vez.
+ * Si se borró la cuenta que se mira (o la de la estrella), volver a "todas":
+ * con un id muerto todas las consultas devuelven vacío y la app queda en blanco.
+ * Lo llama el layout, montado mientras la app vive: un invariante escondido en
+ * un componente de dibujo solo corre cuando ese componente está dibujado.
  */
 export function useVolverATodasSiSeBorroLaCuenta(): void {
   const cuentas = useCuentas();
   const { cuentaId, elegir, porDefecto, marcarPorDefecto } = useCuentaActiva();
 
   useEffect(() => {
-    // La lista vacia significa **que todavia no carga**, no que no haya cuentas:
-    // `useLiveQuery` devuelve `[]` en el primer render. Sin esta guarda, el
-    // efecto corria antes de tiempo y borraba la cuenta por defecto en cada
-    // arranque, asi que la app abria siempre en "todas" por mas que hubiera una
-    // marcada con estrella.
+    // Vacía es "todavía no carga", no "no hay cuentas": sin esta guarda, en cada
+    // arranque se borraba la estrella.
     if (cuentas.length === 0) return;
     const existe = (id: string | null) => id === null || cuentas.some((c) => c.id === id);
     if (!existe(cuentaId)) elegir(null);
@@ -467,13 +329,7 @@ export function useVolverATodasSiSeBorroLaCuenta(): void {
   }, [cuentas, cuentaId, elegir, porDefecto, marcarPorDefecto]);
 }
 
-/**
- * Saldo inicial de la cuenta activa, o suma de todas si el alcance es "todas".
- *
- * Tiene que seguir al alcance igual que los movimientos: un saldo que sumara
- * todas las cuentas mientras la lista muestra una sola daria una cifra que no
- * corresponde a nada.
- */
+/** El saldo inicial de la cuenta activa, o la suma de todas: sigue al alcance como los movimientos. */
 export function useSaldoInicial(): number {
   const cuentas = useCuentas();
   const { cuentaId } = useCuentaActiva();
@@ -486,33 +342,22 @@ export function useSaldoInicial(): number {
 }
 
 /**
- * Hasta que fecha mira Home.
- *
- * Es la del movimiento mas nuevo, **pero nunca mas alla de hoy**. Sin ese tope,
- * un solo movimiento con fecha futura —un dedazo al escribir el ano, o una
- * cuenta anotada por adelantado— arrastraba toda la pantalla a ese mes: el
- * titulo, ingreso, gasto, neto, el iceberg y las categorias pasaban a mostrar un
- * mes vacio mientras el saldo seguia contando todo.
+ * Hasta qué fecha mira la app: la del movimiento más nuevo, pero nunca después
+ * de hoy. Un solo movimiento con fecha futura arrastraba toda la pantalla a un
+ * mes vacío.
  */
 export function useFechaDeCorte(): dates.PlainDate {
   const movimientos = useMovimientos(1);
   const masNuevo = movimientos[0]?.ocurridoEn as dates.PlainDate | undefined;
-  // `useHoy` y no `dates.today()`: con la app abierta cruzando la medianoche,
-  // una llamada suelta se queda con el dia de ayer hasta que algo mas redibuje.
+  // `useHoy` cambia a medianoche; `dates.today()` suelto se quedaría con ayer.
   const hoy = useHoy();
   return masNuevo === undefined ? hoy : dates.minDate(masNuevo, hoy);
 }
 
 /**
- * Desde cuando esta app sabe algo: el dia del movimiento mas viejo.
- *
- * `null` mientras no haya ninguno. Sirve para distinguir **un dia sin gastar**
- * de **un dia del que no hay datos**, que en una serie por dia se ven igual: los
- * dos vienen en cero.
- *
- * Ignora la cuenta activa a proposito. La pregunta es cuando empezo a usarse la
- * app, no cuando empezo a usarse una cuenta; si no, cambiar de cuenta movia el
- * comienzo de la historia.
+ * El día del movimiento más viejo, o `null`: distingue un día sin gastar de un
+ * día sin datos. Ignora la cuenta activa, porque la pregunta es desde cuándo se
+ * usa la app.
  */
 export function usePrimerDia(): dates.PlainDate | null {
   const { db, contexto } = useDatos();
@@ -523,21 +368,13 @@ export function usePrimerDia(): dates.PlainDate | null {
 }
 
 /**
- * Los gastos que se salen de lo normal **para ese comercio**, por id.
- *
- * El agrupamiento es la decision de esta capa, y no fue la primera que probe:
- * agrupar por **categoria** marcaba 23 de 54 movimientos de Transporte, porque
- * ahi conviven viajes de $6.500 con bencinas de $32.000 y mediana + MAD suponen
- * una sola poblacion. Sobre los 661 gastos de la semilla, por categoria marca el
- * 9,2% y por comercio el 1,2%. Contra el mismo comercio si hay una sola
- * poblacion: los Copec se parecen entre ellos.
- *
- * Se compara contra **toda la historia**: un mes no da los cinco datos que el
- * motor exige para que "lo normal" signifique algo.
+ * Los gastos fuera de lo normal para su comercio, por id. Por comercio y no por
+ * categoría: Transporte junta viajes de $6.500 con bencinas de $32.000, y el
+ * método supone una sola población. Se compara contra toda la historia: un mes
+ * no da los datos que el motor exige.
  */
 export function useAnomalias(): ReadonlySet<string> {
   const movimientos = useMovimientos();
-
   return useMemo(() => new Set(
     analytics.anomaliasAltasPorGrupo(
       movimientos.filter((m) => m.tipo === 'gasto'),
@@ -548,8 +385,8 @@ export function useAnomalias(): ReadonlySet<string> {
   ), [movimientos]);
 }
 
-/** Las reglas de recurrencia del hogar, reactivas. */
-export function useReglas(): Regla[] {
+/** Las reglas de recurrencia del hogar. */
+function useReglas(): Regla[] {
   const { db, contexto } = useDatos();
   const consulta = useMemo(() => consultaDeReglas(db, contexto), [db, contexto]);
   const { data } = useLiveQuery(consulta, []);
@@ -557,12 +394,9 @@ export function useReglas(): Regla[] {
 }
 
 /**
- * Los tempanos del rango: cada ocurrencia con lo que se haya decidido sobre ella.
- *
- * Se piden las dos tablas por separado y se combinan en memoria porque
- * `useLiveQuery` entrega filas de **una** consulta: no puede llamar a una
- * funcion que abre varias. La combinacion vive en `@iceberg/db`, asi que la
- * pantalla y los tests hacen exactamente la misma cuenta.
+ * Los témpanos del rango: cada ocurrencia con lo decidido sobre ella. Reglas e
+ * instancias se piden aparte (`useLiveQuery` entrega una sola consulta) y se
+ * combinan con la misma función que usan los tests.
  */
 export function useTempanos(rango: dates.DateRange, hoy: dates.PlainDate): Tempano[] {
   const { db, contexto } = useDatos();
@@ -585,11 +419,8 @@ export function useTempanos(rango: dates.DateRange, hoy: dates.PlainDate): Tempa
 }
 
 /**
- * Cuentas periodicas que se pueden proponer, sin las que ya son regla.
- *
- * El filtro por nombre es lo que evita que la pantalla ofrezca crear el arriendo
- * cuando el arriendo ya existe. Se compara normalizado, igual que agrupa el
- * detector: si no, "Enel" y "ENEL" se propondrian como dos cuentas distintas.
+ * Cuentas periódicas que se pueden proponer, sin las que ya son regla. Se
+ * compara normalizado, igual que el detector: "Enel" y "ENEL" son la misma.
  */
 export function useCandidatasARegla(hoy: dates.PlainDate): recurrence.Candidata[] {
   const movimientos = useMovimientos();
@@ -610,7 +441,7 @@ export function useCandidatasARegla(hoy: dates.PlainDate): recurrence.Candidata[
   }, [movimientos, reglas, hoy]);
 }
 
-/** Los lotes de importacion, del mas viejo al mas nuevo. */
+/** Los lotes de importación, del más viejo al más nuevo. */
 export function useLotes(): Lote[] {
   const { db, contexto } = useDatos();
   const consulta = useMemo(() => consultaDeLotes(db, contexto), [db, contexto]);
@@ -618,7 +449,7 @@ export function useLotes(): Lote[] {
   return (data ?? []) as Lote[];
 }
 
-/** Las reglas propias de categorizacion, reactivas. */
+/** Las reglas propias de categorización. */
 export function useReglasDeCategoria(): ReglaCategoria[] {
   const { db, contexto } = useDatos();
   const consulta = useMemo(() => consultaDeReglasDeCategoria(db, contexto), [db, contexto]);
@@ -626,7 +457,7 @@ export function useReglasDeCategoria(): ReglaCategoria[] {
   return (data ?? []) as ReglaCategoria[];
 }
 
-/** Quienes escriben en este hogar, reactivos. */
+/** Quiénes escriben en este hogar. */
 export function useMiembros(): Miembro[] {
   const { db, contexto } = useDatos();
   const consulta = useMemo(() => consultaDeMiembros(db, contexto), [db, contexto]);

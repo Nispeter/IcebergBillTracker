@@ -1,57 +1,33 @@
 /**
- * La frase con la que se cifra lo que sale a la carpeta compartida.
- *
- * La app se inventa una la primera vez que alguien la pide, y desde ahi el
- * archivo sale cifrado siempre. Antes el campo arrancaba vacio y vacio queria
- * decir "en claro": el respaldo con todo el historial financiero se escribia sin
- * cifrar salvo que a alguien se le ocurriera escribir una frase.
- *
- * `leerOCrear` hace que generarla sea **una sola vez**: si dos pantallas la
- * piden a la vez, las dos ven la misma, que es lo unico que importa --dos frases
- * distintas dejarian archivos que no se abren entre si--.
+ * La frase con la que se cifra lo que sale a la carpeta compartida. La app se
+ * inventa una la primera vez y desde ahí cifra siempre: vacía significaría
+ * escribir el historial financiero en claro.
  */
 
 import { crypto } from '@iceberg/core';
-import {
-  CLAVE_FRASE_DE_CIFRADO, consultaDeAjuste, escribirAjuste, leerOCrear,
-  type BaseDeDatos,
-} from '@iceberg/db';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
-import { useEffect, useMemo } from 'react';
+import { CLAVE_FRASE_DE_CIFRADO, escribirAjuste, leerOCrear } from '@iceberg/db';
+import { useEffect } from 'react';
 import { useDatos } from './BaseDeDatos';
+import { useAjuste } from './consultas';
 
-/**
- * La frase, creandola si todavia no hay.
- *
- * Fuera de React a proposito: quien esta por escribir en la carpeta no puede
- * esperar a que un efecto corra. Antes de que el efecto del hook alcance a
- * pasar, `frase` vale la cadena vacia, y cadena vacia significa **sin cifrar**:
- * una sincronizacion en ese instante dejaria el respaldo en claro, que es justo
- * lo que esto vino a impedir.
- */
-export function asegurarFrase(db: BaseDeDatos): string {
-  return leerOCrear(db, CLAVE_FRASE_DE_CIFRADO, () => crypto.generarFrase());
-}
-
-export interface FraseDeCifrado {
-  /** La frase en uso. Nunca vacia. */
+interface FraseDeCifrado {
+  /** La frase en uso. */
   readonly frase: string;
-  /** La cambia. Vacia o solo espacios no se acepta: dejaria de cifrar. */
+  /** La cambia. Vacía no se acepta: dejaría de cifrar. */
   cambiar(nueva: string): void;
-  /** Se inventa otra. Ojo: los archivos ya escritos con la anterior no se abren. */
+  /** Inventa otra. Los archivos ya escritos con la anterior dejan de abrirse. */
   renovar(): string;
 }
 
 export function useFraseDeCifrado(): FraseDeCifrado {
   const { db } = useDatos();
-  const consulta = useMemo(() => consultaDeAjuste(db, CLAVE_FRASE_DE_CIFRADO), [db]);
-  const { data } = useLiveQuery(consulta);
-  const guardada = data?.[0]?.valor ?? '';
+  const guardada = useAjuste(CLAVE_FRASE_DE_CIFRADO) ?? '';
 
-  // En un efecto y no durante el render: crearla escribe en la base, y escribir
-  // mientras React dibuja es lo que deja una pantalla en bucle.
+  // En un efecto: crearla escribe en la base, y escribir mientras React dibuja
+  // deja la pantalla en bucle. `leerOCrear` la crea una sola vez aunque dos
+  // pantallas la pidan a la vez: dos frases distintas no se abrirían entre sí.
   useEffect(() => {
-    if (guardada.trim() === '') asegurarFrase(db);
+    if (guardada.trim() === '') leerOCrear(db, CLAVE_FRASE_DE_CIFRADO, () => crypto.generarFrase());
   }, [db, guardada]);
 
   return {
