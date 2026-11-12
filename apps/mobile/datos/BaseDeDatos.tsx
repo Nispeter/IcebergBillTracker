@@ -1,30 +1,11 @@
 /**
- * Conexion a la base local y arranque de la app.
+ * La base local y el arranque: abrir, migrar, resolver la identidad de este
+ * teléfono (creándola la primera vez) y asegurar que haya una cuenta y la fila
+ * de miembro. Las pantallas reciben la base y el contexto de `useDatos()`.
  *
- * Hace cuatro cosas antes de dejar entrar a las pantallas:
- *
- * 1. Abre la base **de forma asincronica**.
- * 2. Corre las migraciones pendientes.
- * 3. Resuelve la identidad de este dispositivo, creandola la primera vez.
- * 4. Se asegura de que existan **una cuenta** —sin cuenta no se puede escribir
- *    ni un movimiento— y la **fila de miembro** de este dispositivo.
- *
- * Lo que ya **no** hace es sembrar datos de prueba. Estaba bien mientras esto
- * era una demo, y deja de estarlo apenas alguien quiere usarla con su plata:
- * dieciocho meses de gasto chileno inventado mezclado con lo propio no se
- * arregla sino borrando todo. Los datos de prueba se cargan desde Ajustes,
- * cuando se piden.
- *
- * **Por que asincronica y no `openDatabaseSync` a nivel de modulo**: en web la
- * base vive en un Web Worker y las llamadas sincronicas bloquean el hilo
- * principal esperando su respuesta. Si se abre antes de que el worker termine de
- * cargar, el hilo principal se bloquea justo cuando el worker todavia necesita
- * que ese hilo avance para inicializarse: se traban mutuamente y revienta con
- * "Sync operation timeout". Abriendola async, el worker queda listo antes de la
- * primera operacion sincronica.
- *
- * Todo lo que hace falta rio abajo —la base y el contexto de escritura— sale de
- * `useDatos()`. Las pantallas nunca abren la base por su cuenta.
+ * Se abre en asíncrono: en web la base vive en un Web Worker, y abrirla
+ * sincrónica antes de que el worker cargue traba los dos hilos ("Sync
+ * operation timeout").
  */
 
 import {
@@ -46,19 +27,9 @@ export interface Datos {
   readonly contexto: Contexto;
   readonly sqlite: SQLiteDatabase;
   /**
-   * Apunta el contexto a otro hogar, sin releer la base.
-   *
-   * Hace falta para **unirse a un hogar**: el `householdId` se lee una sola vez
-   * al arrancar y despues vive en el contexto, asi que cambiarlo en la base no
-   * alcanza --las consultas seguirian filtrando por el hogar viejo y la app se
-   * veria vacia--.
-   *
-   * **Recibe el hogar nuevo en vez de volver a leerlo**, y eso no es un atajo.
-   * La primera version releia el ajuste que `unirseAHogar` acababa de escribir y
-   * devolvia el valor viejo: en web la base vive en OPFS y la escritura tarda en
-   * verse, asi que leer en el mismo tick da lo anterior. Recien despues de
-   * recargar la pagina aparecia el hogar nuevo. Pasando el valor no hay nada que
-   * pueda quedar desfasado.
+   * Apunta el contexto a otro hogar, para unirse a uno: el hogar se lee al
+   * arrancar y vive en el contexto. Recibe el valor en vez de releerlo porque en
+   * web la escritura recién hecha todavía no se ve en el mismo tick.
    */
   readonly cambiarHogar: (hogarNuevo: string) => void;
 }
@@ -92,11 +63,11 @@ export function ProveedorDeDatos(props: ProveedorDeDatosProps) {
     let abierta: SQLiteDatabase | null = null;
 
     /**
-     * En web la base vive en OPFS, que admite **un solo** handle de acceso por
-     * archivo. Al recargar la pagina, el handle de la sesion anterior puede no
-     * haberse soltado todavia y abrir falla con `NoModificationAllowedError`.
-     * Se reintenta un par de veces con una pausa corta: el sistema lo libera
-     * solo, tarda milisegundos.
+     * En web la base vive en OPFS, que admite un solo acceso por archivo: al
+     * recargar, el de la sesión anterior puede no haberse soltado todavía. Se
+     * reintenta con pausas cortas; el navegador lo libera solo. Según el
+     * momento el error llega como `NoModificationAllowedError` o como
+     * "Invalid VFS state".
      */
     const abrirConReintento = async (): Promise<SQLiteDatabase> => {
       for (let intento = 0; ; intento++) {
@@ -105,7 +76,7 @@ export function ProveedorDeDatos(props: ProveedorDeDatosProps) {
           return await openDatabaseAsync(NOMBRE_ARCHIVO, { enableChangeListener: true });
         } catch (e) {
           const esHandleOcupado = (e as Error).name === 'NoModificationAllowedError'
-            || /Access Handle/i.test((e as Error).message);
+            || /Access Handle|Invalid VFS state/i.test((e as Error).message);
           if (!esHandleOcupado || intento >= 4) throw e;
           await new Promise((listo) => setTimeout(listo, 120 * (intento + 1)));
         }
@@ -193,19 +164,9 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
   if (fallo !== null) return error(fallo);
   if (!success || datos === null) return cargando;
 
-  /**
-   * El `key` con el hogar remonta todo cuando se cambia de hogar.
-   *
-   * Sin el, cambiar el contexto no alcanza: `useLiveQuery` recibe sus
-   * dependencias explicitas --y por omision son `[]`-- asi que las consultas
-   * siguen suscritas a la version anterior y la app se ve **vacia** aunque las
-   * filas esten ahi. Es la misma trampa que ya costo una vez con los filtros.
-   *
-   * La alternativa era agregar el hogar a las dependencias de las quince
-   * consultas, y basta olvidar una para tener el mismo bug otra vez. Remontar
-   * cuesta perder el periodo y la cuenta elegidos, que despues de unirse a otro
-   * hogar es lo razonable igual.
-   */
+  // El `key` con el hogar remonta todo al cambiar de hogar: las consultas
+  // vivas quedan suscritas a sus dependencias, y agregar el hogar a cada una
+  // es un bug esperando a que alguien olvide una.
   return (
     <ContextoDeDatos.Provider key={datos.contexto.householdId} value={datos}>
       {children}
@@ -213,13 +174,7 @@ function Arranque({ conexion, children, cargando, error }: ProveedorDeDatosProps
   );
 }
 
-/**
- * Crea la cuenta inicial si no hay ninguna.
- *
- * Sin cuenta no se puede escribir ni un movimiento, asi que una base
- * recien creada sin esto abriria en un estado en el que nada funciona. Arranca
- * en cero: el saldo real lo pone el usuario en Ajustes o lo trae el respaldo.
- */
+/** Sin ninguna cuenta no se puede escribir ni un movimiento: la base nueva arranca con una, en cero. */
 function asegurarCuenta(db: Base, contexto: Contexto): void {
   if (listarCuentas(db, contexto).length > 0) return;
   crearCuenta(db, contexto, {
