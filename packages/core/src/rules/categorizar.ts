@@ -6,8 +6,8 @@
  * clasificada y el usuario solo corrige lo que quedo mal.
  *
  * **Devuelve `null` cuando no sabe.** Es la decision que sostiene el modulo: una
- * categoria inventada es peor que ninguna, porque ensucia todas las metricas de
- * F2 —la torta, la deriva, el comprometido— sin que nadie sospeche. Sin
+ * categoria inventada es peor que ninguna, porque ensucia todas las metricas
+ * —la torta, la deriva, el comprometido— sin que nadie sospeche. Sin
  * categoria, la fila se ve rara y se arregla.
  *
  * El catalogo es de comercios **chilenos** y esta hecho a mano. Se prefirio eso

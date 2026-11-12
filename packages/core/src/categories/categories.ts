@@ -40,7 +40,7 @@ export interface Category {
    * `nombre` completo.
    */
   readonly nombreCorto: string;
-  /** Que entra y que no. Alimenta la ayuda del selector y las reglas de F4. */
+  /** Que entra y que no. */
   readonly descripcion: string;
 }
 

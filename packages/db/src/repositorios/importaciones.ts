@@ -4,8 +4,7 @@
  * Dos cosas sostienen el modulo:
  *
  * 1. **Reimportar el mismo archivo no duplica nada.** Cada fila trae una clave
- *    estable desde `core/csv`, y las que ya estan se saltan. Es el criterio de
- *    verificacion de F4.
+ *    estable desde `core/csv`, y las que ya estan se saltan.
  * 2. **Un lote se deshace de una.** Importar es lo que mas filas escribe de una
  *    vez y lo que mas facil sale mal —archivo equivocado, cuenta equivocada—.
  *    Sin una unidad que agrupe, revertir seria borrar doscientas filas a mano.

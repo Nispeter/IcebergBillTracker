@@ -7,8 +7,8 @@
  * historial sin vuelta.
  *
  * **Se exportan tambien las lapidas.** Una fila borrada no es basura: es la
- * unica forma de que ese borrado viaje a los otros dispositivos cuando exista el
- * sync. Un respaldo que las filtrara resucitaria todo lo borrado al restaurar.
+ * unica forma de que ese borrado viaje a los otros dispositivos. Un respaldo
+ * que las filtrara resucitaria todo lo borrado al restaurar.
  *
  * **No se exportan los ajustes.** Ahi vive la identidad del aparato —su
  * `deviceId`— y copiarla a otro telefono no es una feature, es un error: dos

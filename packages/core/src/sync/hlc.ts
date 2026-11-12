@@ -12,9 +12,6 @@
  * lleva un contador que desempata dentro del mismo milisegundo. Al recibir un
  * mensaje remoto adelanta el reloj local si hace falta, de modo que la relacion
  * causal queda registrada aunque los relojes de pared mientan.
- *
- * Se implementa **ahora**, en F1, aunque el motor de sync sea F5: si la columna
- * naciera como fecha habria que migrar todas las filas despues.
  */
 
 export interface Hlc {

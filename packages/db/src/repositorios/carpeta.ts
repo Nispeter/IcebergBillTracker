@@ -6,7 +6,7 @@
  * escribir: abrir cada archivo, fusionarlo, y armar el que hay que dejar.
  *
  * Está separado para poder probarlo: con dos bases y una carpeta de mentira
- * --un `Map`-- se verifica lo único que de verdad importa de F5, que es que dos
+ * --un `Map`-- se verifica lo único que de verdad importa al sincronizar: que dos
  * aparatos apuntando a la misma carpeta terminen viendo lo mismo.
  */
 

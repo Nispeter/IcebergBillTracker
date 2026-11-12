@@ -22,8 +22,8 @@ import { money, type CurrencyCode, type Money } from './money';
  * distinto que otros. Estas funciones son de **presentacion** —ya ponen el `$`
  * y los separadores de miles— asi que el signo tambien es cosa suya.
  *
- * Si alguna vez hay que escribir montos a un archivo (el CSV de F4), eso **no**
- * pasa por aca: va el entero crudo, que es lo que otro programa sabe leer.
+ * Un monto que va a un archivo **no** pasa por aca: va el entero crudo, que es
+ * lo que otro programa sabe leer.
  */
 const MENOS = '\u2212';
 const currencyFormatters = new Map<CurrencyCode, Intl.NumberFormat>();

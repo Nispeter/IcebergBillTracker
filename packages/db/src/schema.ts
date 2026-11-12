@@ -1,12 +1,9 @@
 /**
  * Esquema de la base local.
  *
- * Nace **listo para sincronizar** aunque el motor de sync sea F5. Cada fila
- * lleva de quien es, quien la escribio, desde que dispositivo y cuando —en
- * reloj logico, no en fecha— y los borrados dejan lapida en vez de eliminar.
- *
- * Hacerlo despues obligaria a migrar cada fila ya escrita, y a decidir que
- * valores inventarle a las columnas nuevas.
+ * Toda fila esta **lista para sincronizar**: lleva de quien es, quien la
+ * escribio, desde que dispositivo y cuando —en reloj logico, no en fecha— y
+ * los borrados dejan lapida en vez de eliminar.
  */
 
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
