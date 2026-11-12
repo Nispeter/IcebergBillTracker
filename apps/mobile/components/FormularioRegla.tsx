@@ -142,7 +142,9 @@ export function FormularioRegla({
       </Campo>
 
       {pideCategoria ? (
-        <Campo etiqueta="Categoría" elevado={eligiendoCategoria}>
+        // Elevado siempre: es el único desplegable, y así su panel no pasa
+        // debajo de los campos siguientes mientras se desvanece.
+        <Campo etiqueta="Categoría" elevado>
           <Desplegable
             abierto={eligiendoCategoria}
             onAlternar={() => setEligiendoCategoria(!eligiendoCategoria)}

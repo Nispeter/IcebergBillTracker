@@ -112,7 +112,8 @@ export default function ReglasDeCategoria() {
           />
         </Campo>
 
-        <Campo etiqueta="Es" elevado={eligiendo}>
+        {/* Elevado siempre: es el único desplegable de la pantalla. */}
+        <Campo etiqueta="Es" elevado>
           <Desplegable
             abierto={eligiendo}
             onAlternar={() => setEligiendo(!eligiendo)}

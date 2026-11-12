@@ -14,8 +14,11 @@
  * - Lo que sobra viaja por contexto (`useAltoDisponible`) hasta la lista, que se
  *   encoge y desplaza por dentro.
  *
- * El `zIndex` va en la raíz: compite solo dentro de su contexto de apilado, y
- * sin él los hermanos que vienen después le pasan por encima.
+ * La raíz se eleva solo mientras el panel se ve. Elevada siempre, un
+ * desplegable cerrado empataba con uno abierto, y en Android pasa seguido: la
+ * nueva arquitectura aplana las vistas que solo ordenan el layout, así que el
+ * campo de un desplegable cerrado puede quedar como hermano del abierto. En un
+ * empate gana el que viene después, y el panel abierto quedaba debajo.
  */
 
 import { capas } from '@iceberg/ui';
@@ -55,9 +58,15 @@ export function ConDesplegable(
 ) {
   const [alto, setAlto] = useState(0);
   const [sitio, setSitio] = useState<Sitio | null>(null);
+  // Arriba desde que se abre hasta que el panel terminó de desvanecerse.
+  const [encima, setEncima] = useState(abierto);
   const raiz = useRef<View>(null);
   const { height: pantalla } = useWindowDimensions();
   const margenes = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (abierto) setEncima(true);
+  }, [abierto]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -76,12 +85,13 @@ export function ConDesplegable(
   const posicion = sitio?.arriba ? { bottom: alto } : { top: alto };
 
   return (
-    <View ref={raiz} style={styles.raiz} collapsable={false}>
+    <View ref={raiz} style={encima ? styles.encima : undefined} collapsable={false}>
       <View onLayout={(evento) => setAlto(evento.nativeEvent.layout.height)}>
         {disparador}
       </View>
       <Aparecer
         visible={abierto}
+        alOcultarse={() => setEncima(false)}
         // El `maxHeight` es el cinturón: aunque un panel ignore el contexto,
         // no se pasa del sitio que hay.
         estilo={[styles.panel, posicion, sitio ? { maxHeight: sitio.maximo } : null]}
@@ -95,6 +105,6 @@ export function ConDesplegable(
 }
 
 const styles = StyleSheet.create({
-  raiz: { zIndex: capas.desplegable },
+  encima: { zIndex: capas.desplegable },
   panel: { position: 'absolute', left: 0, right: 0, zIndex: capas.desplegable, overflow: 'hidden' },
 });

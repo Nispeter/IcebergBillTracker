@@ -69,11 +69,15 @@ export function FormularioMovimiento({
   const [comprometido, setComprometido] = useState<boolean | null>(inicial?.comprometido ?? null);
   const comprometidas = useComprometidas();
   const esCompromisoAhora = comprometido ?? esComprometido(categoriaId, comprometidas);
-  // Uno solo para los dos desplegables: abiertos a la vez se superponen, y es
-  // el abierto el que se eleva por encima del otro campo.
+  // Uno solo para los dos desplegables: abiertos a la vez se superponen.
   const [desplegable, setDesplegable] = useState<'categoria' | 'cuenta' | null>(null);
-  const alternar = (cual: 'categoria' | 'cuenta') =>
+  // El último que se abrió queda elevado hasta que se abra el otro: así nunca
+  // empatan, y su panel no pasa debajo del campo siguiente mientras se desvanece.
+  const [encima, setEncima] = useState<'categoria' | 'cuenta' | null>(null);
+  const alternar = (cual: 'categoria' | 'cuenta') => {
+    setEncima(cual);
     setDesplegable((previo) => (previo === cual ? null : cual));
+  };
 
   const { db, contexto } = useDatos();
   // De una vez y no con `useLiveQuery`, que devuelve `[]` en el primer render:
@@ -138,7 +142,7 @@ export function FormularioMovimiento({
       <EntradaDeFecha etiqueta="Fecha" valor={fecha} onCambiar={setFecha} />
 
       {pideCategoria ? (
-        <Campo etiqueta="Categoría" elevado={desplegable === 'categoria'}>
+        <Campo etiqueta="Categoría" elevado={encima === 'categoria'}>
           <Desplegable
             abierto={desplegable === 'categoria'}
             onAlternar={() => alternar('categoria')}
@@ -172,7 +176,7 @@ export function FormularioMovimiento({
       {/* La cuenta va última: es el único campo que ya viene contestado. Con
           una sola cuenta no se dibuja, pero el valor viaja igual. */}
       {cuentas.length > 1 ? (
-        <Campo etiqueta="Cuenta" elevado={desplegable === 'cuenta'}>
+        <Campo etiqueta="Cuenta" elevado={encima === 'cuenta'}>
           <Desplegable
             abierto={desplegable === 'cuenta'}
             onAlternar={() => alternar('cuenta')}

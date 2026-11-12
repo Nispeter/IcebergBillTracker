@@ -12,12 +12,14 @@ import { Animated, type StyleProp, type ViewStyle } from 'react-native';
 import { CURVA, transicion, useMovimientoReducido } from '../datos/animacion';
 
 export function Aparecer(
-  { visible, children, estilo, desplazamiento = 6 }: {
+  { visible, children, estilo, desplazamiento = 6, alOcultarse }: {
     visible: boolean;
     children: ReactNode;
     estilo?: StyleProp<ViewStyle>;
     /** Cuántos píxeles sube al entrar. Cero para solo desvanecer. */
     desplazamiento?: number;
+    /** Cuando terminó de irse: recién ahí dejó de dibujarse. */
+    alOcultarse?: () => void;
   },
 ) {
   const [montado, setMontado] = useState(visible);
@@ -31,8 +33,14 @@ export function Aparecer(
       curva: visible ? CURVA.entra : CURVA.sale,
       reducido,
     }).start(({ finished }) => {
-      if (finished && !visible) setMontado(false);
+      if (finished && !visible) {
+        setMontado(false);
+        alOcultarse?.();
+      }
     });
+    // `alOcultarse` suele ser una función nueva en cada render: no es motivo
+    // para volver a animar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, progreso, reducido]);
 
   if (!montado) return null;
