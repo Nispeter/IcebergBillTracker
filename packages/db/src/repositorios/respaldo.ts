@@ -220,21 +220,13 @@ export function borrarTodo(db: BaseDeDatos, contexto: Contexto): void {
 }
 
 /**
- * Restaura un respaldo, **reemplazando** todo lo que hay.
+ * Restaura un respaldo, reemplazando todo lo que hay: fusionar es trabajo del
+ * motor de sincronización, y hacerlo acá produciría duplicados silenciosos.
  *
- * Reemplazar y no fusionar: fusionar dos historiales sin el motor de sync —que
- * es F5— produciria duplicados silenciosos, que es la peor forma de perder
- * datos porque no se nota.
- *
- * **Las filas adoptan el hogar de este aparato.** El primer intento conservaba
- * el `householdId` del respaldo, con el argumento de que asi seguia siendo el
- * mismo hogar. Eso rompe el caso principal: una instalacion nueva genera un
- * hogar nuevo al arrancar, asi que restaurar el propio respaldo metia 700 filas
- * que **ninguna consulta encontraba**, porque todas filtran por hogar. Los datos
- * estaban y la app se veia vacia, que es la peor forma de fallar.
- *
- * Cuando exista el sync, unirse a un hogar sera un paso explicito de
- * emparejamiento, no un efecto lateral de abrir un archivo.
+ * Las filas adoptan el hogar de este teléfono. Una instalación nueva genera su
+ * propio hogar al arrancar, y como todas las consultas filtran por hogar, filas
+ * con el hogar del respaldo estarían en la base sin que ninguna pantalla las
+ * encontrara. Unirse a otro hogar es un paso explícito (`unirseAHogar`).
  */
 export function restaurarRespaldo(
   db: BaseDeDatos,
