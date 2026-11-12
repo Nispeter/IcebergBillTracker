@@ -1,89 +1,51 @@
 /**
- * Tokens de diseno de Iceberg. **Unica fuente de verdad del color.**
+ * Los tokens de diseño de Iceberg: la única fuente de verdad del color, el
+ * espacio, la letra y el movimiento.
  *
- * Regla dura del proyecto: ningun literal hexadecimal vive fuera de este
- * archivo. Ni en una pantalla, ni en un grafico, ni en un estilo suelto. Si algo
- * necesita un color que no esta aca, el color se agrega aca primero.
+ * Regla dura del proyecto: ningún hexadecimal vive fuera de este archivo. Si
+ * algo necesita un color que no está, se agrega acá primero.
  *
- * La idea que sostiene la paleta: **todo frio menos un acento calido**, el ambar
- * del pico del pinguino. Cuando el resto de la pantalla es azul-hielo, ese ambar
- * senala lo importante sin necesidad de agrandar, subrayar ni recuadrar nada.
- * Desde que el boton de agregar lo lleva, el ambar tiene **dos trabajos**: la
- * accion principal y lo que pide atencion --un vencido, un gasto fuera de lo
- * habitual--. Conviven porque el boton esta siempre en el mismo lugar y lo otro
- * aparece dentro del contenido, pero es la tension a vigilar si algun dia el
- * ambar se usa en un tercer lugar.
- *
- * Por eso el ambar se gasta con avaricia: si aparece en todos lados, deja de
- * significar.
- *
- * Los grises llevan **tinte azul**, nunca son neutros: un gris puro al lado del
- * hielo se ve sucio.
+ * La paleta es fría entera, con el agua como acento, y un solo cálido: el ámbar
+ * del pico del pingüino, que además marca lo que pide atención (el más de la
+ * barra, un gasto fuera de lo normal). Se gasta con avaricia: en todos lados
+ * dejaría de significar. Los grises llevan tinte azul; uno neutro junto al hielo
+ * se ve sucio.
  */
 
 /**
- * Valores crudos. Nada de la app importa `palette` directamente: se consume
- * `light` / `dark` / `charts`, que dicen para que sirve cada color.
+ * Los valores crudos. La app no los importa: consume `light`, `dark` y
+ * `charts`, que dicen para qué sirve cada color.
  *
- * Varios colores vienen en dos versiones, y la distincion importa:
- *
- * - la **viva** es de relleno — una barra, un chip, un punto, un area de grafico.
- *   Ahi lo que manda es que se vea, y eso se mide en distancia perceptual.
- * - la **profunda** es de texto sobre fondo claro. El contraste WCAG solo mide
- *   luminancia, y un color vivo sobre casi-blanco lo reprueba por mas visible
- *   que sea a ojo. Un monto escrito en aurora sobre el fondo claro daba 1,51:1:
- *   se veia el color y no se leia el numero.
- *
- * En el tema oscuro no hace falta la distincion: sobre la noche polar los mismos
- * colores vivos ya pasan AA como texto.
+ * Varios vienen en dos versiones: la viva es de relleno (lo que manda es que se
+ * vea) y la profunda es de texto sobre fondo claro, porque un color vivo sobre
+ * casi blanco no llega a AA por más visible que sea. Sobre la noche polar los
+ * vivos ya pasan como texto.
  */
 const palette = {
-  // Claro "Deshielo"
+  // Claro, "Deshielo".
   hielo: '#F2F7FB',
   blanco: '#FFFFFF',
   tintaProfunda: '#0E2233',
   hairlineClaro: '#D7E3EC',
   silencioClaro: '#5E7388',
 
-  // Oscuro "Noche polar"
-  //
-  // La primera version estaba a 8% de luminosidad: tan oscura que el azul no
-  // alcanzaba a leerse y el fondo quedaba como pizarra sucia. Se subio a 11% y
-  // se corrio el matiz a 216 para que sea un azul de medianoche de verdad, y se
-  // separo mas la superficie del fondo para que una hoja o un menu se despeguen.
+  // Oscuro, "Noche polar": un azul de medianoche a 11 % de luz, con la
+  // superficie separada del fondo para que lo que flota se despegue.
   /**
-   * Ojo: este valor esta **repetido a mano** en `apps/mobile/app.json`, como
-   * `backgroundColor` de la ventana de Android. Es la unica copia fuera de este
-   * archivo y no hay forma de evitarla: `app.json` es configuracion estatica y
-   * no puede importar nada. La ventana es el ultimo plano bajo la app --debajo
-   * de todo lo que React dibuja-- y en blanco asomaba en cada transicion de
-   * pantalla. Si este color cambia, hay que cambiarlo alla tambien.
+   * Repetido a mano en `apps/mobile/app.json` como fondo de la ventana de
+   * Android (el JSON no puede importar). Si cambia acá, cambia allá.
    */
   nochePolar: '#0E192A',
   superficieNoche: '#16253D',
   tintaClara: '#E6F1F8',
   hairlineOscuro: '#273C5B',
-  /**
-   * El gris apagado del tema oscuro no venia definido en la paleta original.
-   * Se eligio como espejo de `silencioClaro`, aclarado hasta cumplir AA sobre la
-   * superficie nocturna.
-   */
   silencioOscuro: '#8299AF',
 
-  // Acento unico: el ambar del pico del pinguino
   ambar: '#F59E3C',
-  ambarProfundo: '#A95E09',
 
-  // Serie de graficos: frias, ordenadas por profundidad, no arcoiris
+  // La serie de gráficos: fría y ordenada por profundidad, no un arcoíris.
   agua: '#4FB3D9',
-  /**
-   * El agua como texto sobre fondo claro.
-   *
-   * Es `agua` con el mismo matiz y menos luz, no otro azul: `profundidad` fue el
-   * primer intento y el test de coherencia lo rechazo --23 grados de matiz de
-   * diferencia--, porque se habria leido como un color distinto en vez del mismo
-   * mas oscuro.
-   */
+  /** El agua como texto sobre fondo claro: el mismo matiz con menos luz. */
   aguaHonda: '#1A6C8C',
   profundidad: '#1B4F72',
   aurora: '#6EE7C8',
@@ -91,26 +53,17 @@ const palette = {
   cieloPalido: '#8AB4F8',
   nieblaAzul: '#B9C7D6',
 
-  /**
-   * Los dos extremos de la profundidad, para el prototipo "Hielo".
-   *
-   * La idea es que la pantalla **sea** el agua y se haga mas honda hacia abajo,
-   * en vez de que el iceberg sea un dibujo dentro de una caja. Por eso son dos
-   * valores por tema y no uno: arriba la superficie, abajo el abismo.
-   */
+  // Los dos extremos de la columna de agua del fondo, y la superficie hundida.
   abismo: '#070E18',
   deshieloProfundo: '#DDE9F2',
   deshieloHondo: '#D3E1EC',
   /**
-   * El gris apagado del tema claro, **oscurecido para el fondo hundido**.
-   *
-   * `silencioClaro` pasa AA sobre el hielo por muy poco --4,55 contra 4,5-- asi
-   * que sobre cualquier fondo mas oscuro que el hielo deja de pasar. Una
-   * etiqueta sobre la tarjeta honda necesita su propio valor o deja de leerse.
+   * El gris de etiqueta para el fondo hundido del tema claro: `silencioClaro`
+   * pasa AA sobre el hielo por muy poco y sobre algo más oscuro ya no.
    */
   silencioHondido: '#4C6070',
 
-  /** El unico rojo del sistema. Solo para vencido. */
+  /** El único rojo del sistema, solo para vencido. */
   vencido: '#D9534F',
   vencidoProfundo: '#D2322D',
   vencidoSuave: '#E06B68',
@@ -122,132 +75,73 @@ export interface Theme {
   readonly tinta: string;
   readonly silencio: string;
   readonly hairline: string;
-  /** Relleno del acento: chips, puntos, barras. No usar como texto. */
+  /** Relleno del acento: chips, puntos, barras. No como texto. */
   readonly acento: string;
-  /** El acento cuando hay que **leerlo**. */
+  /** El acento cuando hay que leerlo. */
   readonly acentoTexto: string;
-  /**
-   * Lo que se escribe **encima** del relleno ambar.
-   *
-   * No sirve `acentoTexto`: en el tema oscuro es el mismo ambar que el relleno,
-   * asi que un boton solido quedaba naranjo y vacio. Tampoco sirve `fondo`, que
-   * en el tema claro es casi blanco sobre ambar. Como el ambar es identico en
-   * los dos temas, lo que va encima tambien: la tinta profunda, 7,6:1.
-   */
+  /** Lo que se escribe encima de un relleno de acento o de ámbar. */
   readonly sobreAcento: string;
   /**
-   * El cuerpo del pinguino. **El mismo en los dos temas.**
-   *
-   * No usa `tinta` como el resto de los dibujos. Una silueta que se da vuelta
-   * con el tema funciona para un iceberg, pero en una **cara** invierte los ojos
-   * —pupilas claras sobre antifaz oscuro— y deja de leerse como pinguino: parece
-   * un buho. Los ojos tienen que ser oscuros sobre claro siempre.
-   *
-   * Es el azul de profundidad, que se despega tanto del hielo como de la noche
-   * polar, asi que sirve fijo en los dos temas.
+   * El cuerpo del pingüino, igual en los dos temas: invertido con el tema, la
+   * cara queda con ojos claros sobre antifaz oscuro y parece un búho.
    */
   readonly pinguinoCuerpo: string;
-  /** La cara y la panza del pinguino. Fija, por lo mismo. */
+  /** La cara y la panza del pingüino. Fija, por lo mismo. */
   readonly pinguinoPanza: string;
-  /**
-   * El pico. **El unico ambar que queda en la app.**
-   *
-   * Era el acento de toda la interfaz, y de ahi salia buena parte de la razon
-   * por la que la app se veia como un panel generado: naranjo de acento sobre
-   * azul medianoche es la paleta por defecto del genero. El acento paso al agua
-   * y el ambar volvio al lugar de donde habia salido --el pico del pinguino--,
-   * que es donde significa algo.
-   */
+  /** El pico, y el más de la barra: el único ámbar de la app. */
   readonly pinguinoPico: string;
   /**
-   * La tinta que se escribe **encima del dibujo del iceberg**.
-   *
-   * Un solo valor para el hielo y para el agua: el hielo es casi blanco y el
-   * agua junto a la superficie es un cian claro, asi que la misma tinta profunda
-   * se lee sobre los dos. Con blanco no pasaba: sobre el cian da 2,4:1.
+   * La tinta que se escribe encima del iceberg: una tinta profunda que se lee
+   * sobre el hielo y sobre el agua, en los dos temas.
    */
   readonly sobreElHielo: string;
   /**
-   * El hielo que asoma sobre el agua.
-   *
-   * Tiene rol propio porque **no puede salir de `gasto`**, que es lo que usaba
-   * antes. `gasto` es un color de texto y de barra, y como tal se invierte con
-   * el tema: claro sobre la noche polar, casi negro sobre el deshielo. En una
-   * barra eso esta bien; en un iceberg deja la punta pintada de negro, que es
-   * exactamente lo contrario de lo que es el hielo. Se noto recien al agrandar
-   * el dibujo, y llevaba ahi desde el primer boceto.
-   *
-   * Tampoco puede ser el mismo en los dos temas: el blanco hielo que funciona
-   * de noche es el color del fondo claro, y ahi la punta desapareceria. Cambia
-   * de valor pero no de idea: siempre el hielo mas claro que se despegue del
-   * fondo que tenga detras.
+   * El hielo que asoma sobre el agua: siempre el hielo más claro que se
+   * despegue del fondo. No sale de `gasto`, que se invierte con el tema y
+   * pintaba la punta de negro en el tema claro.
    */
   readonly hieloSobreAgua: string;
-  /**
-   * El reflejo sobre la cara del hielo que mira a la luz.
-   *
-   * Blanco en los dos temas, y en los dos tiene con que brillar: en el claro el
-   * hielo es `nieblaAzul` y en el oscuro es `hielo`, asi que el blanco queda por
-   * encima de ambos. Es el unico color que se usa **por encima** del hielo, no
-   * sobre el.
-   */
-  readonly brilloDelHielo: string;
-  /**
-   * El agua junto a la superficie: el tope del degradado de la pantalla.
-   *
-   * Va con `aguaProfunda`. Los dos existen para que el fondo tenga profundidad
-   * en vez de ser un color plano: mas arriba mas claro, mas abajo mas hondo. Es
-   * la misma idea que ordena la serie de graficos --por profundidad de agua, no
-   * por matiz-- llevada al fondo de la pantalla.
-   */
+  /** El agua junto a la superficie: el tope del degradado de la pantalla. */
   readonly aguaSuperficie: string;
   /** El agua honda: el pie del degradado. */
   readonly aguaProfunda: string;
   /**
-   * Una superficie que **se hunde** en vez de levantarse.
-   *
-   * `superficie` va hacia el espectador: hojas, menus, burbujas, todo lo que
-   * flota por encima del contenido. Esta va al reves, y es la unica forma de
-   * dar profundidad que le sirve a este proyecto: sobre la noche polar una
-   * sombra negra es invisible, asi que la elevacion se hace con luminosidad, y
-   * hundir es alejarse de la luz.
+   * Una superficie que se hunde en vez de levantarse. Sobre la noche polar una
+   * sombra es invisible, así que la profundidad se hace con luz: hundir es
+   * alejarse de ella. `superficie` queda para lo que flota.
    */
   readonly superficieHonda: string;
   /** El gris de etiqueta que se lee sobre `superficieHonda`. */
   readonly silencioHondo: string;
-  /** Relleno del ingreso: areas y barras de grafico. */
+  /** Relleno del ingreso: áreas y barras de gráfico. */
   readonly ingreso: string;
   /** El ingreso cuando es un monto escrito. */
   readonly ingresoTexto: string;
   readonly gasto: string;
   readonly alerta: string;
-  /** Relleno de vencido: badges y marcadores. */
+  /** Relleno de vencido: marcadores. */
   readonly vencido: string;
   /** Vencido cuando es texto. */
   readonly vencidoTexto: string;
 }
 
-/** Tema claro "Deshielo". */
+/** Tema claro, "Deshielo". */
 export const light: Theme = {
   fondo: palette.hielo,
   superficie: palette.blanco,
   tinta: palette.tintaProfunda,
   silencio: palette.silencioClaro,
   hairline: palette.hairlineClaro,
-  // El acento es el agua, no el ambar. Ver `pinguinoPico`.
   acento: palette.agua,
-  // Sobre un fondo casi blanco el cian da 2,2:1 como texto. `aguaHonda` es el
-  // mismo matiz con menos luz, y da 5,5:1.
+  // El agua sobre casi blanco da 2,2:1 como texto; el mismo matiz más oscuro, 5,5:1.
   acentoTexto: palette.aguaHonda,
   sobreAcento: palette.tintaProfunda,
   pinguinoCuerpo: palette.profundidad,
   pinguinoPanza: palette.hielo,
   pinguinoPico: palette.ambar,
   sobreElHielo: palette.tintaProfunda,
-  // Sobre el fondo hielo, el blanco desapareceria: va la niebla azul, que se
-  // lee como nieve en sombra.
+  // El blanco desaparecería sobre el fondo hielo: niebla azul, nieve en sombra.
   hieloSobreAgua: palette.nieblaAzul,
-  brilloDelHielo: palette.blanco,
   aguaSuperficie: palette.blanco,
   aguaProfunda: palette.deshieloProfundo,
   superficieHonda: palette.deshieloHondo,
@@ -261,11 +155,8 @@ export const light: Theme = {
 };
 
 /**
- * Tema oscuro "Noche polar".
- *
- * Sobre la noche polar el ambar da 7,7:1 y la aurora 10,9:1, asi que el color de
- * relleno y el de texto son el mismo. El unico que necesita ajuste es el rojo de
- * vencido, que se aclara apenas para cruzar AA sobre la superficie.
+ * Tema oscuro, "Noche polar". Acá los colores vivos ya sirven de texto; solo el
+ * rojo de vencido se aclara un poco para cruzar AA sobre la superficie.
  */
 export const dark: Theme = {
   fondo: palette.nochePolar,
@@ -281,11 +172,10 @@ export const dark: Theme = {
   pinguinoPico: palette.ambar,
   sobreElHielo: palette.tintaProfunda,
   hieloSobreAgua: palette.hielo,
-  brilloDelHielo: palette.blanco,
   aguaSuperficie: palette.superficieNoche,
   aguaProfunda: palette.abismo,
   superficieHonda: palette.abismo,
-  // Sobre el abismo el gris de siempre da 6,6:1: no hace falta cambiarlo.
+  // Sobre el abismo el gris de siempre ya da 6,6:1.
   silencioHondo: palette.silencioOscuro,
   ingreso: palette.aurora,
   ingresoTexto: palette.aurora,
@@ -299,11 +189,8 @@ export const themes = { light, dark } as const;
 export type ThemeName = keyof typeof themes;
 
 /**
- * Serie categorica de graficos, en orden de uso.
- *
- * Estan ordenadas por profundidad de agua, no por matiz: puestas juntas se leen
- * como una escala, no como un arcoiris. La regla del sistema es que un grafico
- * usa esta serie **en orden** y nunca inventa un color intermedio.
+ * La serie de los gráficos, que se usa en orden y nunca inventa un color
+ * intermedio. Ordenada por profundidad de agua: junta se lee como una escala.
  */
 export const charts = [
   palette.agua,
@@ -313,22 +200,19 @@ export const charts = [
   palette.nieblaAzul,
 ] as const;
 
-/**
- * Radios. Tres valores a proposito, con roles distintos: un `border-radius`
- * uniforme en toda la pantalla es una de las marcas del look generico.
- */
+/** Tres radios con papeles distintos: un radio uniforme en todo es el look genérico. */
 export const radii = {
-  /** Controles chicos: chips, badges, inputs. */
+  /** Controles: fichas, campos, botones. */
   sm: 10,
-  /** Tarjetas y hojas. */
+  /** Paneles y hojas. */
   md: 16,
-  /** Piezas grandes y contenedores del iceberg. */
+  /** Piezas grandes. */
   lg: 28,
-  /** Circulos completos: avatares, boton flotante. */
+  /** Círculos. */
   full: 9999,
 } as const;
 
-/** Escala de espaciado en multiplos de 4. */
+/** El espaciado, en múltiplos de 4. */
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -340,12 +224,8 @@ export const spacing = {
 } as const;
 
 /**
- * Alto de la barra de navegacion de abajo, **sin** el margen del sistema.
- *
- * Lo usan la barra para dibujarse y las pantallas para reservar aire al final de
- * lo que scrollea. Vive aca y no en el componente porque las dos cosas tienen
- * que estar de acuerdo: si no, o la ultima fila queda debajo de la barra o
- * sobra un hueco.
+ * El alto de la barra de navegación, sin el margen del sistema. Acá y no en la
+ * barra porque las pantallas reservan ese aire al final: tienen que coincidir.
  */
 export const ALTO_DE_LA_BARRA = 58;
 
@@ -373,9 +253,9 @@ export const columna = {
  * lee como texto, y `mono` solo para cifras y fechas, donde la alineación en
  * columna importa. Una interfaz entera en mono se lee como terminal.
  *
- * Son pilas CSS, y **solo la web las entiende**: Android espera una sola familia
- * por nombre. Por eso existe `fontsNativas`, y la app elige con `Platform`.
- * Las fuentes son del sistema y no se empaquetan, así que `fontWeight` sí sirve.
+ * Son pilas CSS, y solo la web las entiende: Android espera una sola familia por
+ * nombre. Por eso existe `fontsNativas`, y la app elige con `Platform`. Las
+ * fuentes son del sistema y no se empaquetan, así que `fontWeight` sí sirve.
  */
 export const fonts = {
   texto: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -397,26 +277,19 @@ export const pesos = {
   bold: '700',
 } as const;
 
+/** La escala de diseño. El tamaño que elige cada persona se aplica encima: ver `letra`. */
 export const fontSizes = {
   xs: 12,
   sm: 14,
   md: 16,
   lg: 20,
   xl: 28,
-  /** Para la cifra protagonista de Home. */
   display: 40,
 } as const;
 
-/**
- * Bordes y profundidad.
- *
- * En claro **no hay sombras difusas**: la separacion la da una linea hairline de
- * 1px. En oscuro una sombra no se ve, asi que la superficie se despega con un
- * glow tenue de 1px del mismo color de la linea.
- */
+/** Sin sombras: la separación la da una línea de un píxel. */
 export const elevation = {
   hairlineWidth: 1,
-  glowRadius: 1,
 } as const;
 
 /**
@@ -435,37 +308,25 @@ export const durations = {
 } as const;
 
 /**
- * Que va encima de que.
+ * Qué va encima de qué, de abajo hacia arriba. En un solo lugar porque
+ * repartidas en los componentes ya causaron que el encabezado tapara el menú.
  *
- * Estaban repartidas como numeros sueltos en cinco componentes, y eso ya causo
- * un bug: al subir el encabezado para que el selector de periodo se abriera por
- * encima del contenido, quedo **tambien por encima del menu lateral**, que se
- * veia con el boton de hamburguesa dibujado arriba del panel.
- *
- * De abajo hacia arriba, y el orden es el que importa: el contenido; el boton
- * flotante, que va sobre el contenido pero cede ante cualquier panel; los
- * desplegables; las burbujas de ayuda; el encabezado, que lleva el selector de
- * periodo; el menu lateral, que tapa todo porque es el unico que ocupa la
- * pantalla entera; la hoja deslizante, que es la unica que se abre **sobre** el
- * menu; y el aviso de guardado, que va sobre todo porque confirma algo que
- * acaba de pasar y no tendria sentido que algo lo tapara.
- *
- * **El tutorial va arriba de sus hermanos, que no es lo mismo que arriba de
- * todo.** Un `zIndex` solo ordena hermanos dentro de su contexto de apilado, y
- * el velo del tutorial se monta en el layout del grupo: le gana a la burbuja de
- * cuentas y a la barra de abajo, que comparten padre con el, y **no** al aviso
- * ni a la hoja de explicaciones, que se dibujan en otra rama. Es correcto asi:
- * mientras el tutorial corre no se guarda nada, asi que no hay aviso que tapar.
- * El numero esta por encima del aviso solo para que el orden de la lista se lea
- * de abajo hacia arriba sin excepciones.
+ * Un `zIndex` solo ordena hermanos dentro de su contexto de apilado: el
+ * tutorial le gana a la barra y al menú de cuentas, que comparten padre con él,
+ * no al aviso ni a la hoja, que viven en otra rama.
  */
 export const capas = {
+  /** La barra de abajo con el más. */
   flotante: 10,
+  /** Un desplegable abierto, sobre el contenido. */
   desplegable: 20,
-  ayuda: 30,
+  /** El encabezado, que lleva el selector de período. */
   encabezado: 40,
+  /** El menú de cuentas, que ocupa la pantalla entera. */
   lateral: 50,
+  /** La hoja que sube desde abajo. */
   hoja: 55,
+  /** El aviso de lo que se acaba de hacer. */
   aviso: 60,
   tutorial: 70,
 } as const;
