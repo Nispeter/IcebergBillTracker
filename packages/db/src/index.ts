@@ -1,5 +1,6 @@
 export * from './schema';
 export * from './contexto';
+export * from './invitacion';
 export * from './tipos';
 export * from './repositorios/ajustes';
 export * from './repositorios/cuentas';
