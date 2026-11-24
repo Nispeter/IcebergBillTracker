@@ -23,6 +23,7 @@ import { useAvisar } from './aviso';
 import { useDatos } from './BaseDeDatos';
 import { escribirEnCarpeta, leerCarpeta, nombreDelPropio, type ArchivoDeCarpeta } from './carpeta';
 import { useFraseDeCifrado, useModoDeCompartir } from './cifrado';
+import { pasarPorPlanillas, type PasadaPorPlanillas } from './planilla';
 import { useAjuste } from './consultas';
 
 /** Cada cuánto se sincroniza sola mientras la app está a la vista. */
@@ -154,21 +155,57 @@ async function fusionarYEscribir(
   }
 }
 
+/**
+ * En el modo planilla, después de la carpeta: lo editado en las planillas entra
+ * a la base, y las planillas quedan con lo que trajo la carpeta.
+ */
+async function planillasSiToca(
+  db: BaseDeDatos,
+  contexto: Contexto,
+  carpeta: string,
+  opciones: OpcionesDeCarpeta,
+  contenido: string,
+): Promise<PasadaPorPlanillas | null> {
+  if (opciones.cifrar) return null;
+  try {
+    return await pasarPorPlanillas(db, contexto, carpeta, contenido, () => marcarTrabajando(true));
+  } finally {
+    marcarTrabajando(false);
+  }
+}
+
+export interface PasadaCompleta extends PasadaPorCarpeta {
+  /** `null` en el modo cifrado, que no tiene planillas. */
+  readonly planillas: PasadaPorPlanillas | null;
+}
+
 /** Una pasada a pedido: completa siempre, para poder contar lo que encontró. */
 export function sincronizarCarpeta(
   db: BaseDeDatos,
   contexto: Contexto,
   carpeta: string,
   opciones: OpcionesDeCarpeta,
-): Promise<PasadaPorCarpeta> {
-  return enFila(async () => fusionarYEscribir(
-    db, contexto, carpeta, opciones, await leer(db, contexto, carpeta, opciones),
-  ));
+): Promise<PasadaCompleta> {
+  return enFila(async () => {
+    const pasada = await fusionarYEscribir(
+      db, contexto, carpeta, opciones, await leer(db, contexto, carpeta, opciones),
+    );
+    return {
+      ...pasada,
+      planillas: await planillasSiToca(db, contexto, carpeta, opciones, pasada.contenido),
+    };
+  });
+}
+
+export interface PasadaAutomatica {
+  /** `null` si en la carpeta no había nada nuevo y acá tampoco cambió nada. */
+  readonly carpeta: PasadaPorCarpeta | null;
+  readonly planillas: PasadaPorPlanillas | null;
 }
 
 /**
- * Una pasada automática. Devuelve `null` sin fusionar ni escribir nada si los
- * archivos ajenos son los mismos que la vez anterior y acá tampoco cambió nada.
+ * Una pasada automática. No fusiona ni escribe nada si los archivos ajenos son
+ * los mismos que la vez anterior y acá tampoco cambió nada.
  *
  * Si solo cambió lo de acá, escribe sin volver a fusionar: lo ajeno que no
  * cambió ya entró en la pasada anterior. La excepción es Empezar de cero, que
@@ -180,15 +217,21 @@ export function sincronizarSiHayAlgoNuevo(
   contexto: Contexto,
   carpeta: string,
   opciones: OpcionesDeCarpeta,
-): Promise<PasadaPorCarpeta | null> {
+): Promise<PasadaAutomatica> {
   return enFila(async () => {
     const lectura = await leer(db, contexto, carpeta, opciones);
     const { anterior, ajenos } = lectura;
     const mismosAjenos = anterior !== null
       && anterior.ajenos.size === ajenos.length
       && ajenos.every((archivo) => anterior.ajenos.get(archivo.nombre) === archivo.texto);
-    if (mismosAjenos && contenidoPropio(db, contexto) === anterior.contenido) return null;
-    return fusionarYEscribir(db, contexto, carpeta, opciones, lectura, mismosAjenos ? [] : ajenos);
+    const contenido = contenidoPropio(db, contexto);
+    const pasada = mismosAjenos && contenido === anterior.contenido
+      ? null
+      : await fusionarYEscribir(db, contexto, carpeta, opciones, lectura, mismosAjenos ? [] : ajenos);
+    return {
+      carpeta: pasada,
+      planillas: await planillasSiToca(db, contexto, carpeta, opciones, pasada?.contenido ?? contenido),
+    };
   });
 }
 
@@ -213,10 +256,13 @@ export function SincronizarSola(): null {
       const opciones = opcionesGuardadas(db);
       if (opciones === null) return;
       sincronizarSiHayAlgoNuevo(db, contexto, carpeta, opciones)
-        .then((pasada) => {
-          if (pasada === null) return;
-          const { nuevas, actualizadas } = pasada.total;
-          if (nuevas + actualizadas > 0) avisar(`Sincronizado: ${nuevas} nuevas, ${actualizadas} actualizadas`);
+        .then(({ carpeta: pasada, planillas }) => {
+          const partes: string[] = [];
+          const nuevas = pasada?.total.nuevas ?? 0;
+          const actualizadas = pasada?.total.actualizadas ?? 0;
+          if (nuevas + actualizadas > 0) partes.push(`Sincronizado: ${nuevas} nuevas, ${actualizadas} actualizadas`);
+          if ((planillas?.aplicados ?? 0) > 0) partes.push(`Desde la planilla: ${planillas!.aplicados} cambios`);
+          if (partes.length > 0) avisar(partes.join('. '));
         })
         .catch(() => {});
     };

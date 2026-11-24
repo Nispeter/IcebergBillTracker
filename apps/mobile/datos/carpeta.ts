@@ -13,8 +13,9 @@
  *   permiso guardado en IndexedDB y revalidado al tocar Sincronizar.
  */
 
+import { crypto } from '@iceberg/core';
 import { nombreDelArchivo, type ArchivoDeCarpeta, type Contexto } from '@iceberg/db';
-import { StorageAccessFramework as SAF } from 'expo-file-system/legacy';
+import { EncodingType, StorageAccessFramework as SAF } from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 /** El archivo de este aparato. Sin extension: SAF la agrega segun el tipo. */
@@ -75,11 +76,11 @@ async function alIntentar<T>(que: string, hacer: () => Promise<T>): Promise<T> {
 
 // ─────────────────────────────── web ───────────────────────────────
 
-interface Escritura { write(dato: string): Promise<void>; close(): Promise<void> }
+interface Escritura { write(dato: string | Uint8Array): Promise<void>; close(): Promise<void> }
 
 interface ManejadorDeArchivo {
   createWritable(): Promise<Escritura>;
-  getFile(): Promise<{ text(): Promise<string> }>;
+  getFile(): Promise<{ text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer> }>;
 }
 
 interface ManejadorDeCarpeta {
@@ -278,4 +279,107 @@ export async function leerCarpeta(
     }
   }
   return { ajenos, estaElPropio };
+}
+
+// ───────────────────────────── planillas ─────────────────────────────
+
+/**
+ * Las planillas van en una subcarpeta propia. Así no se mezclan con los
+ * archivos de sincronización (que `leerCarpeta` lee todos) y quien abre Drive
+ * encuentra las suyas sin tener que distinguirlas de los `.json`.
+ */
+const SUBCARPETA_DE_PLANILLAS = 'Planillas';
+
+const TIPO_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/** La subcarpeta ya encontrada, por carpeta: listar en cada pasada cuesta. */
+const planillasEn = new Map<string, string>();
+
+/**
+ * El nombre de archivo de una URI de SAF. En una carpeta del teléfono la URI
+ * lleva la ruta entera, codificada; el nombre es lo que va después de la
+ * última barra.
+ */
+function nombreDeUri(uri: string): string {
+  let entera: string;
+  try {
+    entera = decodeURIComponent(uri);
+  } catch {
+    entera = uri;
+  }
+  return entera.slice(Math.max(entera.lastIndexOf('/'), entera.lastIndexOf(':')) + 1);
+}
+
+/** La subcarpeta de planillas, creándola si todavía no existe. */
+async function subcarpetaDePlanillas(carpeta: string): Promise<string> {
+  const conocida = planillasEn.get(carpeta);
+  if (conocida !== undefined) return conocida;
+
+  const hijos = await alIntentar('abrir la carpeta', () => SAF.readDirectoryAsync(carpeta));
+  const existente = hijos.find((uri) => nombreDeUri(uri) === SUBCARPETA_DE_PLANILLAS);
+  const uri = existente ?? await alIntentar(
+    'crear la carpeta de planillas',
+    () => SAF.makeDirectoryAsync(carpeta, SUBCARPETA_DE_PLANILLAS),
+  );
+  planillasEn.set(carpeta, uri);
+  return uri;
+}
+
+async function planillasWeb(): Promise<ManejadorDeCarpeta> {
+  const manejador = await carpetaWeb();
+  if (manejador === null) throw new CarpetaPerdidaError();
+  return manejador.getDirectoryHandle(SUBCARPETA_DE_PLANILLAS, { create: true });
+}
+
+/** Las planillas que hay, por nombre de archivo. El valor es lo que se pasa a leer y escribir. */
+export async function listarPlanillas(carpeta: string): Promise<Map<string, string>> {
+  const planillas = new Map<string, string>();
+  if (carpeta === EN_EL_NAVEGADOR) {
+    for await (const nombre of (await planillasWeb()).keys()) planillas.set(nombre, nombre);
+    return planillas;
+  }
+  const uris = await SAF.readDirectoryAsync(await subcarpetaDePlanillas(carpeta));
+  for (const uri of uris) planillas.set(nombreDeUri(uri), uri);
+  return planillas;
+}
+
+/** El contenido de una planilla, en base64: es lo que entiende la librería de Excel en Android. */
+export async function leerPlanilla(carpeta: string, donde: string): Promise<string> {
+  if (carpeta === EN_EL_NAVEGADOR) {
+    const archivo = await (await (await planillasWeb()).getFileHandle(donde)).getFile();
+    return crypto.aBase64(new Uint8Array(await archivo.arrayBuffer()));
+  }
+  return SAF.readAsStringAsync(donde, { encoding: EncodingType.Base64 });
+}
+
+/**
+ * Escribe una planilla y devuelve dónde quedó. Con `donde` se reescribe la que
+ * hay; sin él, se crea.
+ */
+export async function escribirPlanilla(
+  carpeta: string, nombre: string, base64: string, donde: string | null,
+): Promise<string> {
+  if (carpeta === EN_EL_NAVEGADOR) {
+    const archivo = await (await planillasWeb()).getFileHandle(nombre, { create: true });
+    const escritura = await archivo.createWritable();
+    await escritura.write(crypto.deBase64(base64));
+    await escritura.close();
+    return nombre;
+  }
+  const uri = donde ?? await alIntentar(
+    'crear la planilla',
+    () => SAF.createFileAsync(subcarpetaDePlanillasConocida(carpeta), nombre, TIPO_XLSX),
+  );
+  await alIntentar(
+    'escribir la planilla',
+    () => SAF.writeAsStringAsync(uri, base64, { encoding: EncodingType.Base64 }),
+  );
+  return uri;
+}
+
+/** `listarPlanillas` ya la encontró o la creó: escribir siempre viene después de listar. */
+function subcarpetaDePlanillasConocida(carpeta: string): string {
+  const conocida = planillasEn.get(carpeta);
+  if (conocida === undefined) throw new Error('Falta listar las planillas antes de escribir una.');
+  return conocida;
 }

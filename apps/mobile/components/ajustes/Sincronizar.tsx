@@ -34,11 +34,12 @@ const MODOS: readonly Opcion<ModoDeCompartir>[] = [
 ];
 
 const AYUDA_DEL_MODO: Record<ModoDeCompartir, string> = {
-  planilla: 'Cada cuenta compartida queda también como planilla de Excel en la carpeta, '
-    + 'y se puede abrir y editar en Google Sheets. Va sin cifrar: la protege el acceso '
-    + 'a tu Drive.',
+  planilla: 'Cada cuenta compartida queda también como planilla de Excel en la carpeta '
+    + 'Planillas, y se puede abrir y editar en Google Sheets. La escribe el teléfono que '
+    + 'creó la cuenta. Va sin cifrar: la protege el acceso a tu Drive.',
   cifrado: 'Todo lo que sale a la carpeta va cifrado con la palabra. Quien abra la '
-    + 'carpeta no puede leer nada, pero tampoco hay planilla.',
+    + 'carpeta no puede leer nada, pero tampoco hay planilla. Las planillas que hayan '
+    + 'quedado de antes en la carpeta Planillas no se borran solas.',
 };
 
 export function Sincronizar() {
@@ -104,7 +105,12 @@ export function Sincronizar() {
             + (cuantos === 0 ? '' : `. ${cuantos} se resolvieron por fecha`))
         + (r.ajenos === 0 ? '' : `. Se saltaron ${r.ajenos} de otro hogar`)
         + (r.cerrados === 0 ? '' : `. ${r.cerrados} no se pudieron abrir: mándale una invitación `
-          + 'nueva al otro teléfono'),
+          + 'nueva al otro teléfono')
+        + ((r.planillas?.aplicados ?? 0) === 0 ? '' : `. Desde la planilla: ${r.planillas!.aplicados} cambios`)
+        + ((r.planillas?.ilegibles ?? 0) === 0 ? '' : r.planillas!.ilegibles === 1
+          ? '. 1 fila de la planilla no se entiende: revisa la fecha, el monto y la descripción'
+          : `. ${r.planillas!.ilegibles} filas de la planilla no se entienden: revisa la fecha, `
+            + 'el monto y la descripción'),
       );
     } catch (e) {
       // La carpeta se suelta solo cuando el error dice con certeza que ya no
