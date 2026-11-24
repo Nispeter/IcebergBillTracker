@@ -55,7 +55,7 @@ export function Sincronizar() {
       // El archivo propio vivía en la carpeta anterior.
       escribirAjuste(db, CLAVE_ARCHIVO_PROPIO, '');
       setCarpeta(elegida);
-      avisar('Carpeta lista. Ahora toca Sincronizar');
+      avisar('Carpeta lista. Desde ahora se sincroniza sola');
     } catch (e) {
       setProblemaDeCarpeta((e as Error).message);
     }
@@ -130,8 +130,8 @@ export function Sincronizar() {
         + '2. Cada uno la elige acá con Elegir carpeta.\n'
         + '3. Envíale tu código de hogar y tu palabra de cifrado.\n'
         + '4. Esa persona lo pega en "Unirme a otro hogar".\n\n'
-        + 'De ahí en adelante Syncthing mueve la carpeta sola, y a ustedes solo les '
-        + 'queda tocar Sincronizar para ponerse al día.\n\n'
+        + 'De ahí en adelante la app se sincroniza sola al abrirla y cada cinco minutos '
+        + 'mientras está abierta. Sincronizar ahora sirve para no esperar.\n\n'
         + 'Sincronizar nunca borra nada. Si el mismo movimiento se editó en los dos '
         + 'teléfonos, gana la edición más nueva.\n\n'
         + 'Las cuentas marcadas como no compartidas no viajan, así que tampoco '

@@ -14,7 +14,7 @@ import { crearCuenta, editarCuenta } from './cuentas';
 import { crearMovimiento, listarMovimientos } from './movimientos';
 import { exportarRespaldo } from './respaldo';
 import { fusionarVarios } from './sincronizacion';
-import { nombreDelArchivo, pasarPorCarpeta } from './carpeta';
+import { contenidoPropio, nombreDelArchivo, pasarPorCarpeta } from './carpeta';
 
 const d = dates.requirePlainDate;
 
@@ -136,7 +136,7 @@ describe('dos aparatos y una carpeta', () => {
       .map(([nombre, texto]) => ({ nombre, texto }));
 
     const pasada = pasarPorCarpeta(base.db, base.contexto, ajenos, { frase });
-    nube.set(propio + '.json', pasada.propio);
+    if (pasada.propio !== null) nube.set(propio + '.json', pasada.propio);
     return pasada;
   }
 
@@ -266,5 +266,74 @@ describe('dos aparatos y una carpeta', () => {
 
     expect(pasada.cerrados).toBe(1);
     expect(pasada.fusionados).toBe(0);
+  });
+});
+
+describe('sin nada nuevo no se escribe', () => {
+  // La sincronización automática pasa cada pocos minutos. Si cada pasada
+  // reescribiera el archivo, la nube lo subiría entero cada vez.
+  const frase = 'la misma frase larga';
+
+  it('si nada cambió, no hay archivo que escribir', () => {
+    const cuenta = crearCuenta(mio.db, mio.contexto, { nombre: 'Casa', tipo: 'corriente' }).id;
+    crearMovimiento(mio.db, mio.contexto, {
+      cuentaId: cuenta, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre: 'Jumbo',
+    });
+    const primera = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+    mio.avanzarReloj(60_000);
+
+    const segunda = pasarPorCarpeta(mio.db, mio.contexto, [], {
+      frase, contenidoAnterior: primera.contenido,
+    });
+
+    expect(primera.propio).not.toBeNull();
+    expect(segunda.propio).toBeNull();
+    expect(segunda.contenido).toBe(primera.contenido);
+  });
+
+  it('lo anotado acá se escribe', () => {
+    const cuenta = crearCuenta(mio.db, mio.contexto, { nombre: 'Casa', tipo: 'corriente' }).id;
+    const primera = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+    crearMovimiento(mio.db, mio.contexto, {
+      cuentaId: cuenta, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre: 'Jumbo',
+    });
+
+    const segunda = pasarPorCarpeta(mio.db, mio.contexto, [], {
+      frase, contenidoAnterior: primera.contenido,
+    });
+
+    expect(segunda.propio).not.toBeNull();
+  });
+
+  it('lo que llega de otro también se escribe, para que el tercero lo reciba', () => {
+    const primera = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+    const ajeno = pasarPorCarpeta(otroA.db, otroA.contexto, [], { frase });
+    const cuenta = crearCuenta(otroA.db, otroA.contexto, { nombre: 'Casa', tipo: 'corriente' }).id;
+    crearMovimiento(otroA.db, otroA.contexto, {
+      cuentaId: cuenta, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre: 'Jumbo',
+    });
+    const conGasto = pasarPorCarpeta(otroA.db, otroA.contexto, [], {
+      frase, contenidoAnterior: ajeno.contenido,
+    });
+
+    const segunda = pasarPorCarpeta(mio.db, mio.contexto, [
+      { nombre: 'otroA.json', texto: conGasto.propio ?? '' },
+    ], { frase, contenidoAnterior: primera.contenido });
+
+    expect(segunda.total.nuevas).toBeGreaterThan(0);
+    expect(segunda.propio).not.toBeNull();
+
+    // Y volver a leer ese mismo archivo ya no deja nada que escribir.
+    const tercera = pasarPorCarpeta(mio.db, mio.contexto, [
+      { nombre: 'otroA.json', texto: conGasto.propio ?? '' },
+    ], { frase, contenidoAnterior: segunda.contenido });
+    expect(tercera.propio).toBeNull();
+  });
+
+  it('contenidoPropio coincide con el de la pasada', () => {
+    crearCuenta(mio.db, mio.contexto, { nombre: 'Casa', tipo: 'corriente' });
+    const pasada = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+
+    expect(contenidoPropio(mio.db, mio.contexto)).toBe(pasada.contenido);
   });
 });

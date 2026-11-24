@@ -17,6 +17,7 @@ import { useEstilos, type Estilo } from '../datos/estilos';
 import { ProveedorDeExplicacion } from '../datos/explicacion';
 import { ProveedorDeLetra } from '../datos/letra';
 import { ProveedorDePeriodo } from '../datos/periodo';
+import { SincronizarSola } from '../datos/sincronizar';
 import { ProveedorDeTema, TemaGuardado, useTema } from '../datos/tema';
 
 /**
@@ -73,6 +74,8 @@ function Contenido() {
           {/* El tamaño de letra sale de la base, así que cuelga de ella. */}
           <ProveedorDeLetra>
             <ProveedorDeAviso>
+              {/* No dibuja nada: sincroniza con la carpeta compartida al abrir y cada tanto. */}
+              <SincronizarSola />
               <ConPeriodo>
                 <ProveedorDeCuenta>
                   <ProveedorDeExplicacion>

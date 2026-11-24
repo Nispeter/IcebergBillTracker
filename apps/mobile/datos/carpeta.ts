@@ -129,7 +129,8 @@ async function carpetaWeb(): Promise<ManejadorDeCarpeta | null> {
   if (manejador.queryPermission === undefined) return manejador;
   if (await manejador.queryPermission({ mode: 'readwrite' }) === 'granted') return manejador;
   // Vuelve a pedirlo: el navegador solo lo concede dentro de un gesto del
-  // usuario, y todas las llamadas a esto cuelgan de un boton.
+  // usuario. La pasada automática no viene de uno, así que ahí esto falla y la
+  // pasada se calla; Sincronizar ahora lo pide desde el botón.
   if (manejador.requestPermission === undefined) return null;
   if (await manejador.requestPermission({ mode: 'readwrite' }) === 'granted') return manejador;
   return null;
@@ -234,35 +235,46 @@ export async function escribirEnCarpeta(
   return uri;
 }
 
+export interface LecturaDeCarpeta {
+  readonly ajenos: ArchivoDeCarpeta[];
+  /**
+   * Si el archivo propio sigue en la carpeta. Si alguien lo borró, hay que
+   * escribirlo de nuevo aunque no haya cambiado nada.
+   */
+  readonly estaElPropio: boolean;
+}
+
 /**
  * Lee lo que dejaron los otros teléfonos: todo menos el archivo propio. Lo que
  * no sea un respaldo lo descarta `pasarPorCarpeta`, que lo cuenta como cerrado.
  */
 export async function leerCarpeta(
   carpeta: string, propio: string | null,
-): Promise<ArchivoDeCarpeta[]> {
-  const archivos: ArchivoDeCarpeta[] = [];
+): Promise<LecturaDeCarpeta> {
+  const ajenos: ArchivoDeCarpeta[] = [];
+  let estaElPropio = false;
 
   if (carpeta === EN_EL_NAVEGADOR) {
     const manejador = await carpetaWeb();
     if (manejador === null) throw new CarpetaPerdidaError();
     for await (const nombre of manejador.keys()) {
-      if (!nombre.endsWith('.json') || nombre === propio) continue;
+      if (nombre === propio) { estaElPropio = true; continue; }
+      if (!nombre.endsWith('.json')) continue;
       const archivo = await manejador.getFileHandle(nombre);
-      archivos.push({ nombre, texto: await (await archivo.getFile()).text() });
+      ajenos.push({ nombre, texto: await (await archivo.getFile()).text() });
     }
-    return archivos;
+    return { ajenos, estaElPropio };
   }
 
   const uris = await alIntentar('abrir la carpeta', () => SAF.readDirectoryAsync(carpeta));
   for (const uri of uris) {
-    if (uri === propio) continue;
+    if (uri === propio) { estaElPropio = true; continue; }
     try {
-      archivos.push({ nombre: uri, texto: await SAF.readAsStringAsync(uri) });
+      ajenos.push({ nombre: uri, texto: await SAF.readAsStringAsync(uri) });
     } catch {
       // Una subcarpeta, o un archivo que el proveedor no deja leer. No es
       // asunto nuestro y no puede cortar la pasada.
     }
   }
-  return archivos;
+  return { ajenos, estaElPropio };
 }
