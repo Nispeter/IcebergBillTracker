@@ -25,6 +25,7 @@ import { Ayuda } from './Ayuda';
 import { BarraDePeriodo } from './BarraDePeriodo';
 import { FueraDelPeriodo } from './FueraDelPeriodo';
 import { Pinguino } from './Pinguino';
+import { Sincronizando } from './Sincronizando';
 import { useAbrirMenuDeCuenta } from './MenuDeCuenta';
 import { transicion, useMovimientoReducido } from '../datos/animacion';
 import { useCuentas } from '../datos/consultas';
@@ -118,6 +119,7 @@ export function Pantalla(
         <View style={styles.filaDelTitulo}>
           <Text style={styles.titulo} accessibilityRole="header">{titulo}</Text>
           {ayudaDelTitulo === undefined ? null : <Ayuda titulo={titulo} texto={ayudaDelTitulo} />}
+          <Sincronizando />
         </View>
       </View>
 

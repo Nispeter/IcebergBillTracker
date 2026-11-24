@@ -1,11 +1,15 @@
 /**
- * La frase con la que se cifra lo que sale a la carpeta compartida. La app se
- * inventa una la primera vez y desde ahí cifra siempre: vacía significaría
- * escribir el historial financiero en claro.
+ * Cómo se comparte con la carpeta, y la frase del modo cifrado. La frase se
+ * inventa la primera vez aunque el modo sea planilla: con ella se siguen
+ * abriendo los archivos cifrados que deje otro teléfono mientras se cambian de
+ * modo.
  */
 
 import { crypto } from '@iceberg/core';
-import { CLAVE_FRASE_DE_CIFRADO, escribirAjuste, leerOCrear } from '@iceberg/db';
+import {
+  CLAVE_FRASE_DE_CIFRADO, CLAVE_MODO_DE_COMPARTIR, escribirAjuste, leerModoDeCompartir, leerOCrear,
+  type ModoDeCompartir,
+} from '@iceberg/db';
 import { useEffect } from 'react';
 import { useDatos } from './BaseDeDatos';
 import { useAjuste } from './consultas';
@@ -43,4 +47,13 @@ export function useFraseDeCifrado(): FraseDeCifrado {
       return nueva;
     },
   };
+}
+
+export function useModoDeCompartir(): {
+  readonly modo: ModoDeCompartir;
+  cambiar(modo: ModoDeCompartir): void;
+} {
+  const { db } = useDatos();
+  const modo = leerModoDeCompartir(useAjuste(CLAVE_MODO_DE_COMPARTIR));
+  return { modo, cambiar: (nuevo) => escribirAjuste(db, CLAVE_MODO_DE_COMPARTIR, nuevo) };
 }

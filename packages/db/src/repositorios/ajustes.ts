@@ -136,6 +136,21 @@ export const CLAVE_EXPLICACION_DE_A_POCO = 'explicacionDeAPoco';
  */
 export const CLAVE_FRASE_DE_CIFRADO = 'fraseDeCifrado';
 
+/**
+ * Cómo se comparte con la carpeta: `planilla` (en claro, con una planilla por
+ * cuenta compartida que se puede editar en Google Sheets) o `cifrado`. Sin
+ * valor es `planilla`, que es lo que se espera de entrada.
+ */
+export const CLAVE_MODO_DE_COMPARTIR = 'modoDeCompartir';
+
+export const MODOS_DE_COMPARTIR = ['planilla', 'cifrado'] as const;
+export type ModoDeCompartir = (typeof MODOS_DE_COMPARTIR)[number];
+
+/** El modo guardado, con `planilla` para lo que no se reconozca. */
+export function leerModoDeCompartir(valor: string | null | undefined): ModoDeCompartir {
+  return valor === 'cifrado' ? 'cifrado' : 'planilla';
+}
+
 export function leerAjuste(db: BaseDeDatos, clave: string): string | null {
   const filas = db.select().from(ajustes).where(eq(ajustes.clave, clave)).limit(1).all();
   return filas[0]?.valor ?? null;

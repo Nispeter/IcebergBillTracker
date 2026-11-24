@@ -1,6 +1,9 @@
 /**
- * Sincronizar con otra persona por una carpeta compartida: la carpeta, la
- * palabra de cifrado, y la invitación para juntar dos teléfonos.
+ * Sincronizar con otra persona por una carpeta compartida: la carpeta, cómo se
+ * comparte (planilla o cifrado), y la invitación para juntar dos teléfonos.
+ *
+ * La sección cambia con el modo: la palabra de cifrado solo existe en el modo
+ * cifrado, y la planilla solo en el otro.
  *
  * Los errores de la carpeta se dicen junto a la carpeta; lo demás se confirma
  * con el aviso de siempre.
@@ -8,27 +11,43 @@
 
 import { crypto } from '@iceberg/core';
 import {
-  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_HOGAR, armarInvitacion, escribirAjuste, leerAjuste,
-  leerInvitacion, unirseAHogar, type ConflictoLegible,
+  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_HOGAR, escribirAjuste, leerAjuste, leerInvitacion,
+  type ConflictoLegible, type ModoDeCompartir,
 } from '@iceberg/db';
 import { elevation, radii, spacing } from '@iceberg/ui';
 import { useMemo, useState } from 'react';
 import { Share, StyleSheet, Text, View } from 'react-native';
 import { Boton } from '../Boton';
-import { Campo, Entrada } from '../Formulario';
+import { Campo, Entrada, Opciones, type Opcion } from '../Formulario';
 import { Seccion } from './comun';
-import { avisarTrasRemontar, useAvisar } from '../../datos/aviso';
+import { useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { CarpetaPerdidaError, HAY_CARPETA, elegirCarpeta, nombreDeCarpeta } from '../../datos/carpeta';
-import { useFraseDeCifrado } from '../../datos/cifrado';
+import { useFraseDeCifrado, useModoDeCompartir } from '../../datos/cifrado';
 import { useEstilos, type Estilo } from '../../datos/estilos';
-import { sincronizarCarpeta } from '../../datos/sincronizar';
+import { opcionesGuardadas, sincronizarCarpeta } from '../../datos/sincronizar';
+import { mensajeDeInvitacion, useUnirse } from '../../datos/unirse';
+
+const MODOS: readonly Opcion<ModoDeCompartir>[] = [
+  { valor: 'planilla', etiqueta: 'Planilla', accesible: 'Compartir como planilla, sin cifrar' },
+  { valor: 'cifrado', etiqueta: 'Cifrado', accesible: 'Compartir cifrado con una palabra' },
+];
+
+const AYUDA_DEL_MODO: Record<ModoDeCompartir, string> = {
+  planilla: 'Cada cuenta compartida queda también como planilla de Excel en la carpeta, '
+    + 'y se puede abrir y editar en Google Sheets. Va sin cifrar: la protege el acceso '
+    + 'a tu Drive.',
+  cifrado: 'Todo lo que sale a la carpeta va cifrado con la palabra. Quien abra la '
+    + 'carpeta no puede leer nada, pero tampoco hay planilla.',
+};
 
 export function Sincronizar() {
   const styles = useEstilos(crearEstilos);
-  const { db, contexto, cambiarHogar } = useDatos();
+  const { db, contexto } = useDatos();
   const avisar = useAvisar();
   const cifrado = useFraseDeCifrado();
+  const { modo, cambiar: cambiarModo } = useModoDeCompartir();
+  const unirseCon = useUnirse();
 
   const [carpeta, setCarpeta] = useState<string | null>(() => leerAjuste(db, CLAVE_CARPETA) || null);
   const [sincronizando, setSincronizando] = useState(false);
@@ -66,10 +85,15 @@ export function Sincronizar() {
    */
   async function sincronizar(permitirOtroHogar = false) {
     if (carpeta === null) return;
+    const opciones = opcionesGuardadas(db);
+    if (opciones === null) {
+      avisar('Falta la palabra de cifrado');
+      return;
+    }
     setProblemaDeCarpeta(null);
     setSincronizando(true);
     try {
-      const r = await sincronizarCarpeta(db, contexto, carpeta, { frase: cifrado.frase, permitirOtroHogar });
+      const r = await sincronizarCarpeta(db, contexto, carpeta, { ...opciones, permitirOtroHogar });
       setConflictos(r.ejemplos);
       setAjenos(r.ajenos);
       const { nuevas, actualizadas, conflictos: cuantos } = r.total;
@@ -79,8 +103,8 @@ export function Sincronizar() {
           : `${nuevas} nuevas, ${actualizadas} actualizadas`
             + (cuantos === 0 ? '' : `. ${cuantos} se resolvieron por fecha`))
         + (r.ajenos === 0 ? '' : `. Se saltaron ${r.ajenos} de otro hogar`)
-        + (r.cerrados === 0 ? '' : `. ${r.cerrados} no se pudieron abrir: revisa que la palabra de `
-          + 'cifrado sea la misma en los dos teléfonos'),
+        + (r.cerrados === 0 ? '' : `. ${r.cerrados} no se pudieron abrir: mándale una invitación `
+          + 'nueva al otro teléfono'),
       );
     } catch (e) {
       // La carpeta se suelta solo cuando el error dice con certeza que ya no
@@ -96,6 +120,12 @@ export function Sincronizar() {
     }
   }
 
+  function elegirModo(nuevo: ModoDeCompartir) {
+    if (nuevo === modo) return;
+    cambiarModo(nuevo);
+    avisar('Modo cambiado. Mándale una invitación nueva a la otra persona');
+  }
+
   /** Deja la palabra escrita como la definitiva. Vacía no se acepta. */
   function guardarFrase() {
     const escrita = (fraseEditada ?? '').trim();
@@ -105,17 +135,14 @@ export function Sincronizar() {
     avisar('Palabra guardada. Mándale una invitación nueva a la otra persona');
   }
 
-  /** El mensaje entero se puede pegar allá: `leerInvitacion` busca la invitación adentro. */
+  /** La invitación lleva el modo: con palabra si es cifrado, sin ella si es planilla. */
   function invitar() {
-    if (hogar === null || cifrado.frase === '') return;
+    if (hogar === null) return;
     Share.share({
-      message: 'Únete a mi hogar en Iceberg. Abre Ajustes, Sincronizar, y pega este mensaje '
-        + 'en "Unirme con una invitación".\n\n'
-        + armarInvitacion({ hogar, frase: cifrado.frase }),
+      message: mensajeDeInvitacion(modo === 'cifrado' ? { hogar, frase: cifrado.frase } : { hogar }),
     });
   }
 
-  /** Toma el hogar y la palabra de la invitación, de una vez. */
   function unirse() {
     const invitacion = leerInvitacion(pegada);
     if (invitacion === null) {
@@ -123,18 +150,9 @@ export function Sincronizar() {
       return;
     }
     try {
-      const filas = unirseAHogar(db, contexto, invitacion.hogar);
-      cifrado.cambiar(invitacion.frase);
       setPegada('');
       setFraseEditada(null);
-      if (filas === 0) {
-        avisar('Listo. Ya estaban en el mismo hogar');
-        return;
-      }
-      // Sin apuntar el contexto al hogar nuevo, las consultas seguirían en el
-      // viejo. Eso remonta la app, y con ella el aviso.
-      avisarTrasRemontar('Listo. Ahora los dos teléfonos están en el mismo hogar');
-      cambiarHogar(invitacion.hogar);
+      unirseCon(invitacion);
     } catch (e) {
       avisar((e as Error).message);
     }
@@ -152,8 +170,8 @@ export function Sincronizar() {
         + 'de Drive, Dropbox u OneDrive. **Syncthing** también sirve, pero los dos '
         + 'teléfonos tienen que estar en línea a la vez.\n'
         + '2. Cada uno la elige acá con Elegir carpeta.\n'
-        + '3. Uno toca "Invitar a otro teléfono" y le manda la invitación al otro.\n'
-        + '4. El otro la pega en "Unirme con una invitación" y toca Unirme.\n\n'
+        + '3. Uno toca "Invitar a otro teléfono" y le manda el link al otro.\n'
+        + '4. El otro toca el link, o pega el mensaje en "Unirme con una invitación".\n\n'
         + 'De ahí en adelante la app se sincroniza sola: al abrirla, al salir de ella, '
         + 'unos segundos después de cada cambio y cada minuto mientras está abierta. '
         + 'Sincronizar ahora sirve para no esperar.\n\n'
@@ -161,9 +179,10 @@ export function Sincronizar() {
         + 'teléfonos, gana la edición más nueva.\n\n'
         + 'Las cuentas marcadas como no compartidas no viajan, así que tampoco '
         + 'quedan respaldadas en la carpeta.\n\n'
-        + 'Lo que se deja en la carpeta va **siempre cifrado**, con la palabra que '
-        + 'la app se inventó. Los dos teléfonos tienen que tener la misma, y la '
-        + 'invitación ya la lleva. Si la cambias, manda una invitación nueva.'}
+        + '**Planilla** deja cada cuenta compartida como Excel en la carpeta, para '
+        + 'verla y editarla en Google Sheets: lo que agregues, corrijas o borres ahí '
+        + 'vuelve a la app. **Cifrado** no deja nada legible en la carpeta. La '
+        + 'invitación lleva el modo, así que los dos teléfonos quedan iguales.'}
     >
       {!HAY_CARPETA ? (
         <Text style={styles.nota}>
@@ -210,41 +229,44 @@ export function Sincronizar() {
         </View>
       )}
 
-      {/* Junto a la carpeta porque solo significa algo ahí. Viaja dentro de la
-          invitación; se muestra para poder cambiarla. */}
-      <Campo
-        etiqueta="Palabra de cifrado"
-        aviso={debilidad}
-        ayuda={frase === '' ? null : 'Todo lo que sale a la carpeta va cifrado con esta palabra.'}
-      >
-        <Entrada
-          value={frase}
-          onChangeText={setFraseEditada}
-          onBlur={guardarFrase}
-          placeholder="Inventándola…"
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.codigo}
-          accessibilityLabel="Palabra de cifrado"
-        />
+      <Campo etiqueta="Cómo se comparte" ayuda={AYUDA_DEL_MODO[modo]}>
+        <Opciones opciones={MODOS} valor={modo} onElegir={elegirModo} />
       </Campo>
-      <Boton
-        etiqueta="Inventar otra"
-        accesible="Inventar otra palabra de cifrado"
-        onPress={() => {
-          cifrado.renovar();
-          setFraseEditada(null);
-          avisar('Palabra nueva. Mándale una invitación nueva a la otra persona');
-        }}
-      />
 
-      {/* El hogar y la palabra van juntos en la invitación: una sola cosa que
-          enviar y una sola que pegar. */}
+      {modo === 'planilla' ? null : (
+        <>
+          {/* Viaja dentro de la invitación; se muestra para poder cambiarla. */}
+          <Campo etiqueta="Palabra de cifrado" aviso={debilidad}>
+            <Entrada
+              value={frase}
+              onChangeText={setFraseEditada}
+              onBlur={guardarFrase}
+              placeholder="Inventándola…"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.codigo}
+              accessibilityLabel="Palabra de cifrado"
+            />
+          </Campo>
+          <Boton
+            etiqueta="Inventar otra"
+            accesible="Inventar otra palabra de cifrado"
+            onPress={() => {
+              cifrado.renovar();
+              setFraseEditada(null);
+              avisar('Palabra nueva. Mándale una invitación nueva a la otra persona');
+            }}
+          />
+        </>
+      )}
+
+      {/* El hogar y el modo (y la palabra, si hay) van juntos en la invitación:
+          una sola cosa que enviar, y un toque o un pegado para recibirla. */}
       <Boton
         etiqueta="Invitar a otro teléfono"
         accesible="Enviar una invitación a otro teléfono"
         onPress={invitar}
-        deshabilitado={hogar === null || cifrado.frase === ''}
+        deshabilitado={hogar === null || (modo === 'cifrado' && cifrado.frase === '')}
       />
       <Campo etiqueta="Unirme con una invitación">
         <Entrada

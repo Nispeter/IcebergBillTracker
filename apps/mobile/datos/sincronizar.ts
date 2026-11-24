@@ -12,16 +12,17 @@
  */
 
 import {
-  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, contenidoPropio, escribirAjuste, leerAjuste, pasarPorCarpeta,
+  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_FRASE_DE_CIFRADO, CLAVE_MODO_DE_COMPARTIR,
+  contenidoPropio, escribirAjuste, leerAjuste, leerModoDeCompartir, pasarPorCarpeta,
   type BaseDeDatos, type Contexto, type PasadaPorCarpeta,
 } from '@iceberg/db';
 import { addDatabaseChangeListener } from 'expo-sqlite';
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { useAvisar } from './aviso';
 import { useDatos } from './BaseDeDatos';
 import { escribirEnCarpeta, leerCarpeta, nombreDelPropio, type ArchivoDeCarpeta } from './carpeta';
-import { useFraseDeCifrado } from './cifrado';
+import { useFraseDeCifrado, useModoDeCompartir } from './cifrado';
 import { useAjuste } from './consultas';
 
 /** Cada cuánto se sincroniza sola mientras la app está a la vista. */
@@ -33,9 +34,41 @@ const CADA_CUANTO = 60 * 1000;
  */
 const TRAS_UN_CAMBIO = 2000;
 
+/**
+ * Cuánto se espera al abrir antes de la primera pasada: que la app termine de
+ * dibujarse y se pueda usar antes de ponerse a leer y fusionar.
+ */
+const AL_ABRIR = 1500;
+
+// ───────────────────── si hay una pasada trabajando ─────────────────────
+
+let trabajando = false;
+const oyentes = new Set<() => void>();
+
+function marcarTrabajando(valor: boolean): void {
+  trabajando = valor;
+  for (const oyente of oyentes) oyente();
+}
+
+function suscribir(oyente: () => void): () => void {
+  oyentes.add(oyente);
+  return () => { oyentes.delete(oyente); };
+}
+
+/**
+ * Si hay una pasada fusionando o escribiendo. Las que solo miran la carpeta y
+ * no encuentran nada nuevo no cuentan: pasan cada minuto y harían parpadear el
+ * aviso.
+ */
+export function useSincronizando(): boolean {
+  return useSyncExternalStore(suscribir, () => trabajando);
+}
+
 export interface OpcionesDeCarpeta {
-  /** Si no está vacía, el archivo propio sale cifrado y los ajenos se abren con ella. */
+  /** Abre los archivos ajenos que vengan cifrados, y cifra el propio si `cifrar`. */
   readonly frase: string;
+  /** Si el archivo propio sale cifrado. Es el modo "Cifrado" de Ajustes. */
+  readonly cifrar: boolean;
   /** Fusionar igual los archivos que vengan de otro hogar. */
   readonly permitirOtroHogar?: boolean;
 }
@@ -74,11 +107,11 @@ interface Lectura {
 }
 
 async function leer(
-  db: BaseDeDatos, contexto: Contexto, carpeta: string, frase: string,
+  db: BaseDeDatos, contexto: Contexto, carpeta: string, opciones: OpcionesDeCarpeta,
 ): Promise<Lectura> {
   const propio = leerAjuste(db, CLAVE_ARCHIVO_PROPIO) || null;
   const { ajenos, estaElPropio } = await leerCarpeta(carpeta, propio);
-  const clave = [carpeta, contexto.householdId, frase].join('\n');
+  const clave = [carpeta, contexto.householdId, opciones.frase, opciones.cifrar].join('\n');
   const anterior = ultima !== null && ultima.clave === clave && estaElPropio ? ultima : null;
   return { propio, ajenos, clave, anterior };
 }
@@ -92,25 +125,33 @@ async function fusionarYEscribir(
   aFusionar: readonly ArchivoDeCarpeta[] = lectura.ajenos,
 ): Promise<PasadaPorCarpeta> {
   const { propio, ajenos, clave, anterior } = lectura;
-  const pasada = pasarPorCarpeta(db, contexto, aFusionar, {
-    ...opciones, contenidoAnterior: anterior?.contenido,
-  });
+  marcarTrabajando(true);
+  try {
+    const pasada = await pasarPorCarpeta(db, contexto, aFusionar, {
+      frase: opciones.frase,
+      cifrarPropio: opciones.cifrar,
+      permitirOtroHogar: opciones.permitirOtroHogar,
+      contenidoAnterior: anterior?.contenido,
+    });
 
-  if (pasada.propio !== null) {
-    const escrito = await escribirEnCarpeta(
-      carpeta, nombreDelPropio(contexto), pasada.propio, propio,
-    );
-    // Puede haber cambiado: la primera vez no había ninguno, y si el archivo se
-    // borró desde la nube `escribirEnCarpeta` crea otro.
-    if (escrito !== propio) escribirAjuste(db, CLAVE_ARCHIVO_PROPIO, escrito);
+    if (pasada.propio !== null) {
+      const escrito = await escribirEnCarpeta(
+        carpeta, nombreDelPropio(contexto), pasada.propio, propio,
+      );
+      // Puede haber cambiado: la primera vez no había ninguno, y si el archivo se
+      // borró desde la nube `escribirEnCarpeta` crea otro.
+      if (escrito !== propio) escribirAjuste(db, CLAVE_ARCHIVO_PROPIO, escrito);
+    }
+
+    ultima = {
+      clave,
+      contenido: pasada.contenido,
+      ajenos: new Map(ajenos.map((archivo) => [archivo.nombre, archivo.texto])),
+    };
+    return pasada;
+  } finally {
+    marcarTrabajando(false);
   }
-
-  ultima = {
-    clave,
-    contenido: pasada.contenido,
-    ajenos: new Map(ajenos.map((archivo) => [archivo.nombre, archivo.texto])),
-  };
-  return pasada;
 }
 
 /** Una pasada a pedido: completa siempre, para poder contar lo que encontró. */
@@ -121,7 +162,7 @@ export function sincronizarCarpeta(
   opciones: OpcionesDeCarpeta,
 ): Promise<PasadaPorCarpeta> {
   return enFila(async () => fusionarYEscribir(
-    db, contexto, carpeta, opciones, await leer(db, contexto, carpeta, opciones.frase),
+    db, contexto, carpeta, opciones, await leer(db, contexto, carpeta, opciones),
   ));
 }
 
@@ -141,7 +182,7 @@ export function sincronizarSiHayAlgoNuevo(
   opciones: OpcionesDeCarpeta,
 ): Promise<PasadaPorCarpeta | null> {
   return enFila(async () => {
-    const lectura = await leer(db, contexto, carpeta, opciones.frase);
+    const lectura = await leer(db, contexto, carpeta, opciones);
     const { anterior, ajenos } = lectura;
     const mismosAjenos = anterior !== null
       && anterior.ajenos.size === ajenos.length
@@ -160,14 +201,18 @@ export function sincronizarSiHayAlgoNuevo(
 export function SincronizarSola(): null {
   const { db, contexto } = useDatos();
   const carpeta = useAjuste(CLAVE_CARPETA) || null;
+  // Solo para volver a pasar apenas cambien: la pasada los lee de la base.
+  const { modo } = useModoDeCompartir();
   const { frase } = useFraseDeCifrado();
   const avisar = useAvisar();
 
   useEffect(() => {
-    if (carpeta === null || frase === '') return undefined;
+    if (carpeta === null) return undefined;
 
     const pasar = () => {
-      sincronizarSiHayAlgoNuevo(db, contexto, carpeta, { frase })
+      const opciones = opcionesGuardadas(db);
+      if (opciones === null) return;
+      sincronizarSiHayAlgoNuevo(db, contexto, carpeta, opciones)
         .then((pasada) => {
           if (pasada === null) return;
           const { nuevas, actualizadas } = pasada.total;
@@ -176,7 +221,7 @@ export function SincronizarSola(): null {
         .catch(() => {});
     };
 
-    pasar();
+    const primera = setTimeout(pasar, AL_ABRIR);
     let reloj = setInterval(pasar, CADA_CUANTO);
     // Al irse se pasa una vez más, para que lo recién anotado salga aunque se
     // cierre la app: Android deja correr unos segundos después de salir. Con la
@@ -197,12 +242,28 @@ export function SincronizarSola(): null {
     });
 
     return () => {
+      clearTimeout(primera);
       clearInterval(reloj);
       clearTimeout(espera);
       alCambiarDeEstado.remove();
       alCambiarLaBase.remove();
     };
-  }, [db, contexto, carpeta, frase, avisar]);
+  }, [db, contexto, carpeta, modo, frase, avisar]);
 
   return null;
+}
+
+/**
+ * El modo y la frase, leídos de la base en el momento de pasar. Del hook no:
+ * en el primer dibujo todavía no traen nada, y un modo vacío se lee como
+ * planilla, que escribiría en claro lo que debía ir cifrado.
+ *
+ * `null` en modo cifrado sin frase: todavía no se inventó, y sin ella no hay
+ * cómo cifrar.
+ */
+export function opcionesGuardadas(db: BaseDeDatos): OpcionesDeCarpeta | null {
+  const frase = leerAjuste(db, CLAVE_FRASE_DE_CIFRADO) ?? '';
+  const cifrar = leerModoDeCompartir(leerAjuste(db, CLAVE_MODO_DE_COMPARTIR)) === 'cifrado';
+  if (cifrar && frase.trim() === '') return null;
+  return { frase, cifrar };
 }

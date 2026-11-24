@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('una pasada por la carpeta', () => {
-  it('trae lo de todos los archivos', () => {
+  it('trae lo de todos los archivos', async () => {
     const archivos = [archivoCon(otroA, 'Jumbo'), archivoCon(otroB, 'Copec')];
 
     const resultado = fusionarVarios(mio.db, mio.contexto, archivos);
@@ -56,7 +56,7 @@ describe('una pasada por la carpeta', () => {
     expect(nombres.sort()).toEqual(['Copec', 'Jumbo']);
   });
 
-  it('los totales suman los de cada archivo', () => {
+  it('los totales suman los de cada archivo', async () => {
     const archivos = [archivoCon(otroA, 'Jumbo'), archivoCon(otroB, 'Copec')];
 
     const resultado = fusionarVarios(mio.db, mio.contexto, archivos);
@@ -66,7 +66,7 @@ describe('una pasada por la carpeta', () => {
     expect(resultado.total.conflictos).toBe(0);
   });
 
-  it('pasar de nuevo no trae nada', () => {
+  it('pasar de nuevo no trae nada', async () => {
     // Es lo normal: la carpeta se relee cada vez y casi siempre esta igual.
     const archivos = [archivoCon(otroA, 'Jumbo'), archivoCon(otroB, 'Copec')];
     fusionarVarios(mio.db, mio.contexto, archivos);
@@ -78,7 +78,7 @@ describe('una pasada por la carpeta', () => {
     expect(listarMovimientos(mio.db, mio.contexto)).toHaveLength(2);
   });
 
-  it('sin archivos no hace nada', () => {
+  it('sin archivos no hace nada', async () => {
     const resultado = fusionarVarios(mio.db, mio.contexto, []);
     expect(resultado.fusionados).toBe(0);
     expect(resultado.total.nuevas).toBe(0);
@@ -86,7 +86,7 @@ describe('una pasada por la carpeta', () => {
 });
 
 describe('un archivo de otro hogar en la carpeta', () => {
-  it('se salta y los demas entran igual', () => {
+  it('se salta y los demas entran igual', async () => {
     // Lo que motiva contar en vez de tirar error: un archivo ajeno tirado en la
     // carpeta no puede dejar la sincronizacion inservible para todos.
     const deOtraCasa = crearBaseDePrueba({ householdId: 'otraCasa', deviceId: 'ajeno' });
@@ -105,7 +105,7 @@ describe('un archivo de otro hogar en la carpeta', () => {
     deOtraCasa.cerrar();
   });
 
-  it('entra si se insiste', () => {
+  it('entra si se insiste', async () => {
     const deOtraCasa = crearBaseDePrueba({ householdId: 'otraCasa', deviceId: 'ajeno' });
     const archivos = [archivoCon(deOtraCasa, 'Gasto ajeno')];
 
@@ -129,13 +129,13 @@ describe('dos aparatos y una carpeta', () => {
   type Nube = Map<string, string>;
 
   /** Una pasada completa: leer lo ajeno, fusionarlo, dejar lo propio. */
-  function sincronizar(base: BaseDePrueba, nube: Nube, frase?: string) {
+  async function sincronizar(base: BaseDePrueba, nube: Nube, frase?: string) {
     const propio = nombreDelArchivo(base.contexto);
     const ajenos = [...nube.entries()]
       .filter(([nombre]) => !nombre.startsWith(propio))
       .map(([nombre, texto]) => ({ nombre, texto }));
 
-    const pasada = pasarPorCarpeta(base.db, base.contexto, ajenos, { frase });
+    const pasada = await pasarPorCarpeta(base.db, base.contexto, ajenos, { frase });
     if (pasada.propio !== null) nube.set(propio + '.json', pasada.propio);
     return pasada;
   }
@@ -145,20 +145,20 @@ describe('dos aparatos y una carpeta', () => {
     { cuentaId, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre },
   );
 
-  it('lo que anota uno aparece en el otro', () => {
+  it('lo que anota uno aparece en el otro', async () => {
     const nube: Nube = new Map();
     const cuenta = crearCuenta(otroA.db, otroA.contexto, {
       nombre: 'De la casa', tipo: 'corriente',
     }).id;
     gastoEn(otroA, cuenta, 'Jumbo');
 
-    sincronizar(otroA, nube);
-    sincronizar(otroB, nube);
+    await sincronizar(otroA, nube);
+    await sincronizar(otroB, nube);
 
     expect(listarMovimientos(otroB.db, otroB.contexto).map((m) => m.nombre)).toEqual(['Jumbo']);
   });
 
-  it('los dos terminan viendo lo mismo', () => {
+  it('los dos terminan viendo lo mismo', async () => {
     // El criterio de F5, tal cual: cada uno anota algo sin saber del otro, y
     // despues de una pasada de cada lado los dos ven las dos cosas.
     const nube: Nube = new Map();
@@ -166,12 +166,12 @@ describe('dos aparatos y una carpeta', () => {
       nombre: 'De la casa', tipo: 'corriente',
     }).id;
     gastoEn(otroA, cuenta, 'Jumbo');
-    sincronizar(otroA, nube);
-    sincronizar(otroB, nube);
+    await sincronizar(otroA, nube);
+    await sincronizar(otroB, nube);
 
     gastoEn(otroB, cuenta, 'Copec');
-    sincronizar(otroB, nube);
-    sincronizar(otroA, nube);
+    await sincronizar(otroB, nube);
+    await sincronizar(otroA, nube);
 
     const enA = listarMovimientos(otroA.db, otroA.contexto).map((m) => m.nombre).sort();
     const enB = listarMovimientos(otroB.db, otroB.contexto).map((m) => m.nombre).sort();
@@ -179,12 +179,12 @@ describe('dos aparatos y una carpeta', () => {
     expect(enB).toEqual(enA);
   });
 
-  it('cada aparato escribe solo su archivo', () => {
+  it('cada aparato escribe solo su archivo', async () => {
     // De aca sale que no haya conflictos a nivel de nube: nunca hay dos
     // escritores sobre el mismo archivo.
     const nube: Nube = new Map();
-    sincronizar(otroA, nube);
-    sincronizar(otroB, nube);
+    await sincronizar(otroA, nube);
+    await sincronizar(otroB, nube);
 
     expect([...nube.keys()].sort()).toEqual([
       nombreDelArchivo(otroA.contexto) + '.json',
@@ -192,22 +192,22 @@ describe('dos aparatos y una carpeta', () => {
     ].sort());
   });
 
-  it('pasar de nuevo sin cambios no trae nada', () => {
+  it('pasar de nuevo sin cambios no trae nada', async () => {
     const nube: Nube = new Map();
     const cuenta = crearCuenta(otroA.db, otroA.contexto, {
       nombre: 'De la casa', tipo: 'corriente',
     }).id;
     gastoEn(otroA, cuenta, 'Jumbo');
-    sincronizar(otroA, nube);
-    sincronizar(otroB, nube);
+    await sincronizar(otroA, nube);
+    await sincronizar(otroB, nube);
 
-    const otraVez = sincronizar(otroB, nube);
+    const otraVez = await sincronizar(otroB, nube);
 
     expect(otraVez.total.nuevas).toBe(0);
     expect(otraVez.total.actualizadas).toBe(0);
   });
 
-  it('lo privado no sale a la carpeta', () => {
+  it('lo privado no sale a la carpeta', async () => {
     // La promesa de la marca por cuenta, mirada desde el transporte.
     const nube: Nube = new Map();
     const compartida = crearCuenta(otroA.db, otroA.contexto, {
@@ -220,28 +220,28 @@ describe('dos aparatos y una carpeta', () => {
     gastoEn(otroA, privada, 'Regalo sorpresa');
     editarCuenta(otroA.db, otroA.contexto, privada, { sincroniza: false });
 
-    sincronizar(otroA, nube);
-    sincronizar(otroB, nube);
+    await sincronizar(otroA, nube);
+    await sincronizar(otroB, nube);
 
     expect(listarMovimientos(otroB.db, otroB.contexto).map((m) => m.nombre)).toEqual(['Jumbo']);
   });
 
-  it('con frase, los dos lados se entienden', () => {
+  it('con frase, los dos lados se entienden', async () => {
     const nube: Nube = new Map();
     const cuenta = crearCuenta(otroA.db, otroA.contexto, {
       nombre: 'De la casa', tipo: 'corriente',
     }).id;
     gastoEn(otroA, cuenta, 'Jumbo');
 
-    sincronizar(otroA, nube, 'la misma frase larga');
+    await sincronizar(otroA, nube, 'la misma frase larga');
     // Lo que quedo en la carpeta no se puede leer sin la frase.
     expect([...nube.values()][0]).not.toContain('Jumbo');
 
-    sincronizar(otroB, nube, 'la misma frase larga');
+    await sincronizar(otroB, nube, 'la misma frase larga');
     expect(listarMovimientos(otroB.db, otroB.contexto).map((m) => m.nombre)).toEqual(['Jumbo']);
   });
 
-  it('con otra frase, el archivo se cuenta como cerrado y no se pierde nada', () => {
+  it('con otra frase, el archivo se cuenta como cerrado y no se pierde nada', async () => {
     // Es el caso de alguien que se equivoco de frase. No puede quedar como si
     // la carpeta estuviera vacia ni, peor, borrar lo que hay.
     const nube: Nube = new Map();
@@ -249,20 +249,20 @@ describe('dos aparatos y una carpeta', () => {
       nombre: 'De la casa', tipo: 'corriente',
     }).id;
     gastoEn(otroA, cuenta, 'Jumbo');
-    sincronizar(otroA, nube, 'la frase de uno');
+    await sincronizar(otroA, nube, 'la frase de uno');
 
-    const pasada = sincronizar(otroB, nube, 'una frase distinta');
+    const pasada = await sincronizar(otroB, nube, 'una frase distinta');
 
     expect(pasada.encontrados).toBe(1);
     expect(pasada.cerrados).toBe(1);
     expect(pasada.total.nuevas).toBe(0);
   });
 
-  it('un archivo cualquiera en la carpeta no rompe la pasada', () => {
+  it('un archivo cualquiera en la carpeta no rompe la pasada', async () => {
     // La carpeta es del usuario y adentro puede tener lo que se le ocurra.
     const nube: Nube = new Map([['apuntes.json', 'esto no es un respaldo']]);
 
-    const pasada = sincronizar(otroA, nube);
+    const pasada = await sincronizar(otroA, nube);
 
     expect(pasada.cerrados).toBe(1);
     expect(pasada.fusionados).toBe(0);
@@ -274,15 +274,15 @@ describe('sin nada nuevo no se escribe', () => {
   // reescribiera el archivo, la nube lo subiría entero cada vez.
   const frase = 'la misma frase larga';
 
-  it('si nada cambió, no hay archivo que escribir', () => {
+  it('si nada cambió, no hay archivo que escribir', async () => {
     const cuenta = crearCuenta(mio.db, mio.contexto, { nombre: 'Casa', tipo: 'corriente' }).id;
     crearMovimiento(mio.db, mio.contexto, {
       cuentaId: cuenta, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre: 'Jumbo',
     });
-    const primera = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+    const primera = await pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
     mio.avanzarReloj(60_000);
 
-    const segunda = pasarPorCarpeta(mio.db, mio.contexto, [], {
+    const segunda = await pasarPorCarpeta(mio.db, mio.contexto, [], {
       frase, contenidoAnterior: primera.contenido,
     });
 
@@ -291,32 +291,32 @@ describe('sin nada nuevo no se escribe', () => {
     expect(segunda.contenido).toBe(primera.contenido);
   });
 
-  it('lo anotado acá se escribe', () => {
+  it('lo anotado acá se escribe', async () => {
     const cuenta = crearCuenta(mio.db, mio.contexto, { nombre: 'Casa', tipo: 'corriente' }).id;
-    const primera = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+    const primera = await pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
     crearMovimiento(mio.db, mio.contexto, {
       cuentaId: cuenta, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre: 'Jumbo',
     });
 
-    const segunda = pasarPorCarpeta(mio.db, mio.contexto, [], {
+    const segunda = await pasarPorCarpeta(mio.db, mio.contexto, [], {
       frase, contenidoAnterior: primera.contenido,
     });
 
     expect(segunda.propio).not.toBeNull();
   });
 
-  it('lo que llega de otro también se escribe, para que el tercero lo reciba', () => {
-    const primera = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
-    const ajeno = pasarPorCarpeta(otroA.db, otroA.contexto, [], { frase });
+  it('lo que llega de otro también se escribe, para que el tercero lo reciba', async () => {
+    const primera = await pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+    const ajeno = await pasarPorCarpeta(otroA.db, otroA.contexto, [], { frase });
     const cuenta = crearCuenta(otroA.db, otroA.contexto, { nombre: 'Casa', tipo: 'corriente' }).id;
     crearMovimiento(otroA.db, otroA.contexto, {
       cuentaId: cuenta, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre: 'Jumbo',
     });
-    const conGasto = pasarPorCarpeta(otroA.db, otroA.contexto, [], {
+    const conGasto = await pasarPorCarpeta(otroA.db, otroA.contexto, [], {
       frase, contenidoAnterior: ajeno.contenido,
     });
 
-    const segunda = pasarPorCarpeta(mio.db, mio.contexto, [
+    const segunda = await pasarPorCarpeta(mio.db, mio.contexto, [
       { nombre: 'otroA.json', texto: conGasto.propio ?? '' },
     ], { frase, contenidoAnterior: primera.contenido });
 
@@ -324,16 +324,34 @@ describe('sin nada nuevo no se escribe', () => {
     expect(segunda.propio).not.toBeNull();
 
     // Y volver a leer ese mismo archivo ya no deja nada que escribir.
-    const tercera = pasarPorCarpeta(mio.db, mio.contexto, [
+    const tercera = await pasarPorCarpeta(mio.db, mio.contexto, [
       { nombre: 'otroA.json', texto: conGasto.propio ?? '' },
     ], { frase, contenidoAnterior: segunda.contenido });
     expect(tercera.propio).toBeNull();
   });
 
-  it('contenidoPropio coincide con el de la pasada', () => {
+  it('contenidoPropio coincide con el de la pasada', async () => {
     crearCuenta(mio.db, mio.contexto, { nombre: 'Casa', tipo: 'corriente' });
-    const pasada = pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
+    const pasada = await pasarPorCarpeta(mio.db, mio.contexto, [], { frase });
 
     expect(contenidoPropio(mio.db, mio.contexto)).toBe(pasada.contenido);
+  });
+});
+
+describe('sin cifrar el propio', () => {
+  it('sale en claro aunque haya frase, y lo ajeno cifrado se sigue abriendo', async () => {
+    const frase = 'la misma frase larga';
+    const cuenta = crearCuenta(otroA.db, otroA.contexto, { nombre: 'Casa', tipo: 'corriente' }).id;
+    crearMovimiento(otroA.db, otroA.contexto, {
+      cuentaId: cuenta, tipo: 'gasto', montoMinor: 10_000, ocurridoEn: d('2026-08-05'), nombre: 'Jumbo',
+    });
+    const cifrado = await pasarPorCarpeta(otroA.db, otroA.contexto, [], { frase });
+
+    const pasada = await pasarPorCarpeta(mio.db, mio.contexto, [
+      { nombre: 'otroA.json', texto: cifrado.propio ?? '' },
+    ], { frase, cifrarPropio: false });
+
+    expect(pasada.total.nuevas).toBeGreaterThan(0);
+    expect(pasada.propio).toContain('Jumbo');
   });
 });

@@ -45,11 +45,17 @@ export interface PasadaPorCarpeta extends ResultadoDeVarios {
 export interface OpcionesDePasada {
   /** Si no está vacía, el archivo propio sale cifrado y los ajenos se abren con ella. */
   readonly frase?: string;
+  /**
+   * `false` escribe el archivo propio en claro aunque haya frase. La frase se
+   * sigue usando para abrir los ajenos que vengan cifrados, así que cambiar de
+   * modo no deja a nadie sin poder leer al otro mientras se ponen de acuerdo.
+   */
+  readonly cifrarPropio?: boolean;
   /** Fusionar igual los archivos que vengan de otro hogar. */
   readonly permitirOtroHogar?: boolean;
   /**
-   * El `contenido` de la pasada anterior, con la misma frase y la misma
-   * carpeta: si cambió alguna, el archivo hay que escribirlo igual. Si el
+   * El `contenido` de la pasada anterior, con la misma frase, el mismo modo y
+   * la misma carpeta: si cambió alguno, el archivo hay que escribirlo igual. Si el
    * contenido no cambió, no se cifra ni se
    * escribe nada: con la sincronización automática, reescribir el archivo
    * entero cada vez haría que la nube lo subiera de nuevo sin motivo.
@@ -82,17 +88,19 @@ export function contenidoPropio(db: BaseDeDatos, contexto: Contexto): string {
  * en la carpeta ya incluye lo que se acaba de recibir, y dos aparatos convergen
  * en una pasada de cada uno en vez de dos.
  */
-export function pasarPorCarpeta(
+export async function pasarPorCarpeta(
   db: BaseDeDatos,
   contexto: Contexto,
   ajenos: readonly ArchivoDeCarpeta[],
   opciones: OpcionesDePasada = {},
-): PasadaPorCarpeta {
+): Promise<PasadaPorCarpeta> {
   const frase = (opciones.frase ?? '').trim();
+  const cifrarPropio = (opciones.cifrarPropio ?? true) && frase !== '';
 
   const abiertos: unknown[] = [];
   let cerrados = 0;
   for (const archivo of ajenos) {
+    await ceder();
     let datos: unknown;
     try {
       datos = JSON.parse(archivo.texto) as unknown;
@@ -107,25 +115,36 @@ export function pasarPorCarpeta(
     }
     if (frase === '') { cerrados += 1; continue; }
     try {
-      abiertos.push(JSON.parse(crypto.descifrar(datos, frase)) as unknown);
+      abiertos.push(JSON.parse(await crypto.descifrarSinTrabar(datos, frase)) as unknown);
     } catch {
       cerrados += 1;
     }
   }
 
+  await ceder();
   const resultado = fusionarVarios(db, contexto, abiertos, {
     permitirOtroHogar: opciones.permitirOtroHogar ?? false,
   });
 
   // **Solo lo sincronizable.** La carpeta es compartida: lo que este aparato
   // marcó como cuenta privada no puede salir de acá.
+  await ceder();
   const respaldo = exportarRespaldo(db, contexto, { soloSincronizables: true });
   const contenido = sinFecha(respaldo);
   const pasada = { ...resultado, encontrados: ajenos.length, cerrados, contenido };
   if (contenido === opciones.contenidoAnterior) return { ...pasada, propio: null };
 
-  const propio = frase === ''
-    ? JSON.stringify(respaldo)
-    : JSON.stringify(crypto.cifrar(JSON.stringify(respaldo), frase));
+  await ceder();
+  const propio = cifrarPropio
+    ? JSON.stringify(await crypto.cifrarSinTrabar(JSON.stringify(respaldo), frase))
+    : JSON.stringify(respaldo);
   return { ...pasada, propio };
+}
+
+/**
+ * Suelta el hilo un momento. En el teléfono la pasada corre en el mismo hilo
+ * que la pantalla, y sin esto la app se ve pegada mientras sincroniza.
+ */
+function ceder(): Promise<void> {
+  return new Promise((listo) => setTimeout(listo, 0));
 }
