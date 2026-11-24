@@ -57,7 +57,8 @@ export class CarpetaDeSoloLecturaError extends Error {
     super(
       'Esa carpeta no deja crear archivos, así que la app no puede sincronizar ahí. '
       + 'Le pasa a Google Drive: comparte sus carpetas solo para leer.\n\n'
-      + 'Prueba con una carpeta del teléfono, o con otra nube cuyo proveedor sí deje '
+      + 'Prueba con una carpeta del teléfono sincronizada con FolderSync, o con otra '
+      + 'nube cuyo proveedor sí deje '
       + `escribir.\n\nAndroid dijo: ${causa}`,
     );
   }
