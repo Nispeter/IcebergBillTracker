@@ -1,0 +1,16 @@
+diff --git a/node_modules/expo-file-system/android/src/main/java/expo/modules/filesystem/legacy/FileSystemLegacyModule.kt b/node_modules/expo-file-system/android/src/main/java/expo/modules/filesystem/legacy/FileSystemLegacyModule.kt
+index 0472011..b966eee 100644
+--- a/node_modules/expo-file-system/android/src/main/java/expo/modules/filesystem/legacy/FileSystemLegacyModule.kt
++++ b/node_modules/expo-file-system/android/src/main/java/expo/modules/filesystem/legacy/FileSystemLegacyModule.kt
+@@ -1079,7 +1079,10 @@ open class FileSystemLegacyModule : Module() {
+   @Throws(IOException::class)
+   private fun getOutputStream(uri: Uri, append: Boolean = false) = when {
+     uri.scheme == "file" -> FileOutputStream(uri.toFile(), append)
+-    uri.isSAFUri -> context.contentResolver.openOutputStream(uri, if (append) "wa" else "w")!!
++    // FIX (iceberg): "w" no garantiza truncar: Android deja a cada proveedor decidir, y
++    // en una carpeta local un archivo mas corto que el anterior puede quedar con el final del
++    // viejo pegado, que ya no es JSON. "wt" trunca siempre.
++    uri.isSAFUri -> context.contentResolver.openOutputStream(uri, if (append) "wa" else "wt")!!
+     else -> throw IOException("Unsupported scheme for location '$uri'.")
+   }
+ 
