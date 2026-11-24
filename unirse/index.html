@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Unirse a un hogar en Iceberg</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0; padding: 3rem 1.25rem; font-family: system-ui, sans-serif;
+      text-align: center; line-height: 1.5; background: #eef5f9; color: #1d2b36;
+    }
+    @media (prefers-color-scheme: dark) { body { background: #0f1a22; color: #e4eef4; } }
+    main { max-width: 26rem; margin: 0 auto; }
+    .boton {
+      display: inline-block; margin: 1rem 0; padding: 0.9rem 1.5rem; border-radius: 0.6rem;
+      background: #f59e3c; color: #1d2b36; font-weight: 600; text-decoration: none;
+    }
+    small { opacity: 0.75; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Iceberg</h1>
+    <p id="estado">Abriendo la app…</p>
+    <a class="boton" id="abrir" href="#">Abrir en Iceberg</a>
+    <p><small>
+      ¿No tienes la app?
+      <a href="https://github.com/Nispeter/IcebergBillTracker/releases/latest/download/iceberg.apk">Descárgala</a>,
+      instálala y vuelve a tocar el link.
+    </small></p>
+  </main>
+  <script>
+    // La invitación viene en el fragmento (#), que el navegador nunca le manda a
+    // ningún servidor. Esta página solo la pasa a la app.
+    var invitacion = new URLSearchParams(location.hash.slice(1)).get('i');
+    var estado = document.getElementById('estado');
+    var abrir = document.getElementById('abrir');
+    if (!invitacion) {
+      estado.textContent = 'Este link no trae una invitación. Pídele a la otra persona que la envíe de nuevo.';
+      abrir.style.display = 'none';
+    } else {
+      var app = 'intent://unirse?i=' + encodeURIComponent(invitacion)
+        + '#Intent;scheme=iceberg;package=com.nispeter.iceberg;end';
+      abrir.href = app;
+      estado.textContent = 'Si la app no se abrió sola, toca el botón.';
+      location.replace(app);
+    }
+  </script>
+</body>
+</html>
