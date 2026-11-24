@@ -4,16 +4,18 @@
  * vive en `db/repositorios/carpeta`, donde se prueba sin abrir nada. También se
  * recuerda cuál es el archivo propio, que no se puede encontrar por nombre.
  *
- * La app sincroniza sola al abrirse, al volver del fondo y cada cierto rato
- * mientras está abierta. Por eso una pasada sin nada nuevo tiene que salir casi
- * gratis: descifrar y fusionar cuesta del orden de un segundo en el teléfono, y
- * reescribir el archivo haría que FolderSync lo subiera entero cada vez.
+ * La app sincroniza sola al abrirse, al irse al fondo, al volver de él, poco
+ * después de cada cambio y cada minuto mientras está abierta. Por eso una pasada
+ * sin nada nuevo tiene que salir casi gratis: descifrar y fusionar cuesta del
+ * orden de un segundo en el teléfono, y reescribir el archivo haría que
+ * FolderSync lo subiera entero cada vez.
  */
 
 import {
   CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, contenidoPropio, escribirAjuste, leerAjuste, pasarPorCarpeta,
   type BaseDeDatos, type Contexto, type PasadaPorCarpeta,
 } from '@iceberg/db';
+import { addDatabaseChangeListener } from 'expo-sqlite';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useAvisar } from './aviso';
@@ -23,7 +25,13 @@ import { useFraseDeCifrado } from './cifrado';
 import { useAjuste } from './consultas';
 
 /** Cada cuánto se sincroniza sola mientras la app está a la vista. */
-const CADA_CUANTO = 5 * 60 * 1000;
+const CADA_CUANTO = 60 * 1000;
+
+/**
+ * Cuánto se espera después de un cambio antes de escribirlo: lo justo para que
+ * varios seguidos, como una importación, salgan en una sola pasada.
+ */
+const TRAS_UN_CAMBIO = 2000;
 
 export interface OpcionesDeCarpeta {
   /** Si no está vacía, el archivo propio sale cifrado y los ajenos se abren con ella. */
@@ -76,10 +84,15 @@ async function leer(
 }
 
 async function fusionarYEscribir(
-  db: BaseDeDatos, contexto: Contexto, carpeta: string, opciones: OpcionesDeCarpeta, lectura: Lectura,
+  db: BaseDeDatos,
+  contexto: Contexto,
+  carpeta: string,
+  opciones: OpcionesDeCarpeta,
+  lectura: Lectura,
+  aFusionar: readonly ArchivoDeCarpeta[] = lectura.ajenos,
 ): Promise<PasadaPorCarpeta> {
   const { propio, ajenos, clave, anterior } = lectura;
-  const pasada = pasarPorCarpeta(db, contexto, ajenos, {
+  const pasada = pasarPorCarpeta(db, contexto, aFusionar, {
     ...opciones, contenidoAnterior: anterior?.contenido,
   });
 
@@ -115,6 +128,11 @@ export function sincronizarCarpeta(
 /**
  * Una pasada automática. Devuelve `null` sin fusionar ni escribir nada si los
  * archivos ajenos son los mismos que la vez anterior y acá tampoco cambió nada.
+ *
+ * Si solo cambió lo de acá, escribe sin volver a fusionar: lo ajeno que no
+ * cambió ya entró en la pasada anterior. La excepción es Empezar de cero, que
+ * borra lo ya fusionado; eso vuelve en la próxima pasada completa, al abrir la
+ * app o con Sincronizar ahora.
  */
 export function sincronizarSiHayAlgoNuevo(
   db: BaseDeDatos,
@@ -125,18 +143,19 @@ export function sincronizarSiHayAlgoNuevo(
   return enFila(async () => {
     const lectura = await leer(db, contexto, carpeta, opciones.frase);
     const { anterior, ajenos } = lectura;
-    const igual = anterior !== null
+    const mismosAjenos = anterior !== null
       && anterior.ajenos.size === ajenos.length
-      && ajenos.every((archivo) => anterior.ajenos.get(archivo.nombre) === archivo.texto)
-      && contenidoPropio(db, contexto) === anterior.contenido;
-    return igual ? null : fusionarYEscribir(db, contexto, carpeta, opciones, lectura);
+      && ajenos.every((archivo) => anterior.ajenos.get(archivo.nombre) === archivo.texto);
+    if (mismosAjenos && contenidoPropio(db, contexto) === anterior.contenido) return null;
+    return fusionarYEscribir(db, contexto, carpeta, opciones, lectura, mismosAjenos ? [] : ajenos);
   });
 }
 
 /**
- * No dibuja nada: sincroniza al abrir la app, al volver a ella y cada
- * `CADA_CUANTO` mientras está a la vista. Los errores se callan, porque nadie
- * pidió esta pasada; se ven al tocar Sincronizar ahora en Ajustes.
+ * No dibuja nada: sincroniza al abrir la app, al irse al fondo, al volver de
+ * él, `TRAS_UN_CAMBIO` después de cada cambio y cada `CADA_CUANTO` mientras
+ * está a la vista. Los errores se callan, porque nadie pidió esta pasada; se
+ * ven al tocar Sincronizar ahora en Ajustes.
  */
 export function SincronizarSola(): null {
   const { db, contexto } = useDatos();
@@ -158,17 +177,31 @@ export function SincronizarSola(): null {
     };
 
     pasar();
-    // Android no corre temporizadores con la app en el fondo: al volver se
-    // pasa de inmediato y el reloj arranca de nuevo.
     let reloj = setInterval(pasar, CADA_CUANTO);
-    const suscripcion = AppState.addEventListener('change', (estado) => {
+    // Al irse se pasa una vez más, para que lo recién anotado salga aunque se
+    // cierre la app: Android deja correr unos segundos después de salir. Con la
+    // app en el fondo no corren temporizadores, así que al volver se pasa de
+    // inmediato y el reloj arranca de nuevo.
+    const alCambiarDeEstado = AppState.addEventListener('change', (estado) => {
       clearInterval(reloj);
-      if (estado !== 'active') return;
       pasar();
-      reloj = setInterval(pasar, CADA_CUANTO);
+      if (estado === 'active') reloj = setInterval(pasar, CADA_CUANTO);
     });
 
-    return () => { clearInterval(reloj); suscripcion.remove(); };
+    // Los ajustes no viajan en el archivo, y la pasada misma escribe uno.
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    const alCambiarLaBase = addDatabaseChangeListener(({ tableName }) => {
+      if (tableName === 'ajustes') return;
+      clearTimeout(espera);
+      espera = setTimeout(pasar, TRAS_UN_CAMBIO);
+    });
+
+    return () => {
+      clearInterval(reloj);
+      clearTimeout(espera);
+      alCambiarDeEstado.remove();
+      alCambiarLaBase.remove();
+    };
   }, [db, contexto, carpeta, frase, avisar]);
 
   return null;
