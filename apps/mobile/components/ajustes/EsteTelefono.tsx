@@ -39,8 +39,8 @@ export function EsteTelefono() {
         + 'si no pusiste el saldo inicial.\n\n'
         + 'Los identificadores se crean una sola vez y no cambian. Se muestran solo las '
         + 'últimas letras, que es lo que los distingue: los tres se crearon en el mismo '
-        + 'instante y empiezan igual. El código de hogar completo, el que se comparte, '
-        + 'está en Sincronizar.'}
+        + 'instante y empiezan igual. El código de hogar completo viaja dentro de la '
+        + 'invitación de Sincronizar.'}
     >
       <Panel>
         <Dato etiqueta="Movimientos" valor={String(movimientos.length)} />

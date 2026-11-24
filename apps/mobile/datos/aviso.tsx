@@ -29,6 +29,17 @@ export function useAvisar(): Avisar {
   return useContext(Contexto);
 }
 
+let pendiente: string | null = null;
+
+/**
+ * Para confirmar algo que remonta la app, como cambiar de hogar: el aviso
+ * normal se perdería junto con el proveedor que se desmonta. Lo muestra el
+ * proveedor nuevo al montarse.
+ */
+export function avisarTrasRemontar(texto: string): void {
+  pendiente = texto;
+}
+
 export function ProveedorDeAviso({ children }: { children: ReactNode }) {
   const estilo = useEstilo();
   const insets = useSafeAreaInsets();
@@ -40,6 +51,12 @@ export function ProveedorDeAviso({ children }: { children: ReactNode }) {
   // La clave cambia aunque el texto se repita: guardar dos veces seguidas
   // tiene que volver a mostrarlo.
   const avisar = useCallback<Avisar>((texto) => setAviso({ texto, clave: Date.now() }), []);
+
+  useEffect(() => {
+    if (pendiente === null) return;
+    avisar(pendiente);
+    pendiente = null;
+  }, [avisar]);
 
   useEffect(() => {
     if (aviso === null) return undefined;

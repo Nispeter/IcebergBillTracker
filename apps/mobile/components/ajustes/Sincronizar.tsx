@@ -1,6 +1,6 @@
 /**
  * Sincronizar con otra persona por una carpeta compartida: la carpeta, la
- * palabra de cifrado, el código del hogar y unirse a otro.
+ * palabra de cifrado, y la invitación para juntar dos teléfonos.
  *
  * Los errores de la carpeta se dicen junto a la carpeta; lo demás se confirma
  * con el aviso de siempre.
@@ -8,26 +8,24 @@
 
 import { crypto } from '@iceberg/core';
 import {
-  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_HOGAR, escribirAjuste, leerAjuste, unirseAHogar,
-  type ConflictoLegible,
+  CLAVE_ARCHIVO_PROPIO, CLAVE_CARPETA, CLAVE_HOGAR, armarInvitacion, escribirAjuste, leerAjuste,
+  leerInvitacion, unirseAHogar, type ConflictoLegible,
 } from '@iceberg/db';
 import { elevation, radii, spacing } from '@iceberg/ui';
-import { ShareNetwork } from 'phosphor-react-native/src/icons/ShareNetwork';
 import { useMemo, useState } from 'react';
-import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
 import { Boton } from '../Boton';
 import { Campo, Entrada } from '../Formulario';
 import { Seccion } from './comun';
-import { useAvisar } from '../../datos/aviso';
+import { avisarTrasRemontar, useAvisar } from '../../datos/aviso';
 import { useDatos } from '../../datos/BaseDeDatos';
 import { CarpetaPerdidaError, HAY_CARPETA, elegirCarpeta, nombreDeCarpeta } from '../../datos/carpeta';
 import { useFraseDeCifrado } from '../../datos/cifrado';
-import { useEstilo, useEstilos, type Estilo } from '../../datos/estilos';
+import { useEstilos, type Estilo } from '../../datos/estilos';
 import { sincronizarCarpeta } from '../../datos/sincronizar';
 
 export function Sincronizar() {
   const styles = useEstilos(crearEstilos);
-  const { theme } = useEstilo();
   const { db, contexto, cambiarHogar } = useDatos();
   const avisar = useAvisar();
   const cifrado = useFraseDeCifrado();
@@ -40,7 +38,8 @@ export function Sincronizar() {
   const [conflictos, setConflictos] = useState<readonly ConflictoLegible[]>([]);
   /** Lo escrito en el campo, o `null` si nadie lo tocó. */
   const [fraseEditada, setFraseEditada] = useState<string | null>(null);
-  const [codigo, setCodigo] = useState('');
+  /** Lo pegado en "Unirme con una invitación". */
+  const [pegada, setPegada] = useState('');
   const hogar = useMemo(() => leerAjuste(db, CLAVE_HOGAR), [db]);
 
   const frase = fraseEditada ?? cifrado.frase;
@@ -103,17 +102,39 @@ export function Sincronizar() {
     setFraseEditada(null);
     if (escrita === '' || escrita === cifrado.frase) return;
     cifrado.cambiar(escrita);
-    avisar('Palabra guardada. La otra persona tiene que poner la misma');
+    avisar('Palabra guardada. Mándale una invitación nueva a la otra persona');
   }
 
+  /** El mensaje entero se puede pegar allá: `leerInvitacion` busca la invitación adentro. */
+  function invitar() {
+    if (hogar === null || cifrado.frase === '') return;
+    Share.share({
+      message: 'Únete a mi hogar en Iceberg. Abre Ajustes, Sincronizar, y pega este mensaje '
+        + 'en "Unirme con una invitación".\n\n'
+        + armarInvitacion({ hogar, frase: cifrado.frase }),
+    });
+  }
+
+  /** Toma el hogar y la palabra de la invitación, de una vez. */
   function unirse() {
+    const invitacion = leerInvitacion(pegada);
+    if (invitacion === null) {
+      avisar('Eso no es una invitación. Pídele al otro teléfono que la envíe de nuevo');
+      return;
+    }
     try {
-      const nuevo = codigo.trim();
-      const filas = unirseAHogar(db, contexto, nuevo);
-      setCodigo('');
-      // Sin apuntar el contexto al hogar nuevo, las consultas seguirían en el viejo.
-      cambiarHogar(nuevo);
-      avisar(filas === 0 ? 'Ya estabas en ese hogar' : `Listo. ${filas} filas quedaron en el hogar compartido`);
+      const filas = unirseAHogar(db, contexto, invitacion.hogar);
+      cifrado.cambiar(invitacion.frase);
+      setPegada('');
+      setFraseEditada(null);
+      if (filas === 0) {
+        avisar('Listo. Ya estaban en el mismo hogar');
+        return;
+      }
+      // Sin apuntar el contexto al hogar nuevo, las consultas seguirían en el
+      // viejo. Eso remonta la app, y con ella el aviso.
+      avisarTrasRemontar('Listo. Ahora los dos teléfonos están en el mismo hogar');
+      cambiarHogar(invitacion.hogar);
     } catch (e) {
       avisar((e as Error).message);
     }
@@ -131,8 +152,8 @@ export function Sincronizar() {
         + 'de Drive, Dropbox u OneDrive. **Syncthing** también sirve, pero los dos '
         + 'teléfonos tienen que estar en línea a la vez.\n'
         + '2. Cada uno la elige acá con Elegir carpeta.\n'
-        + '3. Envíale tu código de hogar y tu palabra de cifrado.\n'
-        + '4. Esa persona lo pega en "Unirme a otro hogar".\n\n'
+        + '3. Uno toca "Invitar a otro teléfono" y le manda la invitación al otro.\n'
+        + '4. El otro la pega en "Unirme con una invitación" y toca Unirme.\n\n'
         + 'De ahí en adelante la app se sincroniza sola: al abrirla, al salir de ella, '
         + 'unos segundos después de cada cambio y cada minuto mientras está abierta. '
         + 'Sincronizar ahora sirve para no esperar.\n\n'
@@ -141,8 +162,8 @@ export function Sincronizar() {
         + 'Las cuentas marcadas como no compartidas no viajan, así que tampoco '
         + 'quedan respaldadas en la carpeta.\n\n'
         + 'Lo que se deja en la carpeta va **siempre cifrado**, con la palabra que '
-        + 'la app se inventó. Los dos teléfonos tienen que tener la misma: '
-        + 'envíasela con el botón y pégala allá.'}
+        + 'la app se inventó. Los dos teléfonos tienen que tener la misma, y la '
+        + 'invitación ya la lleva. Si la cambias, manda una invitación nueva.'}
     >
       {!HAY_CARPETA ? (
         <Text style={styles.nota}>
@@ -173,7 +194,7 @@ export function Sincronizar() {
             {ajenos === 1
               ? 'Hay un archivo en la carpeta que no es de tu hogar. '
               : `Hay ${ajenos} archivos en la carpeta que no son de tu hogar. `}
-            Lo que corresponde es unirte a ese hogar con el código. Si los mezclas igual,
+            Lo que corresponde es unirte a ese hogar con una invitación. Si los mezclas igual,
             sus movimientos quedan con los tuyos y no hay forma de separarlos después.
           </Text>
           <View style={styles.acciones}>
@@ -189,9 +210,8 @@ export function Sincronizar() {
         </View>
       )}
 
-      {/* Junto a la carpeta porque solo significa algo ahí: es lo que hay que
-          pasarle a la otra persona para que sus archivos se abran. A la vista y
-          sin puntitos, para poder dictarla. */}
+      {/* Junto a la carpeta porque solo significa algo ahí. Viaja dentro de la
+          invitación; se muestra para poder cambiarla. */}
       <Campo
         etiqueta="Palabra de cifrado"
         aviso={debilidad}
@@ -208,47 +228,41 @@ export function Sincronizar() {
           accessibilityLabel="Palabra de cifrado"
         />
       </Campo>
-      <View style={styles.acciones}>
-        <Boton
-          etiqueta="Enviársela a alguien"
-          accesible="Enviar la palabra de cifrado"
-          onPress={() => Share.share({ message: cifrado.frase })}
-        />
-        <Boton
-          etiqueta="Inventar otra"
-          accesible="Inventar otra palabra de cifrado"
-          onPress={() => {
-            cifrado.renovar();
-            setFraseEditada(null);
-            avisar('Palabra nueva. Hasta que la otra persona la ponga, sus archivos no se abren');
-          }}
-        />
-      </View>
+      <Boton
+        etiqueta="Inventar otra"
+        accesible="Inventar otra palabra de cifrado"
+        onPress={() => {
+          cifrado.renovar();
+          setFraseEditada(null);
+          avisar('Palabra nueva. Mándale una invitación nueva a la otra persona');
+        }}
+      />
 
-      <Campo etiqueta="Código de tu hogar">
-        <Pressable
-          onPress={() => Share.share({ message: hogar ?? '' })}
-          style={({ pressed }) => [styles.cajaDeCodigo, pressed && styles.apretada]}
-          accessibilityRole="button"
-          accessibilityLabel="Compartir el código de tu hogar"
-        >
-          <Text style={styles.codigoTexto} numberOfLines={1}>{hogar ?? '—'}</Text>
-          <ShareNetwork size={16} weight="regular" color={theme.acentoTexto} />
-        </Pressable>
-      </Campo>
-
-      <Campo etiqueta="Unirme a otro hogar">
+      {/* El hogar y la palabra van juntos en la invitación: una sola cosa que
+          enviar y una sola que pegar. */}
+      <Boton
+        etiqueta="Invitar a otro teléfono"
+        accesible="Enviar una invitación a otro teléfono"
+        onPress={invitar}
+        deshabilitado={hogar === null || cifrado.frase === ''}
+      />
+      <Campo etiqueta="Unirme con una invitación">
         <Entrada
-          value={codigo}
-          onChangeText={setCodigo}
-          placeholder="Pega aquí el código del otro teléfono"
-          autoCapitalize="characters"
+          value={pegada}
+          onChangeText={setPegada}
+          placeholder="Pega aquí la invitación del otro teléfono"
+          autoCapitalize="none"
           autoCorrect={false}
           style={styles.codigo}
-          accessibilityLabel="Código del hogar al que unirse"
+          accessibilityLabel="Invitación del otro teléfono"
         />
       </Campo>
-      <Boton etiqueta="Unirme a ese hogar" onPress={unirse} deshabilitado={codigo.trim() === ''} />
+      <Boton
+        etiqueta="Unirme"
+        accesible="Unirme con esa invitación"
+        onPress={unirse}
+        deshabilitado={pegada.trim() === ''}
+      />
 
       {conflictos.length === 0 ? null : (
         <View style={styles.conflictos}>
@@ -289,17 +303,6 @@ function crearEstilos({ theme, t }: Estilo) {
     avisoDeHogarTexto: { ...t.etiqueta, lineHeight: linea, color: theme.tinta },
     // Los códigos se escriben en mono: se dictan carácter por carácter.
     codigo: { ...t.cifra, fontSize: t.cuerpo.fontSize },
-    cajaDeCodigo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: radii.sm,
-      backgroundColor: theme.superficieHonda,
-    },
-    apretada: { opacity: 0.6 },
-    codigoTexto: { ...t.cifra, flex: 1 },
     conflictos: {
       gap: spacing.sm,
       padding: spacing.md,
