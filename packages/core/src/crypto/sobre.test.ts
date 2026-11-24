@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CifradoError, VERSION_DE_SOBRE, aBase64, cifrar, deBase64, descifrar, esSobre, fraseDebil,
+  CifradoError, VERSION_DE_SOBRE, aBase64, cifrar, cifrarSinTrabar, deBase64, descifrar,
+  descifrarSinTrabar, esSobre, fraseDebil,
 } from './sobre';
 
 const FRASE = 'una frase larga y difícil';
@@ -161,5 +162,18 @@ describe('la frase se normaliza', () => {
     const descompuesta = compuesta.normalize('NFD');
     expect(compuesta).not.toBe(descompuesta);
     expect(descifrar(cifrar('secreto', compuesta), descompuesta)).toBe('secreto');
+  });
+});
+
+describe('sin trabar', () => {
+  // Mismo formato que la versión de un golpe: lo cifrado por un teléfono viejo
+  // se tiene que abrir en uno nuevo, y al revés.
+  it('abre lo cifrado de un golpe, y al revés', async () => {
+    expect(await descifrarSinTrabar(cifrar('hola', FRASE), FRASE)).toBe('hola');
+    expect(descifrar(await cifrarSinTrabar('chao', FRASE), FRASE)).toBe('chao');
+  });
+
+  it('falla igual con la frase equivocada', async () => {
+    await expect(descifrarSinTrabar(cifrar('hola', FRASE), 'otra frase')).rejects.toThrow(CifradoError);
   });
 });

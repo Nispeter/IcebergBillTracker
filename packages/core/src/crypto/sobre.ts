@@ -30,7 +30,7 @@
 
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { bytesToUtf8, randomBytes, utf8ToBytes } from '@noble/ciphers/utils.js';
-import { scrypt } from '@noble/hashes/scrypt.js';
+import { scrypt, scryptAsync } from '@noble/hashes/scrypt.js';
 
 export class CifradoError extends Error {
   override name = 'CifradoError';
@@ -101,6 +101,16 @@ export function aBase64(bytes: Uint8Array): string {
   return salida;
 }
 
+/**
+ * El valor de cada caracter, por su código. Buscarlo con `indexOf` recorría el
+ * alfabeto por cada caracter, y un respaldo trae cientos de miles.
+ */
+const VALOR_DE = (() => {
+  const tabla = new Int8Array(128).fill(-1);
+  for (let i = 0; i < ALFABETO.length; i++) tabla[ALFABETO.charCodeAt(i)] = i;
+  return tabla;
+})();
+
 export function deBase64(texto: string): Uint8Array {
   const limpio = texto.replace(/[^A-Za-z0-9+/]/g, '');
   const bytes = new Uint8Array((limpio.length * 3) >> 2);
@@ -108,8 +118,8 @@ export function deBase64(texto: string): Uint8Array {
   let acumulado = 0;
   let bits = 0;
 
-  for (const caracter of limpio) {
-    const valor = ALFABETO.indexOf(caracter);
+  for (let i = 0; i < limpio.length; i++) {
+    const valor = VALOR_DE[limpio.charCodeAt(i)] ?? -1;
     if (valor < 0) throw new CifradoError('el archivo tiene caracteres que no son base64');
     acumulado = (acumulado << 6) | valor;
     bits += 6;
@@ -123,25 +133,29 @@ export function deBase64(texto: string): Uint8Array {
 
 /* eslint-enable no-bitwise */
 
+/** Lo que necesita scrypt. La frase se normaliza a NFC, ver `cifrar`. */
+function parametros(frase: string, n: number, r: number, p: number) {
+  return { clave: utf8ToBytes(frase.normalize('NFC')), opciones: { N: n, r, p, dkLen: KDF.dkLen } };
+}
+
 function derivarClave(frase: string, sal: Uint8Array, n: number, r: number, p: number): Uint8Array {
-  return scrypt(utf8ToBytes(frase.normalize('NFC')), sal, { N: n, r, p, dkLen: KDF.dkLen });
+  const { clave, opciones } = parametros(frase, n, r, p);
+  return scrypt(clave, sal, opciones);
 }
 
 /**
- * Cifra un texto con una frase.
- *
- * La frase se normaliza a NFC: la misma frase escrita con tildes compuestas o
- * descompuestas tiene que abrir el mismo archivo, y en un teclado de telefono
- * eso pasa sin que nadie lo note.
+ * Lo mismo, pero soltando el hilo cada pocos milisegundos. En el teléfono
+ * scrypt tarda lo suficiente como para que la pantalla se note pegada.
  */
-export function cifrar(textoPlano: string, frase: string): Sobre {
-  if (frase.length === 0) throw new CifradoError('la frase no puede estar vacía');
+function derivarClaveSinTrabar(
+  frase: string, sal: Uint8Array, n: number, r: number, p: number,
+): Promise<Uint8Array> {
+  const { clave, opciones } = parametros(frase, n, r, p);
+  return scryptAsync(clave, sal, { ...opciones, asyncTick: 10 });
+}
 
-  const sal = randomBytes(LARGO_SAL);
-  const nonce = randomBytes(LARGO_NONCE);
-  const clave = derivarClave(frase, sal, KDF.N, KDF.r, KDF.p);
+function sellar(textoPlano: string, clave: Uint8Array, sal: Uint8Array, nonce: Uint8Array): Sobre {
   const cifrado = xchacha20poly1305(clave, nonce).encrypt(utf8ToBytes(textoPlano));
-
   return {
     version: VERSION_DE_SOBRE,
     kdf: 'scrypt',
@@ -155,13 +169,37 @@ export function cifrar(textoPlano: string, frase: string): Sobre {
 }
 
 /**
- * Descifra un sobre. Revienta si la frase esta mal o el archivo fue tocado.
+ * Cifra un texto con una frase.
  *
- * Los dos casos dan el **mismo mensaje** a proposito: distinguir "frase
- * incorrecta" de "archivo corrupto" le dice a quien prueba frases que va por
- * buen camino.
+ * La frase se normaliza a NFC: la misma frase escrita con tildes compuestas o
+ * descompuestas tiene que abrir el mismo archivo, y en un teclado de telefono
+ * eso pasa sin que nadie lo note.
  */
-export function descifrar(sobre: unknown, frase: string): string {
+export function cifrar(textoPlano: string, frase: string): Sobre {
+  if (frase.length === 0) throw new CifradoError('la frase no puede estar vacía');
+  const sal = randomBytes(LARGO_SAL);
+  const nonce = randomBytes(LARGO_NONCE);
+  return sellar(textoPlano, derivarClave(frase, sal, KDF.N, KDF.r, KDF.p), sal, nonce);
+}
+
+/** `cifrar` sin trabar la pantalla mientras deriva la clave. */
+export async function cifrarSinTrabar(textoPlano: string, frase: string): Promise<Sobre> {
+  if (frase.length === 0) throw new CifradoError('la frase no puede estar vacía');
+  const sal = randomBytes(LARGO_SAL);
+  const nonce = randomBytes(LARGO_NONCE);
+  return sellar(textoPlano, await derivarClaveSinTrabar(frase, sal, KDF.N, KDF.r, KDF.p), sal, nonce);
+}
+
+interface SobreRevisado {
+  readonly sal: Uint8Array;
+  readonly nonce: Uint8Array;
+  readonly n: number;
+  readonly r: number;
+  readonly p: number;
+  readonly cifrado: string;
+}
+
+function revisar(sobre: unknown): SobreRevisado {
   if (!esSobre(sobre)) throw new CifradoError('el archivo no es un respaldo cifrado');
   if (sobre.version > VERSION_DE_SOBRE) {
     throw new CifradoError(
@@ -179,15 +217,37 @@ export function descifrar(sobre: unknown, frase: string): string {
   if (sobre.n > 2 ** 20 || sobre.r > 32 || sobre.p > 16) {
     throw new CifradoError('el archivo pide parámetros de descifrado fuera de rango');
   }
+  return { sal, nonce, n: sobre.n, r: sobre.r, p: sobre.p, cifrado: sobre.cifrado };
+}
 
-  const clave = derivarClave(frase, sal, sobre.n, sobre.r, sobre.p);
+function abrir(revisado: SobreRevisado, clave: Uint8Array): string {
   try {
     return bytesToUtf8(
-      xchacha20poly1305(clave, nonce).decrypt(deBase64(sobre.cifrado)),
+      xchacha20poly1305(clave, revisado.nonce).decrypt(deBase64(revisado.cifrado)),
     );
   } catch {
     throw new CifradoError('No se pudo abrir el archivo: la frase no coincide, o el archivo cambió.');
   }
+}
+
+/**
+ * Descifra un sobre. Revienta si la frase esta mal o el archivo fue tocado.
+ *
+ * Los dos casos dan el **mismo mensaje** a proposito: distinguir "frase
+ * incorrecta" de "archivo corrupto" le dice a quien prueba frases que va por
+ * buen camino.
+ */
+export function descifrar(sobre: unknown, frase: string): string {
+  const revisado = revisar(sobre);
+  const { sal, n, r, p } = revisado;
+  return abrir(revisado, derivarClave(frase, sal, n, r, p));
+}
+
+/** `descifrar` sin trabar la pantalla mientras deriva la clave. */
+export async function descifrarSinTrabar(sobre: unknown, frase: string): Promise<string> {
+  const revisado = revisar(sobre);
+  const { sal, n, r, p } = revisado;
+  return abrir(revisado, await derivarClaveSinTrabar(frase, sal, n, r, p));
 }
 
 /**
